@@ -146,8 +146,23 @@ jobs:
           find app/build/outputs/apk/gplay/ -name "*.apk" -exec cp {} release-assets/ \;
           cd release-assets
           for f in *.apk; do
-            if [[ "$f" == *"standard"* ]]; then mv "$f" "Webapp-standard-${f}"; fi
-            if [[ "$f" == *"gplay"* ]]; then mv "$f" "Webapp-gplay-${f}"; fi
+            # 提取渠道 (standard 或 gplay)
+            flavor=""
+            if [[ "$f" == *"standard"* ]]; then flavor="standard"; fi
+            if [[ "$f" == *"gplay"* ]]; then flavor="gplay"; fi
+            
+            # 提取构建类型 (debug 或 release)
+            build_type=""
+            if [[ "$f" == *"debug"* ]]; then build_type="debug"; fi
+            if [[ "$f" == *"release"* ]]; then build_type="release"; fi
+            
+            # 如果成功提取，则重新组装名字
+            if [ -n "$flavor" ] && [ -n "$build_type" ]; then
+              # 首字母大写美化 (Standard, Gplay, Debug, Release)
+              Flavor="$(tr '[:lower:]' '[:upper:]' <<< ${flavor:0:1})${flavor:1}"
+              BuildType="$(tr '[:lower:]' '[:upper:]' <<< ${build_type:0:1})${build_type:1}"
+              mv "$f" "Webapp-${Flavor}-${BuildType}.apk"
+            fi
           done
           ls -la
 
@@ -155,7 +170,7 @@ jobs:
       - name: Upload APKs Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: WebToApp-APKs-${{ github.run_number }}
+          name: Webapp-APKs-${{ github.run_number }}
           path: release-assets/*.apk
           if-no-files-found: error
           retention-days: 14
