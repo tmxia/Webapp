@@ -158,8 +158,8 @@ jobs:
       - name: Prepare release assets
         run: |
           mkdir -p release-assets
-          find app/build/outputs/apk/standard/ -name "*.apk" -exec cp {} release-assets/ \;
-          find app/build/outputs/apk/gplay/ -name "*.apk" -exec cp {} release-assets/ \;
+          # 智能扫描：不管编译了哪个变体，只要有 APK 就抓过来
+          find app/build/outputs/apk/ -name "*.apk" -exec cp {} release-assets/ \;
           cd release-assets
           for f in *.apk; do
             # 提取渠道 (standard 或 gplay)
