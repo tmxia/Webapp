@@ -153,8 +153,8 @@ jobs:
           find app/build/outputs/apk/gplay/ -name "*.apk" -exec cp {} release-assets/ \;
           cd release-assets
           for f in *.apk; do
-            if [[ "$f" == *"standard"* ]]; then mv "$f" "WebToApp-standard-${f}"; fi
-            if [[ "$f" == *"gplay"* ]]; then mv "$f" "WebToApp-gplay-${f}"; fi
+            if [[ "$f" == *"standard"* ]]; then mv "$f" "Webapp-standard-${f}"; fi
+            if [[ "$f" == *"gplay"* ]]; then mv "$f" "Webapp-gplay-${f}"; fi
           done
           ls -la
 
