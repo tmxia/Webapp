@@ -36,6 +36,8 @@ jobs:
       - name: Prepare Java
         uses: actions/setup-java@v5
         with:
+          overwrite_files: true
+          make_latest: true
           distribution: temurin
           java-version: "17"
 
