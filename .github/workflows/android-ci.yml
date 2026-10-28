@@ -175,12 +175,24 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+      # 读取 app/build.gradle.kts 中的 versionName
+      - name: Extract Version Name
+        id: get_version
+        run: |
+          VERSION=$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts)
+          if [ -z "$VERSION" ]; then
+            echo "⚠️ 未找到 versionName，默认使用 v1.0.0"
+            VERSION="1.0.0"
+          fi
+          echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
+          echo "提取到版本号: v$VERSION"
+
       # 自动发布到 GitHub Release
       - name: Publish to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: build-${{ github.run_number }}
-          name: Release Build #${{ github.run_number }}
+          tag_name: v${{ env.APP_VERSION }}
+          name: Webapp v${{ env.APP_VERSION }}
           body: "Automated release build with custom signed APKs."
           files: release-assets/*.apk
         env:
