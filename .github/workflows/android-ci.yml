@@ -118,8 +118,16 @@ jobs:
 
       - name: Decode Keystore
         run: |
+          if [ -z "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" ]; then
+            echo "❌ 缺少 RELEASE_KEYSTORE_BASE64 Secrets，停止构建！"
+            exit 1
+          fi
           echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 -d > ${{ github.workspace }}/release.keystore
-          test -s ${{ github.workspace }}/release.keystore && echo "Keystore decoded successfully"
+          if [ ! -s ${{ github.workspace }}/release.keystore ]; then
+            echo "❌ Keystore 文件解码失败或为空！"
+            exit 1
+          fi
+          echo "✅ Keystore 解码成功"
 
       # ★ Push 触发时：只构建 Standard 变体，节约时间
       - name: Build APKs (Standard Only)
@@ -132,7 +140,7 @@ jobs:
         run: |
           ./gradlew --no-daemon --no-configuration-cache \
             -Dkotlin.compiler.execution.strategy=in-process \
-            -PallowDebugSignedRelease=true \
+            \
             :app:assembleStandardRelease
 
       # ★ 手动触发时：构建所有变体 (Standard/Gplay, Debug/Release, Shell)
@@ -146,7 +154,7 @@ jobs:
         run: |
           ./gradlew --no-daemon --no-configuration-cache \
             -Dkotlin.compiler.execution.strategy=in-process \
-            -PallowDebugSignedRelease=true \
+            \
             :app:assembleStandardDebug \
             :app:assembleStandardRelease \
             :app:assembleGplayDebug \

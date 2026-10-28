@@ -29,13 +29,21 @@ val localProperties = Properties().apply {
     }
 }
 
+val envStoreFile = System.getenv("RELEASE_STORE_FILE")
+val hasEnvSigningConfig = !envStoreFile.isNullOrBlank() && 
+    !System.getenv("RELEASE_STORE_PASSWORD").isNullOrBlank() &&
+    !System.getenv("RELEASE_KEY_ALIAS").isNullOrBlank() &&
+    !System.getenv("RELEASE_KEY_PASSWORD").isNullOrBlank()
+
 val releaseSigningStoreFile = localProperties.getProperty("signing.storeFile")
     ?.takeIf { it.isNotBlank() }
     ?.let { rootProject.file(it) }
-val hasReleaseSigningConfig = releaseSigningStoreFile?.isFile == true &&
+val hasLocalSigningConfig = releaseSigningStoreFile?.isFile == true &&
     !localProperties.getProperty("signing.storePassword").isNullOrBlank() &&
     !localProperties.getProperty("signing.keyAlias").isNullOrBlank() &&
     !localProperties.getProperty("signing.keyPassword").isNullOrBlank()
+
+val hasReleaseSigningConfig = hasEnvSigningConfig || hasLocalSigningConfig
 
 // -Pfdroid=true builds the host and the embedded shell template without Firebase,
 // Play Services, or AdMob, and leaves the release APK unsigned for F-Droid to sign.
