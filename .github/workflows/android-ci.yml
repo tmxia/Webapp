@@ -8,7 +8,7 @@ on:
       - "**"
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   # Group per ref AND event type: routine pushes to the same branch still cancel
@@ -145,20 +145,35 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-      - name: Upload standard APKs
+      # 整理并重命名产物
+      - name: Prepare release assets
+        run: |
+          mkdir -p release-assets
+          find app/build/outputs/apk/standard/ -name "*.apk" -exec cp {} release-assets/ \;
+          find app/build/outputs/apk/gplay/ -name "*.apk" -exec cp {} release-assets/ \;
+          cd release-assets
+          for f in *.apk; do
+            if [[ "$f" == *"standard"* ]]; then mv "$f" "WebToApp-standard-${f}"; fi
+            if [[ "$f" == *"gplay"* ]]; then mv "$f" "WebToApp-gplay-${f}"; fi
+          done
+          ls -la
+
+      # 上传临时 Artifacts (以防你只想在这里下载)
+      - name: Upload APKs Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: standard-apks-DEBUG-SIGNED-do-not-distribute-${{ github.run_number }}
-          path: |
-            app/build/outputs/apk/standard/**/*.apk
-            shell/build/outputs/apk/**/*.apk
+          name: WebToApp-APKs-${{ github.run_number }}
+          path: release-assets/*.apk
           if-no-files-found: error
           retention-days: 14
 
-      - name: Upload gplay APKs
-        uses: actions/upload-artifact@v4
+      # 自动发布到 GitHub Release
+      - name: Publish to GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
-          name: gplay-apks-shiaho.webtoapp-DEBUG-SIGNED-do-not-distribute-${{ github.run_number }}
-          path: app/build/outputs/apk/gplay/**/*.apk
-          if-no-files-found: error
-          retention-days: 14
+          tag_name: build-${{ github.run_number }}
+          name: Release Build #${{ github.run_number }}
+          body: "Automated release build with custom signed APKs."
+          files: release-assets/*.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
