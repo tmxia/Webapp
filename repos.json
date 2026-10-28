@@ -2,8 +2,8 @@
   {
     "name": "WebToApp",
     "description": "Turn any website into an installable app across iOS, Android, Windows, macOS and Linux, and generate a sharing link.",
-    "stargazers_count": 162,
-    "forks_count": 36,
+    "stargazers_count": 174,
+    "forks_count": 38,
     "language": "Python",
     "pushed_at": "2026-10-22T03:34:28Z",
     "html_url": "https://github.com/shiaho777/WebToApp"
@@ -20,7 +20,7 @@
   {
     "name": "turn-mcp",
     "description": "Achieve infinite conversation turns in a single API request via turn-mcp.             Self-hosted MCP server with browser console for human-in-the-loop AI agents.",
-    "stargazers_count": 39,
+    "stargazers_count": 38,
     "forks_count": 9,
     "language": "TypeScript",
     "pushed_at": "2026-10-13T13:29:04Z",
@@ -29,35 +29,35 @@
   {
     "name": "LogSleuth",
     "description": "Root-free Android logcat viewer & embeddable zero-permission logging SDK",
-    "stargazers_count": 29,
+    "stargazers_count": 31,
     "forks_count": 2,
     "language": "Kotlin",
     "pushed_at": "2026-10-22T13:48:05Z",
     "html_url": "https://github.com/shiaho777/LogSleuth"
   },
   {
+    "name": "WebViewIDE",
+    "description": "On-device IDE for HTML, CSS, and JavaScript. Preview in the system WebView and package a signed APK. No root.",
+    "stargazers_count": 22,
+    "forks_count": 1,
+    "language": "Kotlin",
+    "pushed_at": "2026-10-28T02:13:45Z",
+    "html_url": "https://github.com/shiaho777/WebViewIDE"
+  },
+  {
     "name": "qsyy",
     "description": "汽水音乐第三方 Web 播放器 · 全端可用 · 本地缓存直读 / 在线播放 / 逐字歌词 / 音效 / 下载",
-    "stargazers_count": 21,
+    "stargazers_count": 22,
     "forks_count": 0,
     "language": "JavaScript",
     "pushed_at": "2026-10-21T03:42:10Z",
     "html_url": "https://github.com/shiaho777/qsyy"
   },
   {
-    "name": "LuaXIDE",
-    "description": "Android Lua IDE with built-in interpreter, visual UI designer, debugger, and APK builder — all on-device, no root required.",
-    "stargazers_count": 21,
-    "forks_count": 0,
-    "language": "Kotlin",
-    "pushed_at": "2026-10-16T01:24:54Z",
-    "html_url": "https://github.com/shiaho777/LuaXIDE"
-  },
-  {
     "name": "andmx",
     "description": "Android-native AI coding agent (AndMX)",
     "stargazers_count": 20,
-    "forks_count": 4,
+    "forks_count": 5,
     "language": "Kotlin",
     "pushed_at": "2026-09-27T13:43:57Z",
     "html_url": "https://github.com/shiaho777/andmx"
@@ -68,7 +68,7 @@
     "stargazers_count": 19,
     "forks_count": 0,
     "language": "Rust",
-    "pushed_at": "2026-10-21T02:44:22Z",
+    "pushed_at": "2026-10-28T04:13:52Z",
     "html_url": "https://github.com/shiaho777/revx"
   },
   {
@@ -79,15 +79,6 @@
     "language": "C",
     "pushed_at": "2026-10-17T09:25:24Z",
     "html_url": "https://github.com/shiaho777/zv-codec"
-  },
-  {
-    "name": "NexFiles",
-    "description": "An open source Material Design file manager, for Android 5.0+.",
-    "stargazers_count": 18,
-    "forks_count": 0,
-    "language": "Kotlin",
-    "pushed_at": "2026-10-15T08:24:28Z",
-    "html_url": "https://github.com/shiaho777/NexFiles"
   },
   {
     "name": "wgsql",
@@ -102,7 +93,7 @@
     "name": "An-Harness",
     "description": "Android-first on-device AI agent harness — exploring everything possible on Android",
     "stargazers_count": 16,
-    "forks_count": 2,
+    "forks_count": 3,
     "language": "Kotlin",
     "pushed_at": "2026-09-08T10:15:19Z",
     "html_url": "https://github.com/shiaho777/An-Harness"
@@ -214,15 +205,6 @@
     "language": "Python",
     "pushed_at": "2026-09-03T14:06:28Z",
     "html_url": "https://github.com/shiaho777/hard-metric-bench"
-  },
-  {
-    "name": "esp-overlay",
-    "description": "Unity il2cpp MOBA ESP overlay —免 root 内存读取 + 悬浮窗渲染工具链(revx 姊妹项目)",
-    "stargazers_count": 10,
-    "forks_count": 0,
-    "language": "C++",
-    "pushed_at": "2026-08-31T13:01:37Z",
-    "html_url": "https://github.com/shiaho777/esp-overlay"
   },
   {
     "name": "issue-pr-ci-delivery",
