@@ -2,16 +2,16 @@ package com.webtoapp.core.webview
 
 import java.net.URLEncoder
 
-/**
- * Splits page text into engine-sized, newline-free pieces and puts the
- * translations back on the original strings.
- *
- * A chapter page (AO3 and anything else with long paragraphs) cannot be sent
- * as one GET: the joined query exceeds what Google, MyMemory and Lingva accept,
- * and splitting the response on newlines mis-assigns paragraphs whenever the
- * engine drops or inserts a break. Pieces are cut to a per-engine budget and
- * only batched when the joined payload still fits.
- */
+
+
+
+
+
+
+
+
+
+
 internal object TranslateTextPlan {
 
     data class Limit(val maxRawChars: Int, val maxEncodedChars: Int?)
@@ -25,7 +25,7 @@ internal object TranslateTextPlan {
         val textIndex: Int,
         val separatorBefore: String,
         val text: String,
-        /** Blank line kept so paragraph breaks survive. Not sent to an engine. */
+        
         val passthrough: Boolean
     )
 
@@ -78,11 +78,11 @@ internal object TranslateTextPlan {
         return indices.joinToString("\n") { pieces[it].text }
     }
 
-    /**
-     * A one-piece payload is returned whole, so an engine that inserts a newline
-     * cannot shift later paragraphs. Multi-piece payloads must come back with
-     * the same number of lines; otherwise the caller translates them one by one.
-     */
+    
+
+
+
+
     fun splitTranslated(translated: String, count: Int): List<String>? {
         if (count <= 0) return emptyList()
         if (count == 1) return listOf(translated)

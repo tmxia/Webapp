@@ -230,13 +230,13 @@ class GreasemonkeyBridge(
 
     private val httpClient get() = NetworkModule.defaultClient
 
-    /**
-     * Storage namespaces are addressed through unguessable per-script aliases instead of
-     * the raw script id: the bridge object is reachable from every page and iframe in the
-     * app, so with raw ids any embedded content could read/write another script's GM
-     * storage by simply naming it. The alias is random per script; only the pages that
-     * received the polyfill ever see it.
-     */
+    
+
+
+
+
+
+
     private val aliasByScriptId = java.util.concurrent.ConcurrentHashMap<String, String>()
     private val scriptIdByAlias = java.util.concurrent.ConcurrentHashMap<String, String>()
 
@@ -287,10 +287,10 @@ class GreasemonkeyBridge(
                 val headersObj = details.optJSONObject("headers")
                 val responseType = details.optString("responseType", "")
 
-                // GM_xmlhttpRequest is cross-origin by design, but only for the open
-                // internet: the bridge object is reachable from any frame of any page
-                // the app displays, so private/loopback targets are reserved for local
-                // (packaged / local-server) pages.
+                
+                
+                
+                
                 val uri = runCatching { java.net.URI(url) }.getOrNull()
                 val scheme = uri?.scheme?.lowercase()
                 if (scheme != "http" && scheme != "https") {
@@ -307,9 +307,9 @@ class GreasemonkeyBridge(
                         "GM_xmlhttpRequest to local network addresses is only allowed from local pages"
                     )
                 }
-                // Redirect gate: when the calling page is not local, every redirect hop
-                // must stay off the private network — a public URL 302-ing into
-                // 127.0.0.1 would otherwise bypass the target gate above.
+                
+                
+                
                 val client = if (pageIsLocal) {
                     httpClient
                 } else {
@@ -348,9 +348,9 @@ class GreasemonkeyBridge(
                     else -> requestBuilder.get()
                 }
 
-                // Cap the response like NativeBridge.httpRequest does (16 MB): GM
-                // results are serialized into a JS callback payload, so a multi-GB
-                // body would OOM the WebView process instead of failing the request.
+                
+                
+                
                 val maxResponseBytes = 16L * 1024 * 1024
                 client.newCall(requestBuilder.build()).execute().use { response ->
                     val charset = response.body?.contentType()?.charset(Charsets.UTF_8)
@@ -412,9 +412,9 @@ class GreasemonkeyBridge(
     @JavascriptInterface
     fun openInTab(url: String, openInBackground: Boolean): Boolean {
         return try {
-            // Scheme allowlist: GM_openInTab takes a raw URL from script/page context and an
-            // `intent://` / `file://` value here would turn into component-launch or
-            // local-file access (intent redirection). Web URLs only.
+            
+            
+            
             val scheme = runCatching { java.net.URI(url).scheme?.lowercase() }.getOrNull()
             if (scheme != "http" && scheme != "https") {
                 AppLogger.w(TAG, "GM_openInTab blocked non-web URL: $url")
@@ -435,14 +435,14 @@ class GreasemonkeyBridge(
         AppLogger.d(TAG, "[GM_log] $message")
     }
 
-    // ------------------------------------------------------------------
-    // Menu commands -> unified plugin surface
-    // ------------------------------------------------------------------
+    
+    
+    
 
-    /** scriptId -> ordered menu-command names registered by the running script. */
+    
     private val menuCommands = java.util.concurrent.ConcurrentHashMap<String, LinkedHashSet<String>>()
 
-    /** Fires on the JS bridge thread whenever a script's command set changes. */
+    
     var onMenuCommandsChanged: ((scriptId: String, names: List<String>) -> Unit)? = null
 
     fun menuCommandsFor(scriptId: String): List<String> =
@@ -459,9 +459,9 @@ class GreasemonkeyBridge(
     }
 
     private fun callbackToJs(callbackId: String, event: String, dataJson: String) {
-        // callbackId comes from page JS; quote it as a JSON string so a crafted id
-        // ('x');payload();//) cannot break out of the JS string literal and execute
-        // in whatever page is loaded when the async callback lands.
+        
+        
+        
         val quotedCallbackId = com.webtoapp.util.JsStrings.quote(callbackId ?: "")
         val quotedEvent = com.webtoapp.util.JsStrings.quote(event)
         val escapedData = dataJson.replace("\\", "\\\\").replace("'", "\\'").replace("\n", "\\n").replace("\r", "\\r")

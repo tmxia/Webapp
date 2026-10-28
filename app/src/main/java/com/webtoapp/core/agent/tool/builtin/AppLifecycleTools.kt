@@ -56,7 +56,7 @@ class BuildApkTool : Tool {
     }
 
     private fun extractVersionFromName(fileName: String): String? {
-        // APK file name format: "{AppName}_v{version}.APK"
+        
         val idx = fileName.lastIndexOf("_v")
         if (idx < 0) return null
         val afterV = fileName.substring(idx + 2)
@@ -108,8 +108,8 @@ class ExportAppTool : Tool {
         args.get("appId")?.asString?.let { "Exporting app $it" }
     override suspend fun execute(args: JsonObject, ctx: ToolContext): ToolResult {
         val appId = args.get("appId")?.asLong ?: return ToolResult.error("ExportApp: missing appId.")
-        // Reject unknown values instead of silently falling through to "template" —
-        // a typo'd "config" would trigger a heavy source-zip export.
+        
+        
         val format = args.get("format")?.asString
             ?.takeIf { it == "template" || it == "config" }
             ?: return ToolResult.error("ExportApp: unknown format '${args.get("format")}'. Use \"template\" or \"config\".")

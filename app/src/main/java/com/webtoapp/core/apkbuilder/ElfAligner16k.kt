@@ -21,9 +21,9 @@ object ElfAligner16k {
         val alreadyAligned: Boolean
     )
 
-    // Process-lifetime memo: host runtime libs (libnode.so etc.) are identical
-    // across builds in one session. Keyed by identity (path+size+mtime), validated
-    // by re-inspecting the cached output (header-only read).
+    
+    
+    
     private data class AlignCacheKey(val path: String, val size: Long, val mtime: Long)
     private val alignCache = java.util.concurrent.ConcurrentHashMap<AlignCacheKey, AlignmentResult>()
 
@@ -36,11 +36,11 @@ object ElfAligner16k {
             if (cached.outputFile.isFile) {
                 try {
                     if (inspect(cached.outputFile).aligned || cached.alreadyAligned) {
-                        // A hit can point into a different package's work dir (the cache is
-                        // process-wide, keyed by input file identity). Per-package build
-                        // locks do not serialize different packages, so that package's
-                        // cleanTempFiles() could delete the referenced file mid-build —
-                        // copy the bytes into this call's work dir first.
+                        
+                        
+                        
+                        
+                        
                         val livesElsewhere = cached.outputFile.absolutePath != inputFile.absolutePath &&
                             cached.outputFile.parentFile?.absolutePath != workDir.absolutePath
                         if (livesElsewhere) {
@@ -51,14 +51,14 @@ object ElfAligner16k {
                         }
                         return cached
                     }
-                } catch (_: Exception) { /* fall through and re-align */ }
+                } catch (_: Exception) {  }
                 alignCache.remove(cacheKey)
             } else {
                 alignCache.remove(cacheKey)
             }
         }
-        // Single read: parse from memory, align from memory, verify from memory.
-        // The old path read the input 3x (inspect + align + output inspect).
+        
+        
         val inputBytes = inputFile.readBytes()
         val inspection: ElfInspection
         try {
@@ -103,7 +103,7 @@ object ElfAligner16k {
         outputFile.setReadable(inputFile.canRead(), false)
     }
 
-    /** Pure bytes-in/bytes-out alignment; caller owns all IO. */
+    
     fun alignBytes(input: ByteArray): ByteArray {
         val elf = parse(input)
         return if (elf.needsRepack) repack(input, elf) else patchMetadata(input, elf)

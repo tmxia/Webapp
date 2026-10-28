@@ -5,17 +5,17 @@ import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.roundToInt
 
-/**
- * Page math for the multi-web top-tab pager.
- *
- * Position is in pages: 0 is the first site, and increasing it moves toward
- * the next site. One gesture stays on the page it started on or its immediate
- * neighbor — a fling coasts onto that neighbor instead of skipping sites, which
- * would pull extra WebViews into memory. Past that neighbor, or past either
- * end of the list, the finger meets rubber-band resistance.
- *
- * [layoutSign] is +1 in LTR (finger moving left advances) and -1 in RTL.
- */
+
+
+
+
+
+
+
+
+
+
+
 internal object TopTabPager {
     const val FLING_VELOCITY_PX = 1000f
     const val OVERSCROLL_LIMIT = 0.18f

@@ -6,15 +6,15 @@ import com.webtoapp.core.logging.AppLogger
 import java.io.File
 import java.util.zip.ZipFile
 
-/**
- * AAB validation helper to verify resource integrity before signing and uploading.
- * This prevents Google Play Console rejection due to missing resource files.
- */
+
+
+
+
 object AabValidationHelper {
 
     private const val TAG = "AabValidationHelper"
 
-    /** Extract all file references from the proto table. */
+    
     private fun Resources.ResourceTable.fileReferences(): Set<String> {
         val out = mutableSetOf<String>()
         for (pkg in packageList) {
@@ -31,13 +31,13 @@ object AabValidationHelper {
         return out
     }
 
-    /**
-     * Validate the AAB file for:
-     * 1. All resources referenced in resources.pb exist as actual files
-     * 2. No orphaned resource references
-     * 
-     * @return true if validation passes, false otherwise
-     */
+    
+
+
+
+
+
+
     fun validateAab(aabFile: File): ValidationResult {
         AppLogger.d(TAG, "Validating AAB: ${aabFile.name}")
 
@@ -45,25 +45,25 @@ object AabValidationHelper {
 
         try {
             ZipFile(aabFile).use { zip ->
-                // Check if resources.pb exists
+                
                 val resourcesPbEntry = zip.getEntry("base/resources.pb")
                     ?: run {
                         issues.add("Missing base/resources.pb (Android App Bundle format error)")
                         return@validateAab ValidationResult(false, issues)
                     }
 
-                // Parse resources.pb and get all referenced resource paths
+                
                 val resourcesBytes = zip.getInputStream(resourcesPbEntry).readBytes()
                 
                 try {
                     val protoTable = Resources.ResourceTable.parseFrom(resourcesBytes)
                     
-                    // Collect all file references from the resource table
+                    
                     val referencedResources = protoTable.fileReferences()
                     AppLogger.d(TAG, "Found ${referencedResources.size} resource references in resources.pb")
                     AppLogger.d(TAG, "All references validated against AAB contents")
 
-                    // Verify each referenced resource exists in the AAB
+                    
                     for (resourcePath in referencedResources) {
                         if (zip.getEntry("base/$resourcePath") == null &&
                             zip.getEntry(resourcePath) == null &&

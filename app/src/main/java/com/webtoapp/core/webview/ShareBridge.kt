@@ -17,14 +17,14 @@ import java.io.FileOutputStream
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
-/**
- * Page → system share sheet.
- *
- * Text and files travel in one [Intent.ACTION_SEND] (or [Intent.ACTION_SEND_MULTIPLE]).
- * The user picks the target — WhatsApp, Telegram, mail, or anything else on the sheet.
- * Files arrive in chunks so a photo never has to cross the JavascriptInterface
- * binder limit as one string.
- */
+
+
+
+
+
+
+
+
 class ShareBridge(private val context: Context) {
 
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -38,10 +38,10 @@ class ShareBridge(private val context: Context) {
         }
     }
 
-    /**
-     * One-shot file share kept for older page scripts. New shares use the
-     * chunked session below so the caption and every file go out together.
-     */
+    
+
+
+
     @JavascriptInterface
     fun shareFile(title: String?, base64Data: String?, mimeType: String?, fileName: String?) {
         if (base64Data.isNullOrEmpty()) return
@@ -223,10 +223,10 @@ internal fun shareMime(fileName: String?, declared: String?): String {
     return mimeTypeForFileExtension(ext)
 }
 
-/**
- * Same extension table the file chooser uses, so a shared document is labeled
- * as that document instead of a generic file.
- */
+
+
+
+
 internal fun mimeTypeForFileExtension(extension: String): String {
     val ext = extension.removePrefix(".").lowercase()
     return when (ext) {
@@ -306,10 +306,10 @@ internal fun sanitizeShareFileName(name: String?): String {
     return cleaned.ifBlank { "shared_file" }.take(80)
 }
 
-/**
- * Assembles one outbound share. Chunks are base64 and may split a quartet,
- * so the remainder waits for the next call.
- */
+
+
+
+
 internal class ShareUpload(
     val title: String = "",
     val caption: String = ""

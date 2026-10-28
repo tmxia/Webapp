@@ -4,18 +4,18 @@ import com.webtoapp.core.logging.AppLogger
 import okhttp3.Dns
 import java.net.InetAddress
 
-/**
- * Pinned GitHub IP mappings (GitHub520 hosts list, snapshot 2026-08-29).
- *
- * On networks where DNS is poisoned or slow, resolving `github.com` and its
- * CDN hosts to a known-good IP short-circuits the failing lookup. The pinned
- * list is only ever tried *first*: [GitHubHostsDns] always appends the system
- * resolver's answer behind it, so when a pinned IP goes stale (GitHub rotates
- * these regularly) OkHttp silently moves on to the real one.
- *
- * Nothing here is a hard dependency — it is a fast path with an automatic
- * fallback, which is what makes shipping static IPs safe.
- */
+
+
+
+
+
+
+
+
+
+
+
+
 object GitHubHosts {
 
     private const val TAG = "GitHubHosts"
@@ -70,7 +70,7 @@ object GitHubHosts {
             .also { AppLogger.i(TAG, "Pinned ${it.size} GitHub hosts across ${it.values.sumOf { v -> v.size }} addresses") }
     }
 
-    /** Pinned addresses for [hostname], empty when it is not in the table. */
+    
     fun lookup(hostname: String): List<InetAddress> = resolved[hostname].orEmpty()
 
     fun covers(hostname: String): Boolean = resolved.containsKey(hostname)
@@ -78,11 +78,11 @@ object GitHubHosts {
     val pinnedHosts: Set<String> get() = resolved.keys
 }
 
-/**
- * OkHttp [Dns] that tries the pinned IP first and keeps the system answer
- * behind it as a fallback. OkHttp walks the returned list in order, so a stale
- * pinned IP costs one failed connect attempt and nothing more.
- */
+
+
+
+
+
 object GitHubHostsDns : Dns {
 
     override fun lookup(hostname: String): List<InetAddress> {

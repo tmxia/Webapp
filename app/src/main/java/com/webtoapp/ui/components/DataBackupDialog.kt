@@ -155,9 +155,9 @@ private fun ColumnScope.DataBackupControls() {
                         },
                         Toast.LENGTH_LONG
                     ).show()
-                    // Restored DataStore/SharedPreferences files only take effect
-                    // after restart (in-memory caches would otherwise clobber them).
-                    // Ask first — silently killing the process reads as a crash.
+                    
+                    
+                    
                     if (importResult.localFilesRestored) {
                         showRestartDialog = true
                     }

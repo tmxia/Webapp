@@ -174,8 +174,8 @@ object OnlineMusicDownloader {
         }
     }
 
-    // Shared with the library scanner so a downloaded track is always visible in the
-    // selector, whatever extension detectExtension picked for it.
+    
+    
     private val MUSIC_EXTENSIONS = BgmStorage.MUSIC_EXTENSIONS
 
     fun isMusicDownloaded(context: Context, track: OnlineMusicTrack): Boolean {

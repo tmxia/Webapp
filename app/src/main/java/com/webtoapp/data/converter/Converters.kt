@@ -38,25 +38,25 @@ class Converters {
 
     companion object {
 
-        /**
-         * Enum handling for persisted JSON.
-         *
-         * Writing delegates to Gson, which emits the [SerializedName] value when a constant
-         * declares one. Reading must therefore accept that same value: resolving by constant
-         * name alone mapped `"web_api"` to no constant at all, so every load of a stored
-         * [com.webtoapp.data.model.NotificationType.WEB_API] silently degraded to `NONE`.
-         * Because [ApkExportConfig] round-trips through this Gson on every Room read/write,
-         * the setting was lost as soon as it was saved.
-         *
-         * Values that match no constant still fall back to the first one, so JSON written by
-         * a newer build stays loadable instead of nulling a non-null Kotlin field.
-         */
+        
+
+
+
+
+
+
+
+
+
+
+
+
         private val lenientEnumAdapterFactory = object : TypeAdapterFactory {
             override fun <T : Any?> create(gson: Gson, type: TypeToken<T>): TypeAdapter<T>? {
                 val rawType = type.rawType
                 val enumClass = when {
                     rawType.isEnum -> rawType
-                    // Constants with a body compile to an anonymous subclass of the enum.
+                    
                     rawType.superclass?.isEnum == true -> rawType.superclass
                     else -> return null
                 }

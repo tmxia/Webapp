@@ -4,10 +4,10 @@ import com.webtoapp.data.dao.WebAppSummary
 import com.webtoapp.data.model.WebApp
 import java.util.Locale
 
-/**
- * How the home app list is ordered. [UPDATED_DESC] matches the historical
- * query, so existing installs do not jump when this ships.
- */
+
+
+
+
 enum class AppListSort {
     UPDATED_DESC,
     CREATED_DESC,
@@ -43,12 +43,12 @@ fun List<WebApp>.sortedForHome(sort: AppListSort): List<WebApp> =
         homeSortIndex = { it.homeSortIndex },
     )
 
-/**
- * Splices [visibleOrder] back into [fullOrder]. Hidden ids keep their slots,
- * so reordering one category does not scramble apps in the others.
- *
- * Ids in [visibleOrder] that are not in [fullOrder] are ignored.
- */
+
+
+
+
+
+
 fun mergeVisibleOrder(fullOrder: List<Long>, visibleOrder: List<Long>): List<Long> {
     if (visibleOrder.isEmpty() || fullOrder.isEmpty()) return fullOrder
     val inFull = fullOrder.toSet()
@@ -60,18 +60,18 @@ fun mergeVisibleOrder(fullOrder: List<Long>, visibleOrder: List<Long>): List<Lon
     }
 }
 
-/** One laid-out row, in list pixels. */
+
 data class HomeDragSlot(val id: Long, val top: Int, val height: Int)
 
 data class HomeDragStep(val order: List<Long>, val dragDy: Float)
 
-/**
- * Moves [dragId] by one neighbor when the finger has crossed that neighbor's
- * midpoint. Returns null when the row should stay put. Layout slots are stale
- * after a swap, so this takes a single step; the caller asks again next frame.
- *
- * [dragDy] is adjusted by the slot jump so the card stays under the finger.
- */
+
+
+
+
+
+
+
 fun stepCustomDrag(
     order: List<Long>,
     dragId: Long,

@@ -1,9 +1,9 @@
 package com.webtoapp.core.bgm
 
-/** A missing switch on an older config stays on. */
+
 internal fun bgmControlEnabled(flag: Boolean?): Boolean = flag != false
 
-/** Snap the chip to the nearer horizontal edge. */
+
 internal fun bgmDockX(
     currentX: Float,
     chipWidth: Float,

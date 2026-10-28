@@ -82,8 +82,8 @@ fun SplashOverlay(
                 LaunchedEffect(isPlayerReady) {
                     if (!isPlayerReady) return@LaunchedEffect
                     while (true) {
-                        // Re-read the live player each iteration: a back press during the
-                        // splash releases it and nulls the state mid-poll.
+                        
+                        
                         val mp = mediaPlayer ?: return@LaunchedEffect
                         try {
                             if (!mp.isPlaying) {
@@ -100,7 +100,7 @@ fun SplashOverlay(
                                 break
                             }
                         } catch (e: IllegalStateException) {
-                            // Player released between iterations; the splash is going away.
+                            
                             return@LaunchedEffect
                         }
                         delay(100)
@@ -121,10 +121,10 @@ fun SplashOverlay(
                                             setVolume(volume, volume)
                                             isLooping = false
                                             setOnPreparedListener { mp ->
-                                                // prepareAsync may still be in flight when a
-                                                // back press releases the player; skip stale
-                                                // callbacks instead of touching a released
-                                                // instance (issue #612).
+                                                
+                                                
+                                                
+                                                
                                                 if (mediaPlayer !== mp) return@setOnPreparedListener
                                                 try {
                                                     seekTo(videoStartMs.toInt())
@@ -146,9 +146,9 @@ fun SplashOverlay(
                                 }
                                 override fun surfaceChanged(h: android.view.SurfaceHolder, f: Int, w: Int, ht: Int) {}
                                 override fun surfaceDestroyed(h: android.view.SurfaceHolder) {
-                                    // Detach callbacks before releasing so in-flight
-                                    // prepare/completion notifications cannot touch a
-                                    // released player.
+                                    
+                                    
+                                    
                                     mediaPlayer?.setOnPreparedListener(null)
                                     mediaPlayer?.setOnCompletionListener(null)
                                     mediaPlayer?.release()

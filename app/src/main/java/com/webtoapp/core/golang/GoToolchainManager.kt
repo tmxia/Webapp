@@ -40,12 +40,12 @@ object GoToolchainManager {
 
     private const val GO_ARCHIVE_SIZE_BYTES = 63_827_526L
 
-    /**
-     * SHA-256 of go1.26.10.linux-arm64.tar.gz (dl.google.com `.sha256` sidecar;
-     * USTC mirrors the same bytes). 1.26.10 is the 1.26 fix for GO-2026-6809
-     * (CVE-2026-111943). Verify against the sidecar when bumping [GO_VERSION]
-     * — mismatches fail the download loudly.
-     */
+    
+
+
+
+
+
     private const val GO_ARCHIVE_SHA256 =
         "3f4227ce7b206a513e794f1393adb473a07b46e94d18bd15d1c684bbb7319797"
 
@@ -188,11 +188,11 @@ object GoToolchainManager {
         return goReleaseMatches(versionText)
     }
 
-    /**
-     * Official tarballs ship `GOROOT/VERSION` with a first line `go1.26.10`.
-     * A cached tree whose first line is an older release is not ready, so
-     * [installGoToolchain] downloads the pinned archive instead of reusing it.
-     */
+    
+
+
+
+
     internal fun goReleaseMatches(versionFileText: String?): Boolean {
         val line = versionFileText
             ?.lineSequence()
@@ -221,9 +221,9 @@ object GoToolchainManager {
 
     suspend fun installGoToolchain(context: Context): Boolean = withContext(Dispatchers.IO) {
         coroutineScope {
-            // Bridge engine progress into _downloadState for the whole call —
-            // callers' UI otherwise sits on Idle for the entire download since
-            // syncEngineState only ran once at the end.
+            
+            
+            
             val syncJob = launch {
                 DependencyDownloadEngine.state.collect { syncEngineState() }
             }
@@ -300,13 +300,13 @@ object GoToolchainManager {
                     return@withLock false
                 }
 
-                // NOTE: no DNS binary-patching here. Stock Go toolchains only
-                // consult /etc/resolv.conf (absent on Android, unpatchable: the
-                // slot fits no app-controlled path), and Go 1.26 no longer
-                // carries the Termux fallback paths the old patcher rewrote.
-                // Network access for toolchain ops goes through
-                // LocalDnsBridgeProxy env (see GoBuildEnvironment.runCommand),
-                // whose JVM side resolves DNS via Android APIs.
+                
+                
+                
+                
+                
+                
+                
                 AppLogger.i(TAG, "Go 工具链已就绪: ${getGoBinary(context).absolutePath}")
                 markComplete()
                 true

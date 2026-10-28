@@ -3,11 +3,11 @@ package com.webtoapp.core.update
 import android.content.Context
 import com.webtoapp.core.logging.AppLogger
 
-/**
- * SharedPreferences cache of the author's repo list (raw GitHub JSON).
- * The About page renders it instantly on revisit, then swaps in a fresh
- * fetch — matching the WebViewResumeStore / CategoryFilterStore pattern.
- */
+
+
+
+
+
 object AuthorReposCache {
 
     private const val TAG = "AuthorReposCache"

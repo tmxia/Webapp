@@ -54,9 +54,9 @@ class AssetDecryptor(private val context: Context) {
                 }
 
                 when {
-                    // #917: embedded-key mode stores a build-time random key in the
-                    // metadata — decryption never consults the signing cert, so
-                    // Play App Signing / manual re-signing cannot break it.
+                    
+                    
+                    
                     metadata?.keyMode == "EMBEDDED" && !metadata.embeddedKey.isNullOrBlank() -> {
                         val raw = EmbeddedKey.decode(metadata.embeddedKey, metadata.packageName)
                             ?: throw CryptoException("Embedded key corrupted")
@@ -76,10 +76,10 @@ class AssetDecryptor(private val context: Context) {
                     else -> {
 
                         val packageName = metadata?.packageName ?: context.packageName
-                        // Password mode derives from the password alone: the password
-                        // is already the secret, and mixing in the install-time cert
-                        // would break every re-signed/Play-delivered copy. Signature
-                        // binding stays only for the default keyless mode.
+                        
+                        
+                        
+                        
                         val signature = if (metadata?.usesCustomPassword == true) {
                             ByteArray(0)
                         } else {

@@ -27,11 +27,11 @@ import com.webtoapp.util.TvUtils
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-/**
- * Model-level Announcement built from the shell payload for gating decisions. Rendering uses
- * ShellAnnouncementDialog's own construction (template/custom-icon mapping); this one carries
- * the trigger and version fields the show/hide gate must honor.
- */
+
+
+
+
+
 private const val CONSOLE_LOG_CAP = 500
 
 internal fun buildShellAnnouncement(config: ShellConfig): Announcement = Announcement(
@@ -78,8 +78,8 @@ fun ShellScreen(
     val activation = WebToAppApplication.activation
     val announcement = WebToAppApplication.announcement
     val adBlocker = WebToAppApplication.adBlock
-    // Arm before the browser view is composed. LaunchedEffect runs after that
-    // view, so a hold started inside the effect would miss the first load.
+    
+    
     remember {
         if (config.adBlockEnabled) adBlocker.holdRuleInstall()
     }
@@ -101,7 +101,7 @@ fun ShellScreen(
     var remainingDaysIncludeSplash by remember { mutableStateOf(false) }
     var remainingDaysFromLaunch by remember { mutableStateOf(true) }
 
-    // Console / terminal panel state
+    
     var showConsole by remember { mutableStateOf(false) }
     var consoleMessages by remember { mutableStateOf<List<ConsoleLogEntry>>(emptyList()) }
 
@@ -111,16 +111,16 @@ fun ShellScreen(
 
     var isActivationChecked by remember { mutableStateOf(!config.activationEnabled) }
 
-    // Target URL delivered by the remote activation server (dynamic URL mode). Takes precedence
-    // over the packaged targetUrl so the URL need not be hardcoded in the APK.
+    
+    
     var dynamicUrl by remember { mutableStateOf<String?>(null) }
 
     var webViewRecreationKey by remember { mutableIntStateOf(0) }
     var canGoBack by remember { mutableStateOf(false) }
     var canGoForward by remember { mutableStateOf(false) }
     var isRefreshing by remember { mutableStateOf(false) }
-    // #1033: set when memory pressure tore the WebView down while backgrounded;
-    // the next ON_RESUME recreates it instead of probing a dead view.
+    
+    
     var memoryTeardownPending by remember { mutableStateOf(false) }
 
     val splashMediaExists = remember {
@@ -147,9 +147,9 @@ fun ShellScreen(
         } else false
     }
 
-    // Splash starts only once activation has resolved (preview parity): an activation-gated
-    // app must not play its splash behind the activation gate. Apps without an activation
-    // requirement keep the old immediate start.
+    
+    
+    
     var showSplash by remember { mutableStateOf(config.splashEnabled && splashMediaExists && !config.activationEnabled) }
     var splashCountdown by remember { mutableIntStateOf(if (showSplash) config.splashDuration else 0) }
     var originalOrientation by remember { mutableIntStateOf(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED) }
@@ -223,11 +223,11 @@ fun ShellScreen(
 
         if (config.activationEnabled) {
 
-            // One gate for both modes: remote re-verifies the remembered code
-            // (always when "every launch" is on, otherwise only when the cached
-            // result can't carry this launch); local codes re-check the remembered
-            // card against the configured list under "every launch", or just the
-            // persisted grant otherwise. The dialog only shows when this fails.
+            
+            
+            
+            
+            
             val activated = if (config.activationRemoteEnabled) {
                 activation.resolveRemoteStartup(
                     -1L,
@@ -265,8 +265,8 @@ fun ShellScreen(
         }
 
         if (remainingDaysNotice == null) {
-            // Trigger-aware gate: honors triggerOnLaunch=false, version-pinned showOnce, and the
-            // no-network / interval modes driven by the effects below.
+            
+            
             openShellAnnouncement(fromLaunch = true)
         }
 
@@ -325,8 +325,8 @@ fun ShellScreen(
 
     }
 
-    // Announcement no-network trigger: monitor connectivity while the shell is up (preview parity
-    // with WebViewActivity's monitoring for triggerOnNoNetwork announcements).
+    
+    
     DisposableEffect(Unit) {
         if (config.announcementEnabled && config.announcementTriggerOnNoNetwork) {
             announcement.startNetworkMonitoring()
@@ -353,7 +353,7 @@ fun ShellScreen(
         lastNetworkState = networkAvailable
     }
 
-    // Announcement interval trigger: re-show periodically while the app stays open.
+    
     LaunchedEffect(isActivated) {
         val intervalMinutes = config.announcementTriggerIntervalMinutes
         if (!isActivated || !config.announcementEnabled || intervalMinutes <= 0) return@LaunchedEffect
@@ -476,16 +476,16 @@ fun ShellScreen(
         com.webtoapp.core.webview.WebViewManager(context, adBlocker)
     }
 
-    // Issue #1030 backstop: onRenderProcessGone is the primary renderer-death
-    // signal, but some OEM WebView builds never deliver it for a background kill.
-    // Probe on every resume — a dead renderer never answers evaluateJavascript —
-    // and route the discovery through the same recreation path.
+    
+    
+    
+    
     val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
             if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
-                // A file picker is still out. Recreating the WebView now would
-                // drop the ValueCallback and reload the start URL (#1319).
+                
+                
                 val skipProbe = com.webtoapp.core.webview.FileChooserLifetime.consumeResumeProbeSkip()
                 if (com.webtoapp.core.webview.FileChooserLifetime.isOpen() || skipProbe) {
                     return@LifecycleEventObserver
@@ -517,10 +517,10 @@ fun ShellScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    // Issue #1033: TRIM_MEMORY_COMPLETE means the process is next in line for
-    // LMK — and on a WebView app the renderer IS the memory. Shed it ourselves
-    // (navigation state stashed, recreated on resume) instead of letting the
-    // system starve lower-priority processes like the Launcher.
+    
+    
+    
+    
     DisposableEffect(lifecycleOwner) {
         val componentCallbacks = object : android.content.ComponentCallbacks2 {
             override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {}
@@ -536,9 +536,9 @@ fun ShellScreen(
                 val bundle = android.os.Bundle()
                 runCatching { wv.saveState(bundle) }
                 if (!bundle.isEmpty) {
-                    // Tag the stashed surface like onSaveInstanceState does —
-                    // otherwise the restore site check (#1036) is bypassed and
-                    // a multi-web bundle can graft onto the wrong site's view.
+                    
+                    
+                    
                     (activity as? ShellActivity)?.stashWebViewState(
                         bundle,
                         (wv as? com.webtoapp.core.webview.WtaWebView)?.siteId
@@ -654,9 +654,9 @@ fun ShellScreen(
         showFindBar = showFindBar,
         onToggleFindBar = { showFindBar = !showFindBar },
         onRunScript = { script ->
-            // Surface-first so the console also evaluates on the GeckoView kernel
-            // (webViewRef stays null there; Gecko cannot return the eval result, so
-            // the entry shows "=> null" but the script does run in the page).
+            
+            
+            
             val surface = browserSurfaceRef
             val appendResult: (String?) -> Unit = { result ->
                 consoleMessages = (consoleMessages + ConsoleLogEntry(
@@ -771,13 +771,13 @@ fun ShellScreen(
     val effectiveBgColor = resolveStatusBarOverlayColor(isDarkTheme)
     val effectiveBgImage = if (isDarkTheme) statusBarBackgroundImageDark else statusBarBackgroundImage
     val effectiveBgAlpha = if (isDarkTheme) statusBarBackgroundAlphaDark else statusBarBackgroundAlpha
-    // On the classic pre-API-30 resize path nothing draws behind the status bar and the bar
-    // itself is chrome-owned, so a Compose overlay would only paint a floating band over the
-    // web content (issue #683). Reserve space is already handled by the content padding; the
-    // window-level bar color comes from WindowHelper.
+    
+    
+    
+    
     val classicSystemBars = com.webtoapp.ui.shared.WindowHelper.isClassicSystemBarsWindow(activity)
-    // THEME used to be painted only with window.statusBarColor. Target SDK 35 ignores
-    // that call, so the bar stayed the light window color and no longer followed dark mode.
+    
+    
     val paintsStatusBand = effectiveBgType != "COLOR" ||
         effectiveColorMode != com.webtoapp.data.model.StatusBarColorMode.TRANSPARENT.name
     val showOverlay = !classicSystemBars && paintsStatusBand &&

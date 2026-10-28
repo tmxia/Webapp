@@ -4,21 +4,21 @@ import android.content.Context
 import com.webtoapp.core.logging.AppLogger
 import java.io.File
 
-/**
- * Deletes the on-disk system WebView profile (`app_webview` and the legacy
- * cache files next to it).
- *
- * [android.webkit.CookieManager.removeAllCookies] does not do this. It is
- * asynchronous, it leaves Service Workers, Cache Storage, the V8 code cache
- * and the GPU cache in place, and calling [android.webkit.CookieManager.flush]
- * before the callback returns can write the old cookie database back. A
- * generated app then works once — while the profile directory does not exist
- * yet — and fails on every later cold start until the user clears app data.
- *
- * The directory may be removed only before this process has initialized the
- * WebView provider. After that, Chromium holds the cookie database open and
- * deleting it corrupts the profile.
- */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 internal object WebViewProfileWiper {
 
     private const val TAG = "WebViewProfileWiper"
@@ -33,12 +33,12 @@ internal object WebViewProfileWiper {
         )
     }
 
-    /**
-     * @return true when the provider was not live and every known profile
-     *   path is gone (including the case where none existed). Callers must
-     *   then skip [android.webkit.CookieManager] — touching it would create
-     *   a new provider and race the page that is about to load.
-     */
+    
+
+
+
+
+
     fun wipe(dataDir: File, cacheDir: File, providerInitialized: Boolean): Boolean {
         if (providerInitialized) {
             AppLogger.i(TAG, "WebView provider already live; leaving the on-disk profile in place")
@@ -60,7 +60,7 @@ internal object WebViewProfileWiper {
 
     fun profilePaths(dataDir: File, cacheDir: File): List<File> = listOf(
         File(dataDir, "app_webview"),
-        // Huawei's system WebView uses its own directory name.
+        
         File(dataDir, "app_hws_webview"),
         File(cacheDir, "WebView"),
         File(cacheDir, "org.chromium.android_webview"),
@@ -70,11 +70,11 @@ internal object WebViewProfileWiper {
         File(dataDir, "databases/webviewCache.db-journal"),
     )
 
-    /**
-     * True once this process has loaded the system WebView provider.
-     * Reflection failure is treated as "already live" so we never delete a
-     * directory Chromium might have open.
-     */
+    
+
+
+
+
     fun isSystemWebViewProviderInitialized(): Boolean {
         return try {
             val factory = Class.forName("android.webkit.WebViewFactory")

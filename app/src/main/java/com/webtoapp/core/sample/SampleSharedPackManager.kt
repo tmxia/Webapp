@@ -13,16 +13,16 @@ import okhttp3.Request
 import java.io.File
 import java.util.zip.ZipInputStream
 
-/**
- * On-demand fetcher for the heavyweight shared dependency packs used by the
- * typed sample projects (python-*-shared/.pypackages, go-*-shared/vendor).
- *
- * The packs live in the repo as sample-bundles/<name>.zip pinned by
- * sample-bundles/manifest.json instead of inside the APK — ~30MB of assets
- * that only the few users who open those samples ever touch. Bundled assets
- * still win when present (see SampleProjectExtractor), so a fork can
- * re-embed a pack without code changes.
- */
+
+
+
+
+
+
+
+
+
+
 object SampleSharedPackManager {
 
     private const val TAG = "SampleSharedPack"
@@ -35,18 +35,18 @@ object SampleSharedPackManager {
     private const val JSDELIVR_BASE =
         "https://cdn.jsdelivr.net/gh/shiaho777/web-to-app@main/sample-bundles"
 
-    /** Unit-test seam: when true, manifest fetches behave as unreachable. */
+    
     @Volatile
     internal var manifestUnreachable = false
 
     data class PackInfo(val sha256: String, val bytes: Long)
 
-    /**
-     * Ensures [packName] is extracted on-device and returns its root directory
-     * (containing e.g. `.pypackages/`), or null when the pack is unavailable.
-     * A previously downloaded pack is reused even when the manifest cannot be
-     * reached — only the first fetch requires network.
-     */
+    
+
+
+
+
+
     suspend fun ensurePack(context: Context, packName: String): File? = withContext(Dispatchers.IO) {
         try {
             val packDir = File(context.filesDir, "$PACKS_DIR/$packName")
@@ -106,12 +106,12 @@ object SampleSharedPackManager {
         }
     }
 
-    /** Wipes every downloaded pack (called when extracted samples are cleared). */
+    
     fun clearPacks(context: Context) {
         File(context.filesDir, PACKS_DIR).deleteRecursively()
     }
 
-    /** Mirror-ordered candidates: CN proxies + direct raw, jsDelivr last. */
+    
     internal fun candidateUrls(fileName: String): List<String> =
         (GitHubMirror.proxiedCnGitHubHost("$RAW_BASE/$fileName") +
             "$JSDELIVR_BASE/$fileName").distinct()

@@ -99,8 +99,8 @@ fun BoxScope.ShellScaffoldLayout(
         val controller = com.webtoapp.core.webview.AutoRefreshController(
             intervalSec = webViewConfig.autoRefreshIntervalSec.coerceAtLeast(1),
             showCountdown = webViewConfig.autoRefreshShowCountdown,
-            // Surface-first: webViewRef stays null on the GeckoView kernel, where the
-            // countdown used to run against a reload that never happened.
+            
+            
             onReload = { browserSurface?.reload() ?: webViewRef?.reload() }
         )
         autoRefreshController = controller
@@ -114,8 +114,8 @@ fun BoxScope.ShellScaffoldLayout(
     }
 
     val toolbarCfg = config.webViewConfig
-    // Find-in-page runs on both kernels: WebView findAllAsync on the system engine,
-    // GeckoView's native SessionFinder on the Gecko engine (BrowserSurface.findInPage).
+    
+    
     val toolbarEnabled = toolbarCfg.browserToolbarEnabled
     val hasAnyItem = hasAnyToolbarItem(
         toolbarShowTitle = toolbarCfg.toolbarShowTitle,
@@ -129,7 +129,7 @@ fun BoxScope.ShellScaffoldLayout(
     val showToolbar = toolbarEnabled && hasAnyItem &&
         (!hideToolbar || config.webViewConfig.showToolbarInFullscreen)
 
-    // Every button requires both the master switch and its own flag.
+    
     val toolbarVisibility = resolveToolbarButtons(
         toolbarEnabled = toolbarEnabled,
         toolbarShowTitle = toolbarCfg.toolbarShowTitle,
@@ -146,9 +146,9 @@ fun BoxScope.ShellScaffoldLayout(
         contentWindowInsets = if (hideToolbar && !showToolbar) {
             WindowInsets(0, 0, 0, 0)
         } else {
-            // #1075: the window-level IME padding already lifts the layout above
-            // the keyboard, so the navigation-bar inset must not stack on top of
-            // it — the double inset rendered as a black band above the IME.
+            
+            
+            
             ScaffoldDefaults.contentWindowInsets.exclude(WindowInsets.ime)
         },
         modifier = Modifier,
@@ -182,10 +182,10 @@ fun BoxScope.ShellScaffoldLayout(
 
         val density = LocalDensity.current
 
-        // On the classic pre-API-30 resize path the decor fits system windows: the status-bar
-        // inset is 0 whether or not a bar is drawn, and nothing renders behind the bar area
-        // (issue #683). Never pad the content by a guessed status-bar band there — only the
-        // user's explicit statusBarHeightDp override may reserve space.
+        
+        
+        
+        
         val classicSystemBars = LocalContext.current.let { ctx ->
             (ctx as? android.app.Activity)?.let { com.webtoapp.ui.shared.WindowHelper.isClassicSystemBarsWindow(it) } ?: false
         }
@@ -203,19 +203,19 @@ fun BoxScope.ShellScaffoldLayout(
 
         val actualStatusBarPadding = if (statusBarHeightDp >= 0) statusBarHeightDp.dp else systemStatusBarHeightDp
 
-        // 全屏模式下可选的内容内边距：把网页交互区从屏幕边缘内移，让角落按钮易于点按，
-        // 同时缓解与系统返回手势边缘带的冲突。默认 0 → 向后兼容旧行为。
-        // #916: each side may override the uniform value; null follows the base.
+        
+        
+        
         val padTop = config.webViewConfig.fullscreenPadTop.dp
         val padStart = config.webViewConfig.fullscreenPadStart.dp
         val padEnd = config.webViewConfig.fullscreenPadEnd.dp
-        // #1172: the bottom band is anchored to the screen edge. The keyboard
-        // already covers it, so it must not ride up as a second gap.
+        
+        
         val padBottom = effectiveBottomContentPadding(config.webViewConfig.fullscreenPadBottom.dp)
 
-        // Issue #771: transparent/image bars overlay the content (persistent
-        // WeChat-style bar) instead of reserving a strip; solid bars keep the
-        // reservation so page controls stay clear of the status icons.
+        
+        
+        
         val shellDark = androidx.compose.foundation.isSystemInDarkTheme()
         val shellBgType = if (shellDark) config.webViewConfig.statusBarBackgroundTypeDark else config.webViewConfig.statusBarBackgroundType
         val shellMode = if (shellDark) config.webViewConfig.statusBarColorModeDark else config.webViewConfig.statusBarColorMode
@@ -318,7 +318,7 @@ fun BoxScope.ShellScaffoldLayout(
                 onDismiss = onErrorDismiss
             )
 
-            // Console panel (slides up from bottom when toggled)
+            
             AnimatedVisibility(
                 visible = showConsole,
                 enter = androidx.compose.animation.slideInVertically(initialOffsetY = { it }) + fadeIn(),
@@ -335,7 +335,7 @@ fun BoxScope.ShellScaffoldLayout(
                 )
             }
 
-            // Find-in-page bar (native engine search; slides up like the console)
+            
             AnimatedVisibility(
                 visible = showFindBar,
                 enter = androidx.compose.animation.slideInVertically(initialOffsetY = { it }) + fadeIn(),
@@ -348,8 +348,8 @@ fun BoxScope.ShellScaffoldLayout(
                 )
             }
 
-            // Unified plugin surface: sheet, panel host and the floating handle
-            // (entry style TOOLBAR mounts inside ShellTopAppBar instead).
+            
+            
             if (config.pluginsEnabled) {
                 val pluginContext = LocalContext.current
                 val pluginsUnsupported = remember(config.engineType, webViewConfig.dnsConfig.echEffective) {
@@ -427,8 +427,8 @@ private fun ShellTopAppBar(
                 com.webtoapp.ui.design.WtaIconButton(
                     onClick = {
                         (context as? AppCompatActivity)?.let { activity ->
-                            // Surface-first: on the GeckoView kernel webViewRef is null and
-                            // the engine's own history must drive back navigation.
+                            
+                            
                             if (browserSurface != null) {
                                 ShellWebViewNavigation.goBackOrFinish(activity, browserSurface)
                             } else {
@@ -456,8 +456,8 @@ private fun ShellTopAppBar(
                     contentDescription = "Refresh"
                 )
             }
-            // Console / terminal button (hidden along with the other toolbar buttons,
-            // so a stripped-down toolbar doesn't leave it as the only visible control)
+            
+            
             if (showConsoleButton) {
                 BadgedBox(
                     badge = {
@@ -473,8 +473,8 @@ private fun ShellTopAppBar(
                     )
                 }
             }
-            // Find-in-page button: opens the native bottom find bar (works on both kernels
-            // — WebView findAllAsync and GeckoView SessionFinder via BrowserSurface).
+            
+            
             if (showFindButton) {
                 com.webtoapp.ui.design.WtaIconButton(
                     onClick = onToggleFindBar,
@@ -482,8 +482,8 @@ private fun ShellTopAppBar(
                     contentDescription = Strings.nativeBridgeCapsFindInPage
                 )
             }
-            // Plugin slot — per-plugin toolbar icons plus the sheet entry for
-            // menu/handle-style plugins.
+            
+            
             if (showPluginButton) {
                 com.webtoapp.ui.plugin.PluginToolbarEntries(
                     onOpenSheet = { com.webtoapp.core.plugin.PluginHostState.openPluginSheet() }

@@ -34,9 +34,9 @@ class PortQueryReceiver : BroadcastReceiver() {
                 putString(EXTRA_PACKAGE, context.packageName)
                 putInt(EXTRA_PROCESS_PID, android.os.Process.myPid())
                 putString(EXTRA_ALLOCATIONS, arr.toString())
-                // Single-use capability for the release channel: only callers
-                // that completed this ordered query ever see the token, so a
-                // blind PORT_RELEASE broadcast can no longer kill processes.
+                
+                
+                
                 putString(EXTRA_SESSION_TOKEN, PortSessionAuth.issue())
             }
 

@@ -9,12 +9,12 @@ import com.webtoapp.data.converter.Converters
 import com.webtoapp.data.model.WebViewConfig
 import java.io.File
 
-/**
- * Named snapshots of [WebViewConfig] ("common config") that users save once and apply
- * to any app, so a heavily customized browser setup does not have to be re-configured
- * for every new app. Stored as a single JSON file in app storage — deliberately not a
- * Room entity, to keep the store schema-free as WebViewConfig evolves.
- */
+
+
+
+
+
+
 object ConfigTemplateStore {
 
     data class ConfigTemplate(
@@ -26,7 +26,7 @@ object ConfigTemplateStore {
     private const val FILE_NAME = "config_templates.json"
     private const val MAX_NAME_LENGTH = 40
 
-    /** Envelope written by export and accepted by import. A raw [WebViewConfig] object is accepted too. */
+    
     const val FILE_KIND = "webtoapp-config-template"
     private const val FILE_VERSION = 1
 
@@ -46,7 +46,7 @@ object ConfigTemplateStore {
     fun get(context: Context, name: String): ConfigTemplate? =
         list(context).firstOrNull { it.name.equals(name.trim(), ignoreCase = true) }
 
-    /** Creates or overwrites (case-insensitive name match) a template. Returns false on an invalid name. */
+    
     fun save(context: Context, name: String, config: WebViewConfig): Boolean {
         val trimmed = name.trim()
         if (trimmed.isEmpty() || trimmed.length > MAX_NAME_LENGTH) return false
@@ -77,7 +77,7 @@ object ConfigTemplateStore {
         true
     }.getOrDefault(false)
 
-    /** Pretty JSON document a person can edit and send. */
+    
     fun encode(name: String, createdAt: Long, config: WebViewConfig): String {
         val root = JsonObject()
         root.addProperty("kind", FILE_KIND)
@@ -91,11 +91,11 @@ object ConfigTemplateStore {
     fun encode(template: ConfigTemplate): String =
         encode(template.name, template.createdAt, template.webViewConfig)
 
-    /**
-     * Reads an exported document, or a bare [WebViewConfig] JSON object.
-     * Returns null for anything that is not one of those, so a random file cannot
-     * wipe the editor with a default config.
-     */
+    
+
+
+
+
     fun decode(text: String): ConfigTemplate? = runCatching {
         val root = JsonParser.parseString(text).asJsonObject
         val kind = root.get("kind")?.takeIf { !it.isJsonNull }?.asString
@@ -117,10 +117,10 @@ object ConfigTemplateStore {
         ConfigTemplate(name, createdAt, config)
     }.getOrNull()
 
-    /**
-     * Saves a decoded document under a free name. An existing template with the same
-     * name is left in place; the import is stored as "name 2", "name 3", …
-     */
+    
+
+
+
     fun importJson(context: Context, text: String): ConfigTemplate? {
         val decoded = decode(text) ?: return null
         val name = uniqueName(context, decoded.name)

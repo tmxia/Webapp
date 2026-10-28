@@ -88,11 +88,11 @@ object AdBlockFilterCache {
         }
     }
 
-    /**
-     * Evict the 24h URL cache entry for a source. Must run on source removal
-     * (issue #1076): without it, delete-and-re-add of the same URL silently
-     * restored the stale cached copy within the TTL window.
-     */
+    
+
+
+
+
     suspend fun removeUrlContent(context: Context, url: String) = withContext(Dispatchers.IO) {
         try {
             val urlHash = md5(url)
@@ -257,10 +257,10 @@ object AdBlockFilterCache {
                 )
             }
         } catch (oom: OutOfMemoryError) {
-            // The compiled rule set can exceed the heap on devices with many large filter
-            // lists. OutOfMemoryError is an Error (not Exception), so without this branch it
-            // would escape and the on-disk cache would survive — re-triggering the same OOM on
-            // every cold start until app data is wiped. Invalidate the cache to break the loop.
+            
+            
+            
+            
             runCatching { System.gc() }
             AppLogger.e(TAG, "OutOfMemoryError loading compiled state; invalidating cache to break crash loop", oom)
             File(context.filesDir, "$CACHE_DIR/$COMPILED_STATE_FILE").delete()
@@ -354,7 +354,7 @@ object AdBlockFilterCache {
         val excludedDomains = readStringSet(input)
         val styleOverride = if (input.readBoolean()) input.readUTF() else null
         val injectedCss = if (input.readBoolean()) input.readUTF() else null
-        // Ops order matters (the chain applies left to right); readStringSet keeps it.
+        
         val proceduralOps = if (input.readBoolean()) readStringSet(input).toList() else null
         val proceduralRaw = if (input.readBoolean()) input.readUTF() else null
         return AdBlocker.CosmeticFilter(

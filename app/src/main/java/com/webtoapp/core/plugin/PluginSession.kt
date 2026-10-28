@@ -7,16 +7,16 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
-/**
- * UI-facing plugin state for one page/WebView, consumed by the Compose plugin
- * surface (toolbar button, plugin sheet, panel host).
- *
- * A [PluginSession] is created per configured WebView and published as
- * [PluginHostState.session]; Compose never talks to WebViewManager directly.
- */
+
+
+
+
+
+
+
 object PluginHostState {
 
-    /** A plugin relevant to the current page, as shown in the plugin sheet. */
+    
     data class Entry(
         val pluginId: String,
         val name: String,
@@ -26,20 +26,20 @@ object PluginHostState {
         val hasPanel: Boolean,
         val badge: String = "",
         val badgeColor: String = "",
-        /** Per-plugin host styles — resolved manifest preference or override. */
+        
         val entryStyle: PluginEntryStyle = PluginEntryStyle.TOOLBAR,
         val panelStyle: PluginPanelStyle = PluginPanelStyle.BOTTOM_SHEET,
-        /** GM_registerMenuCommand names for userscript entries. */
+        
         val menuCommands: List<String> = emptyList()
     )
 
-    /** A request to host a plugin panel surface. */
+    
     data class PanelRequest(
         val pluginId: String,
         val kind: PluginKind,
-        /** panel.html / popup.html content or a chrome-extension:// URL. */
+        
         val url: String,
-        /** For HCJ/USERSCRIPT panels: raw html loaded via loadDataWithBaseURL. */
+        
         val html: String? = null,
         val baseUrl: String? = null,
         val panelStyle: PluginPanelStyle = PluginPanelStyle.BOTTOM_SHEET,
@@ -55,11 +55,11 @@ object PluginHostState {
     private val _panelOpen = MutableStateFlow(false)
     val panelOpen: StateFlow<Boolean> = _panelOpen.asStateFlow()
 
-    /** Whether the plugin sheet is visible — toggled by toolbar/menu/handle entries. */
+    
     private val _sheetOpen = MutableStateFlow(false)
     val sheetOpen: StateFlow<Boolean> = _sheetOpen.asStateFlow()
 
-    /** The session bound to the currently displayed WebView (set by WebViewManager). */
+    
     @Volatile
     var session: PluginSession? = null
         private set
@@ -74,7 +74,7 @@ object PluginHostState {
         }
     }
 
-    /** Called from any entry surface (toolbar button, menu item, floating handle). */
+    
     fun openPluginSheet() {
         _sheetOpen.value = true
     }
@@ -116,15 +116,15 @@ object PluginHostState {
     }
 }
 
-/**
- * Per-WebView plugin context: resolves the active plugin set for a URL, issues
- * capability tokens, builds injection code, and routes bridge events to the UI
- * surface and back.
- *
- * `pluginSource` abstracts where plugins come from:
- *  - host preview: installed packages via the source lambda reading PluginStore
- *  - generated APK: embedded plugins decoded from shell config JSON
- */
+
+
+
+
+
+
+
+
+
 class PluginSession(
     private val configStore: PluginConfigStore,
     private val appLang: () -> String,
@@ -132,30 +132,30 @@ class PluginSession(
     private val notifySink: (pluginId: String, title: String, body: String) -> Unit = { _, _, _ -> }
 ) {
 
-    /**
-     * A plugin resolved for injection: code already loaded from package.
-     * [attached] marks plugins the user explicitly attached to this app —
-     * local-runtime pages only run attached ones (ambient/global set stays out).
-     */
+    
+
+
+
+
     data class Resolved(
         val plugin: Plugin,
         val mainJs: String = "",
         val css: String = "",
         val panelHtml: String = "",
-        /** Pre-resolved `@require` bodies (url -> code). Host previews resolve
-         * these lazily through ExtensionFileManager; embedded APK payloads carry
-         * them inline because the cache does not exist there. */
+        
+
+
         val requireContents: Map<String, String> = emptyMap(),
         val attached: Boolean = true
     )
 
     val bridge = PluginBridge(configStore, BridgeHost())
 
-    /**
-     * Bridge callbacks (`send`, `fetch` resolves, …) fire on the WebView's
-     * JavaBridge HandlerThread, but `evaluateJavascript` must run on the main
-     * thread — hop through this handler for every evaluator call.
-     */
+    
+
+
+
+
     private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
 
     private fun evalOnPage(js: String) {
@@ -166,7 +166,7 @@ class PluginSession(
         mainHandler.post { panelEvaluator?.invoke(js) }
     }
 
-    /** Panel messaging endpoint — set by the panel host while a panel is open. */
+    
     @Volatile
     var panelEvaluator: ((String) -> Unit)? = null
 
@@ -189,11 +189,11 @@ class PluginSession(
     fun onUrlChanged(url: String) {
         currentUrl = url
         publishEntries()
-        // SPA navigations (pushState / doUpdateVisitedHistory) never reload the
-        // document, so page-side plugin code would otherwise never learn the
-        // URL changed — listeners keep binding to detached elements. Emit
-        // `hcj.on('navigate')` to every plugin matching the new URL. On real
-        // navigations the event fires into the dying context, harmlessly.
+        
+        
+        
+        
+        
         if (url != lastNavEmittedUrl) {
             lastNavEmittedUrl = url
             val payload = org.json.JSONObject().put("url", url).toString()
@@ -230,22 +230,22 @@ class PluginSession(
         )
     }
 
-    /** Plugins eligible to run on this page, honouring app-attached scoping. */
+    
     fun activeFor(url: String, appAttachedOnly: Boolean = false): List<Resolved> =
         resolvedPlugins.filter { !appAttachedOnly || it.attached }
 
-    /** Chrome-extension records in the active set (content lives in the engine). */
+    
     fun chromeExtIds(url: String, appAttachedOnly: Boolean = false): List<String> =
         activeFor(url, appAttachedOnly)
             .filter { it.plugin.kind == PluginKind.CHROME_EXTENSION && it.plugin.chromeExtId.isNotEmpty() }
             .map { it.plugin.chromeExtId }
             .distinct()
 
-    /**
-     * Injection code for one run-at phase: bootstrap (start only), CSS for
-     * matching plugins, then each matching plugin's wrapped main.js.
-     * HCJ plugins only — userscripts and chrome extensions run their own paths.
-     */
+    
+
+
+
+
     fun injectionFor(runAt: PluginRunAt, url: String, appAttachedOnly: Boolean = false): String {
         val out = StringBuilder()
         val matching = activeFor(url, appAttachedOnly).filter { r ->
@@ -278,45 +278,45 @@ class PluginSession(
     }
 
     private fun tokenFor(pluginId: String): String {
-        // Re-issue deterministically per session/plugin: tokens were all issued
-        // in setPlugins; find via a second issuance is wrong, so store map.
+        
+        
         return issuedTokens.getOrPut(pluginId) { bridge.issueToken(pluginId) }
     }
 
     private val issuedTokens = mutableMapOf<String, String>()
 
-    /** Toolbar tap on a plugin without a panel: deliver `hcj.on('action')`. */
+    
     fun emitAction(pluginId: String) {
         evalOnPage(PluginInjection.emitEvent(pluginId, "action", "null"))
     }
 
-    /** Set by the runtime: what to do when a chrome-extension entry is tapped. */
+    
     var onChromeEntry: ((Plugin) -> Unit)? = null
 
-    /** Resolves a plugin id to its GM storage alias (userscript menu invocations). */
+    
     var userscriptAliasFor: ((String) -> String)? = null
 
-    /** Chrome popup/options pages are hosted by this factory inside the panel host. */
+    
     var popupWebViewFactory: ((String) -> WebView?)? = null
 
-    /** `hcj.share` — wired by the WebView owner to a system share sheet. */
+    
     var shareHandler: ((title: String, text: String, url: String) -> Unit)? = null
 
-    /** `hcj.openExternal` — wired by the WebView owner to ACTION_VIEW. */
+    
     var openExternalHandler: ((url: String) -> Unit)? = null
 
-    /** `hcj.clearData` — wired by the WebView owner to a browsing-data wipe. */
+    
     var clearDataHandler: (() -> Unit)? = null
 
-    /** `hcj.exitApp` — wired by the WebView owner to finish the host activity. */
+    
     var exitAppHandler: (() -> Unit)? = null
 
-    /**
-     * Entry-point tap on a plugin sheet row / pinned icon:
-     * panel if it has one, `action` event otherwise; chrome extensions route to
-     * their popup through the same panel host ([panelRequestOverride] supplies
-     * the chrome-extension:// URL, [popupWebViewFactory] builds the WebView).
-     */
+    
+
+
+
+
+
     fun activateEntry(pluginId: String) {
         val resolved = resolvedFor(pluginId) ?: return
         when {
@@ -330,7 +330,7 @@ class PluginSession(
         }
     }
 
-    /** Invoke a `GM_registerMenuCommand` handler registered by a userscript. */
+    
     fun invokeMenuCommand(pluginId: String, name: String) {
         val alias = userscriptAliasFor?.invoke(pluginId) ?: pluginId
         evalOnPage(
@@ -340,23 +340,23 @@ class PluginSession(
         )
     }
 
-    /** GM bridge pushed a script's menu-command set; refresh the sheet row. */
+    
     fun updateMenuCommands(scriptId: String, names: List<String>) {
         PluginHostState.updateMenuCommands(scriptId, names)
     }
 
-    /** Userscript plugins matching a phase — for the GM injection path. */
+    
     fun userscriptsFor(runAt: PluginRunAt, url: String, appAttachedOnly: Boolean = false): List<Resolved> =
         activeFor(url, appAttachedOnly).filter { r ->
             r.plugin.kind == PluginKind.USERSCRIPT && r.plugin.runAt == runAt && r.plugin.matchesUrl(url)
         }
 
-    /** A message arrived from the panel surface towards the page script. */
+    
     fun deliverPanelMessageToPage(pluginId: String, json: String) {
         evalOnPage(PluginInjection.emitEvent(pluginId, "panel", json))
     }
 
-    /** A message arrived from the page script towards the panel surface. */
+    
     fun deliverPanelMessageToPanel(json: String) {
         evalOnPanel("window.__hcjPanelOnMsg && window.__hcjPanelOnMsg($json);")
     }
@@ -413,28 +413,28 @@ class PluginSession(
         }
     }
 
-    /**
-     * Subclass/open hook: real panel content resolution needs the package
-     * loader (host) or embedded payload (shell). Set by the creator.
-     */
-    /** Set when this session's WebView becomes the visible one. */
+    
+
+
+
+    
     fun attach() {
         PluginHostState.publishSession(this)
         publishEntries()
     }
 
-    /**
-     * Resolves a panel surface for a resolved plugin. HCJ/userscript panels
-     * carry inline html; CHROME_EXTENSION records get their popup URL from the
-     * chrome runtime via [panelRequestOverride]. A null return falls back to
-     * the default inline-html request.
-     */
+    
+
+
+
+
+
     var panelRequestOverride: ((Resolved) -> PluginHostState.PanelRequest?)? = null
 
-    /**
-     * Panel-side bridge bound to one plugin (`window.__hcjPanelBridge`). The
-     * panel host attaches it to the panel WebView while the panel is open.
-     */
+    
+
+
+
     fun createPanelBridge(pluginId: String): PluginPanelBridge =
         PluginPanelBridge(
             pluginId = pluginId,

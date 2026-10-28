@@ -23,20 +23,20 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.util.concurrent.Executors
 
-/**
- * Engine-agnostic native [MediaSession] state machine shared by the WebView
- * bridge (JS polyfill, [MediaSessionBridge]) and the GeckoView adapter
- * (Gecko's own media session events).
- *
- * Position continuity (#593): SystemUI interpolates progress from the last
- * `setState(position, speed)` anchor, but pages that manage position via
- * `setPositionState()` only report on play/pause/seek — never per second.
- * The core therefore anchors every reported position with
- * [lastPositionUpdateMs] and re-publishes *interpolated* positions while
- * playing, so heartbeat republishes can never drag the bar backwards, and
- * identical state reports are deduplicated instead of re-anchoring the
- * SystemUI baseline to a stale position.
- */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 class MediaSessionCore(
     private val activity: Activity,
     private val onCommand: (command: String, value: Double) -> Unit
@@ -65,7 +65,7 @@ class MediaSessionCore(
     private var positionSeconds = 0.0
     private var playbackRate = 1.0f
 
-    /** elapsedRealtime anchor of [positionSeconds]; 0 while unknown. */
+    
     private var lastPositionUpdateMs = 0L
 
     private var playbackState = PlaybackState.STATE_NONE
@@ -73,20 +73,20 @@ class MediaSessionCore(
     private var playbackActiveListener: ((Boolean) -> Unit)? = null
     private var lastNotifiedActive: Boolean? = null
 
-    /**
-     * `true` once any non-`none` playback state has ever been reported. Used to
-     * guard [clearPlayback] so the initial `STATE_NONE` event (emitted during
-     * page load before any media exists) does not run full media-session
-     * teardown — which would otherwise stop the playback service on every cold
-     * start.
-     */
+    
+
+
+
+
+
+
     private var hasActivePlaybackSession = false
 
     private var teardownRunnable: Runnable? = null
 
     private val supportedActions = mutableSetOf<String>()
 
-    /** Number of native setPlaybackState() publishes; test hook for dedup. */
+    
     internal var playbackStatePublishCount = 0
         private set
 
@@ -97,10 +97,10 @@ class MediaSessionCore(
         activeCore = WeakReference(this)
 
         createLaunchPendingIntent()?.let { pendingIntent ->
-            /*
-             * Opens or returns to the app when the user taps the
-             * notification, lock-screen media card, or system media player.
-             */
+            
+
+
+
             mediaSession.setSessionActivity(pendingIntent)
         }
 
@@ -152,7 +152,7 @@ class MediaSessionCore(
         )
     }
 
-    // ---- State intake (all posts land on the main thread) ----
+    
 
     fun updateMetadata(
         newTitle: String?,
@@ -173,11 +173,11 @@ class MediaSessionCore(
                     album.isBlank() &&
                     artworkUrl.isBlank()
 
-            /*
-             * A frame without media metadata used to send ("", "", "", "")
-             * every second, wiping real track info and falling back to the
-             * app label. Empty payloads never replace known metadata.
-             */
+            
+
+
+
+
             if (incomingBlank && !currentBlank) {
                 return@post
             }
@@ -223,12 +223,12 @@ class MediaSessionCore(
                     ?.toFloat()
                     ?: 1.0f
 
-            /*
-             * Every authoritative position report re-anchors the
-             * interpolation baseline; applyPlaybackState() then publishes the
-             * position computed from this anchor (identical to the report
-             * itself at this instant).
-             */
+            
+
+
+
+
+
             lastPositionUpdateMs = SystemClock.elapsedRealtime()
 
             applyPlaybackState()
@@ -254,19 +254,19 @@ class MediaSessionCore(
                 supportedActions.remove(action)
             }
 
-            /*
-             * Apply immediately instead of waiting for another playback event.
-             */
+            
+
+
             applyPlaybackState()
             updateNotification()
         }
     }
 
-    /**
-     * Engine-provided artwork (GeckoView decodes its `Image` itself). URL
-     * bookkeeping is cleared so a later URL-based load is not mistaken for
-     * "already loaded".
-     */
+    
+
+
+
+
     fun updateArtwork(bitmap: Bitmap?) {
         mainHandler.post {
             artworkBitmap = bitmap
@@ -279,13 +279,13 @@ class MediaSessionCore(
         }
     }
 
-    // ---- State machine ----
+    
 
-    /**
-     * Position as of [nowMs], advanced by wall time × rate while playing and
-     * clamped to a known duration. This is what every native publish uses, so
-     * a heartbeat re-publish never drags the SystemUI bar backwards (#593).
-     */
+    
+
+
+
+
     internal fun interpolatedPositionSeconds(
         nowMs: Long = SystemClock.elapsedRealtime()
     ): Double {
@@ -308,12 +308,12 @@ class MediaSessionCore(
     }
 
     private fun applyPlaybackStateEvent(state: Int) {
-        /*
-         * Dedup: engines report state repeatedly (the WebView heartbeat sends
-         * "playing" once per second; Gecko re-fires on activity). Republishing
-         * an unchanged state would re-anchor SystemUI's interpolation to a
-         * stale position and visibly freeze the progress bar (#593).
-         */
+        
+
+
+
+
+
         if (state == playbackState) {
             return
         }
@@ -321,13 +321,13 @@ class MediaSessionCore(
         if (playbackState == PlaybackState.STATE_PLAYING &&
             state != PlaybackState.STATE_PLAYING
         ) {
-            // Leaving playback: freeze at the interpolated "now" position so
-            // the pause anchor equals where the user actually heard the track.
+            
+            
             positionSeconds = interpolatedPositionSeconds()
             lastPositionUpdateMs = SystemClock.elapsedRealtime()
         } else if (state == PlaybackState.STATE_PLAYING) {
-            // Entering playback: keep the (possibly frozen) position but
-            // re-anchor, so interpolation does not charge the paused interval.
+            
+            
             lastPositionUpdateMs = SystemClock.elapsedRealtime()
         }
 
@@ -386,12 +386,12 @@ class MediaSessionCore(
 
     private fun publish() {
         if (playbackState == PlaybackState.STATE_NONE) {
-            /*
-             * "none" arrives from any frame whose media ended (or that never
-             * had any). Tearing down immediately let one ended ad element kill
-             * a session another frame was still playing (#566); wait out the
-             * grace period and cancel if anything reports activity again.
-             */
+            
+
+
+
+
+
             if (hasActivePlaybackSession || mediaSession.isActive || lastNotification != null) {
                 scheduleTeardown()
             }
@@ -480,11 +480,11 @@ class MediaSessionCore(
 
         val isPlaying = playbackState == PlaybackState.STATE_PLAYING
 
-        /*
-         * Speed 0 while not playing stops SystemUI interpolation; the
-         * position carried into setState is already the interpolated "now"
-         * value, so the anchor is always continuous with what the user sees.
-         */
+        
+
+
+
+
         val stateBuilder = PlaybackState.Builder()
             .setActions(actions)
             .setState(
@@ -493,13 +493,13 @@ class MediaSessionCore(
                 if (isPlaying) playbackRate else 0.0f
             )
 
-        /*
-         * SystemUI allocates fixed slots for custom actions next to the
-         * standard transport controls. Publishing them keeps the button row
-         * filled and spread across the card like native players, instead of
-         * leaving a reserved slot empty (#971). Custom action names reuse
-         * the JS command names; onCustomAction() forwards them to the page.
-         */
+        
+
+
+
+
+
+
         if ("seekbackward" in supportedActions) {
             stateBuilder.addCustomAction(
                 PlaybackState.CustomAction.Builder(
@@ -533,7 +533,7 @@ class MediaSessionCore(
         mediaSession.setPlaybackState(stateBuilder.build())
     }
 
-    // ---- Notification ----
+    
 
     private fun updateNotification() {
         if (playbackState == PlaybackState.STATE_NONE) {
@@ -707,7 +707,7 @@ class MediaSessionCore(
         )
     }
 
-    // ---- Artwork ----
+    
 
     private fun loadArtwork(url: String) {
         if (url.isBlank()) {
@@ -725,10 +725,10 @@ class MediaSessionCore(
             val bitmap = downloadBitmap(url)
 
             mainHandler.post {
-                /*
-                 * Ignore an old request when the website changed tracks while
-                 * the image was still downloading.
-                 */
+                
+
+
+
                 if (artworkUrl != url) {
                     return@post
                 }
@@ -756,8 +756,8 @@ class MediaSessionCore(
             connection.connect()
 
             connection.inputStream.use {
-                // Notification art: 1024px is plenty for lockscreen/SystemUI and
-                // keeps the binder transaction far under its limit (#779).
+                
+                
                 com.webtoapp.util.BoundedBitmaps.decodeBoundedBitmapStream(it, 1024)
             }.also {
                 connection.disconnect()

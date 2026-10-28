@@ -42,10 +42,10 @@ class ViewImageTool : Tool {
             return ToolResult.error("ViewImage: $path not found.")
         }
 
-        // Read the whole file only when it fits inline-vision limits; anything
-        // bigger would OOM the app long before the model could see it, so those
-        // go through BoundedBitmaps' sample-and-decode path (required by
-        // NoUnboundedBitmapDecodeTest) and get re-encoded as JPEG instead.
+        
+        
+        
+        
         val bytes: ByteArray
         var note = ""
         if (file.length() <= MAX_RAW_BYTES) {
@@ -95,10 +95,10 @@ class ViewImageTool : Tool {
     }
 
     companion object {
-        /** Above this, decode through BitmapFactory sampling instead of raw bytes. */
+        
         private const val MAX_RAW_BYTES = 20L * 1024 * 1024
 
-        /** Long-edge cap for downscaled vision input. */
+        
         private const val MAX_DIMENSION = 2048
     }
 }

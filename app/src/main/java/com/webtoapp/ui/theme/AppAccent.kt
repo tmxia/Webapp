@@ -6,12 +6,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import com.webtoapp.core.i18n.Strings
 
-/**
- * Accent color system: the neutral (black/white/grey) skeleton stays fixed,
- * only the primary/secondary/tertiary color roles are overlaid per accent.
- * Each user-facing accent is a dual-color pair: the lead color drives
- * `primary`, the counterpoint color shows through `secondary`/containers.
- */
+
+
+
+
+
+
 enum class AppAccent(val swatchPrimary: Color, val swatchSecondary: Color) {
     DEFAULT(Color(0xFF111113), Color(0xFF8A8A8E)),
     DYNAMIC(Color(0xFF88A0F8), Color(0xFFA9E2C3)),
@@ -59,9 +59,9 @@ data class AccentScheme(
     val inversePrimary: Color
 ) {
     fun applyTo(scheme: ColorScheme): ColorScheme {
-        // Hue carrier: primary pulled toward gray so tinting shifts hue without
-        // visibly changing surface lightness. Dark schemes use pastel primaries,
-        // so their surfaces get a slightly stronger lift, matching M3 guidance.
+        
+        
+        
         val dark = scheme.surface.luminance() < 0.3f
         val anchor = blend(primary, Color(0xFF808080), if (dark) 0.42f else 0.52f)
         val s = if (dark) 0.22f else 0.16f
@@ -81,8 +81,8 @@ data class AccentScheme(
             onTertiaryContainer = onTertiaryContainer,
             inversePrimary = inversePrimary,
             surfaceTint = primary,
-            // Neutral tokens pick up the accent hue progressively: the closer a
-            // container sits to content, the stronger the tint.
+            
+            
             background = tint(scheme.background, 0.7f),
             surface = tint(scheme.surface, 0.7f),
             surfaceDim = tint(scheme.surfaceDim, 0.6f),
@@ -93,13 +93,13 @@ data class AccentScheme(
             surfaceContainerHigh = tint(scheme.surfaceContainerHigh, 1.25f),
             surfaceContainerHighest = tint(scheme.surfaceContainerHighest, 1.5f),
             surfaceVariant = tint(scheme.surfaceVariant, 1.7f),
-            // Text carries the hue too: primary text subtle, secondary stronger.
+            
             onSurface = blend(scheme.onSurface, anchor, if (dark) 0.16f else 0.12f),
             onBackground = blend(scheme.onBackground, anchor, if (dark) 0.16f else 0.12f),
             onSurfaceVariant = blend(scheme.onSurfaceVariant, anchor, if (dark) 0.35f else 0.28f),
             outline = blend(scheme.outline, anchor, if (dark) 0.35f else 0.30f),
             outlineVariant = blend(scheme.outlineVariant, anchor, if (dark) 0.40f else 0.32f),
-            // Inverse tokens back snackbars and overlay menus; keep them in-family too.
+            
             inverseSurface = blend(scheme.inverseSurface, anchor, 0.30f),
             inverseOnSurface = blend(scheme.inverseOnSurface, anchor, 0.15f)
         )
@@ -270,8 +270,8 @@ object AppAccentPalettes {
         inversePrimary = Color(0xFFBE1F3C)
     )
 
-    // Faithful port of the v1.8.0 FROST (冰晶之境) theme: bright cyan primary
-    // with dark-navy content, lavender containers as in the original screens.
+    
+    
     private val FrostCyanLight = AccentScheme(
         primary = Color(0xFF4FC3F7), onPrimary = Color(0xFF00344A),
         primaryContainer = Color(0xFFE1F5FE), onPrimaryContainer = Color(0xFF001F2E),
@@ -291,8 +291,8 @@ object AppAccentPalettes {
         inversePrimary = Color(0xFF0288D1)
     )
 
-    // Espresso brown lead with latte-foam counterpoint — the warm-neutral entry
-    // in the set (Pantone mocha family).
+    
+    
     private val MochaLatteLight = AccentScheme(
         primary = Color(0xFF7B5445), onPrimary = Color(0xFFFFFFFF),
         primaryContainer = Color(0xFFF1DCD0), onPrimaryContainer = Color(0xFF2A140B),

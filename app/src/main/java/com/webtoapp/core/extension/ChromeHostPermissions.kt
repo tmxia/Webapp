@@ -1,22 +1,22 @@
 package com.webtoapp.core.extension
 
-/**
- * Host-permission and caller-origin gate for the MV3 polyfill bridge.
- *
- * `addJavascriptInterface` publishes the bridge to every frame in the WebView, and the
- * Java method does not learn which frame called it. Privileged calls therefore enter
- * through [ChromeExtensionAuthChannel], whose `sourceOrigin` is assigned by WebView.
- * A call is allowed only when that origin is the extension's own page or matches one
- * of that extension's content-script rules, and the target URL is in that same
- * extension's host permissions. Permissions are not unioned across extensions.
- */
+
+
+
+
+
+
+
+
+
+
 object ChromeHostPermissions {
 
-    /**
-     * Extract the URL match patterns an extension declared: `host_permissions` entries
-     * plus the URL-pattern entries found in `permissions` (MV2 style manifests also put
-     * hosts there). API permission strings without a scheme are ignored.
-     */
+    
+
+
+
+
     fun declaredPatterns(manifestJson: String): List<String> = runCatching {
         val manifest = org.json.JSONObject(manifestJson)
         val out = mutableListOf<String>()
@@ -31,12 +31,12 @@ object ChromeHostPermissions {
         out
     }.getOrDefault(emptyList())
 
-    /**
-     * Chrome match pattern matching: `<all_urls>`, `scheme://host/path` where scheme may
-     * be `*`, host may be `*` or `*.example.com`, and the path may contain `*`. Parsing is
-     * deliberately manual: `java.net.URI` rejects `*` schemes and Android's Uri is not
-     * available under plain-JVM unit tests.
-     */
+    
+
+
+
+
+
     fun matches(pattern: String, url: String): Boolean {
         if (pattern == "<all_urls>") return true
 
@@ -49,16 +49,16 @@ object ChromeHostPermissions {
         return pathMatches(pParts.path, uParts.path)
     }
 
-    /**
-     * One content-script entry. The caller URL must hit [matches] and miss every
-     * [excludeMatches]. Empty [matches] never grants.
-     */
+    
+
+
+
     data class ContentScriptRule(
         val matches: List<String>,
         val excludeMatches: List<String> = emptyList(),
     )
 
-    /** What one installed extension may do for a proven caller. */
+    
     data class ExtensionAuth(
         val id: String,
         val hostPatterns: List<String>,
@@ -80,11 +80,11 @@ object ChromeHostPermissions {
         }
     }.getOrDefault(emptyList())
 
-    /**
-     * True when [callerUrl] may use this extension and [targetUrl] is inside its host
-     * permissions. The extension's own `chrome-extension://<id>` origin counts as a
-     * caller (popup / options). A content-script match on a different extension does not.
-     */
+    
+
+
+
+
     fun authorizes(auth: ExtensionAuth, callerUrl: String, targetUrl: String): Boolean {
         if (callerUrl.isBlank() || targetUrl.isBlank()) return false
         val ownPage = isExtensionOrigin(auth.id, callerUrl)
@@ -106,7 +106,7 @@ object ChromeHostPermissions {
             normalized.startsWith("$prefix/", ignoreCase = true)
     }
 
-    /** Resolve a redirect Location against the URL that produced it. Null when it is not a URL. */
+    
     fun resolveRedirect(currentUrl: String, location: String?): String? {
         if (location.isNullOrBlank()) return null
         return runCatching { java.net.URL(java.net.URL(currentUrl), location.trim()).toString() }.getOrNull()
@@ -127,11 +127,11 @@ object ChromeHostPermissions {
         }
     }
 
-    /**
-     * Chrome match-pattern ports: a star is any port, an explicit number is that port,
-     * and an omitted port is the scheme default (80 / 443). A custom port therefore
-     * does not match a pattern that left the port out.
-     */
+    
+
+
+
+
     private fun portMatches(
         patternPort: String,
         patternScheme: String,
@@ -167,11 +167,11 @@ object ChromeHostPermissions {
         val authority = if (pathStart >= 0) rest.substring(0, pathStart) else rest
         val path = if (pathStart >= 0) rest.substring(pathStart) else "/"
 
-        // authority = host[:port] (userinfo@ not valid in match patterns; brackets for IPv6)
+        
         val host: String
         val port: String
-        // A colon introduces a port only when it sits after an IPv6 bracket, or in a
-        // plain host. Colons inside `[::1]` are part of the address.
+        
+        
         val bracket = authority.lastIndexOf(']')
         val colon = authority.lastIndexOf(':')
         val portColon = if (colon > bracket) colon else -1
@@ -189,9 +189,9 @@ object ChromeHostPermissions {
     private fun hostMatches(patternHost: String, host: String): Boolean {
         if (patternHost == "*" || patternHost == host) return true
         if (patternHost.startsWith("*.")) {
-            val suffix = patternHost.substring(1) // ".example.com"
+            val suffix = patternHost.substring(1) 
             if (host.endsWith(suffix)) return true
-            // `*.example.com` also matches `example.com` itself in Chrome.
+            
             return host == suffix.removePrefix(".")
         }
         return false

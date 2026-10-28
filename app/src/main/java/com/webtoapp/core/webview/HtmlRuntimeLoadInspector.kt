@@ -8,16 +8,16 @@ object HtmlRuntimeLoadInspector {
         return !requiresLocalHttp(rootDir)
     }
 
-    /**
-     * Decides whether an HTML/FRONTEND project can load from file://.
-     *
-     * LOCAL_HTTP always uses the loopback server. AUTO keeps the broad signal
-     * scan (fetch, storage, modules, WASM, isolation). FILE stays on file://
-     * for plain pages, but a page that references a CDN, an ES module, WASM,
-     * a service worker, or a web manifest cannot run from an opaque file
-     * origin, so it is promoted to the local server. A missing directory keeps
-     * the old fallback: FILE stays file://, AUTO uses HTTP.
-     */
+    
+
+
+
+
+
+
+
+
+
     fun useFileScheme(
         mode: HtmlLoadMode,
         rootDir: File?,
@@ -53,11 +53,11 @@ object HtmlRuntimeLoadInspector {
         }
     }
 
-    /**
-     * True only for things an opaque file:// origin cannot run. Weaker signals
-     * such as fetch() and localStorage stay on file:// when the user picked FILE,
-     * so an explicit file override still wins for those pages.
-     */
+    
+
+
+
+
     fun requiresRealOrigin(rootDir: File): Boolean {
         if (!rootDir.exists() || !rootDir.isDirectory) return false
         return anyProjectFile(rootDir) { file, name ->

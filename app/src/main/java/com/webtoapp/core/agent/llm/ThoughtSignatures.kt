@@ -3,12 +3,12 @@ package com.webtoapp.core.agent.llm
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 
-/**
- * Gemini 3 function calls carry an opaque `thoughtSignature`. The next request
- * must send that exact value back on the same function-call part, or the API
- * rejects the turn with 400. OpenRouter stores it server-side; a direct Google
- * call or a thin relay does not.
- */
+
+
+
+
+
+
 internal object ThoughtSignatures {
 
     fun fromGeminiPart(part: JsonObject, functionCall: JsonObject): String? =

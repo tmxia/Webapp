@@ -21,22 +21,22 @@ import java.security.SecureRandom
 import java.security.cert.X509Certificate
 import java.util.Date
 
-/**
- * Per-package signing identities (opt-in, `ApkExportConfig.perAppSigningEnabled`).
- *
- * The default signer (`JarSigner`) is a single host-wide identity — every exported APK shares
- * one certificate, so one leaked or revoked key taints the whole output. With per-app signing
- * each package name gets its own PKCS12 store under `filesDir/app_signing/`, generated once
- * and reused on every rebuild of that package — matching how desktop toolchains keep one
- * signing identity per package.
- *
- * Keys are RSA-3072 with a self-signed certificate (`CN=<packageName>`), stored under a
- * randomly generated host-local password. The store file name is a hash of the package name,
- * so updating the app (same package) keeps the identity while a different package never
- * collides with it.
- *
- * Everything here is host-only (`core/apkbuilder` is not shell-synced).
- */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 object PerAppSigningIdentity {
 
     private const val TAG = "PerAppSigning"
@@ -55,7 +55,7 @@ object PerAppSigningIdentity {
         val storeFile: File,
         val createdNow: Boolean
     ) {
-        /** SHA-256 of the certificate DER — the value encryption metadata is built around. */
+        
         fun certSha256(): ByteArray =
             MessageDigest.getInstance("SHA-256").digest(certificate.encoded)
 
@@ -64,14 +64,14 @@ object PerAppSigningIdentity {
         fun toSigningIdentity() = JarSigner.SigningIdentity(privateKey, certificate)
     }
 
-    /**
-     * Load the identity for [packageName], generating it on first use. RSA-3072 generation
-     * takes a few hundred milliseconds on-device — callers are always on `Dispatchers.IO`.
-     *
-     * @throws IllegalStateException when no usable identity can be produced. Callers should
-     *   fail the build rather than silently fall back to the global key: an APK signed with
-     *   the wrong identity can never be updated by the per-app one.
-     */
+    
+
+
+
+
+
+
+
     @Synchronized
     fun identityFor(context: Context, packageName: String): Identity {
         val storeFile = storeFileFor(context, packageName)
@@ -79,11 +79,11 @@ object PerAppSigningIdentity {
 
         if (storeFile.exists()) {
             load(storeFile, password, packageName)?.let { return it }
-            // load() removes the store itself only in one case: the certificate expired,
-            // where regenerating is the intended outcome. A store that still exists failed
-            // for a different reason (corruption, wrong password) — a corrupted store must
-            // not silently produce a *new* identity, that would break updates for every
-            // user who already installed the app. Surface the failure instead.
+            
+            
+            
+            
+            
             if (storeFile.exists()) {
                 throw IllegalStateException("per-app keystore exists but failed to load: ${storeFile.name}")
             }
@@ -92,10 +92,10 @@ object PerAppSigningIdentity {
         return create(storeFile, password, packageName)
     }
 
-    /**
-     * SHA-256 fingerprint of the identity that *would* sign this package, or null when none
-     * has been generated yet. Never creates a store — safe for display in the editor.
-     */
+    
+
+
+
     fun existingFingerprint(context: Context, packageName: String): String? {
         val storeFile = storeFileFor(context, packageName)
         if (!storeFile.exists()) return null
@@ -109,7 +109,7 @@ object PerAppSigningIdentity {
         }.getOrNull()
     }
 
-    /** Drop the identity for one package (e.g. "reset signing" affordances). */
+    
     fun delete(context: Context, packageName: String): Boolean =
         storeFileFor(context, packageName).delete()
 

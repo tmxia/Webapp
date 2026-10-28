@@ -2,11 +2,11 @@ package com.webtoapp.ui.shell
 
 import com.webtoapp.core.crypto.CryptoConstants
 
-/**
- * Logical view of an HTML asset tree. Encrypted entries keep the `.enc` asset
- * path but are addressed by their real file name, so the local server can
- * decrypt one request at a time and never write the plaintext tree to disk.
- */
+
+
+
+
+
 internal data class EncryptedHtmlCatalog(
     val files: Map<String, String>,
     val directories: Set<String>,

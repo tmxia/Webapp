@@ -110,12 +110,12 @@ import com.webtoapp.core.stats.AppUsageTracker
 import androidx.compose.ui.text.style.TextOverflow
 import com.webtoapp.ui.components.announcement.toUiTemplate
 
-/** Marker prefixes used by our own injected wrappers (userscripts, modules, bridges). */
+
 private fun isOwnInjectionMarker(message: String): Boolean =
     message.startsWith("[UserScript:") || message.startsWith("[WebToApp") ||
         message.startsWith("[WTA]") || message.startsWith("[wta-")
 
-/** Bounded console buffer: page console spam must not grow state without limit. */
+
 private const val CONSOLE_LOG_CAP = 500
 
 open class WebViewActivity : AppCompatActivity() {
@@ -127,7 +127,7 @@ open class WebViewActivity : AppCompatActivity() {
         private const val EXTRA_TEST_MODULE_IDS = "test_module_ids"
         private const val EXTRA_PREVIEW_APP_JSON = "preview_app_json"
 
-        /** Set only on desktop-shortcut launches. The separate-tasks switch must not close them. */
+        
         internal const val EXTRA_SHORTCUT_TASK = "shortcut_task"
 
         fun start(context: Context, appId: Long) {
@@ -170,14 +170,14 @@ open class WebViewActivity : AppCompatActivity() {
             )
         }
 
-        /**
-         * Switch off: one singleTask [WebViewActivity], reused via CLEAR_TOP.
-         * Switch on: [WebViewDocumentActivity] with NEW_DOCUMENT, one recents
-         * entry per [documentUri]. Do not add [Intent.FLAG_ACTIVITY_MULTIPLE_TASK]:
-         * paired with NEW_DOCUMENT it opens a new card on every launch (#1250).
-         * The data URI is the document identity and is cleared when the switch
-         * is off so singleTask reuse is not split.
-         */
+        
+
+
+
+
+
+
+
         fun buildLaunchIntent(
             context: Context,
             separateTasks: Boolean = HostRuntimePrefs.getInstance(context).isSeparateTasksEnabledBlocking(),
@@ -210,12 +210,12 @@ open class WebViewActivity : AppCompatActivity() {
             }
         }
 
-        /**
-         * Desktop shortcuts always open a document task, ignoring the About
-         * "separate tasks" switch. That switch still controls in-app preview.
-         * A shortcut that shares [WebViewActivity]'s affinity lands on top of
-         * the builder, so Back reveals it (#1391).
-         */
+        
+
+
+
+
+
         fun buildShortcutLaunchIntent(context: Context, appId: Long): Intent {
             return buildLaunchIntent(
                 context = context,
@@ -229,13 +229,13 @@ open class WebViewActivity : AppCompatActivity() {
             }
         }
 
-        /**
-         * An external launch (shortcut, autostart) carries [Intent.FLAG_ACTIVITY_NEW_TASK]
-         * and [EXTRA_APP_ID]. In-app preview does not set that flag. When the
-         * builder task already exists, the system still stacks the singleTask
-         * activity on it; the caller should re-launch the document task and
-         * leave.
-         */
+        
+
+
+
+
+
+
         internal fun shouldDetachExternalLaunch(
             isDocumentActivity: Boolean,
             isTaskRoot: Boolean,
@@ -271,13 +271,13 @@ open class WebViewActivity : AppCompatActivity() {
 
     internal var enableBackStatePreservation: Boolean = false
 
-    // Follow-system dark mode of the app currently being previewed, resolved from the
-    // intent-carried preview app or (after load) the saved app; consumed by
-    // onConfigurationChanged because uiMode changes do not recreate this activity.
+    
+    
+    
     private var activeFollowSystemDarkMode: Boolean? = null
 
-    // Saved app resolved by WebViewScreen for app-id launches (null for preview/test intents);
-    // lets Activity-level handlers (back behavior) see the effective config.
+    
+    
     private var resolvedSavedApp: WebApp? = null
 
     private var immersiveFullscreenEnabled: Boolean = false
@@ -384,9 +384,9 @@ open class WebViewActivity : AppCompatActivity() {
         val effectiveColorMode = if (isDarkTheme) statusBarColorModeDark else statusBarColorMode
         val effectiveCustomColor = if (isDarkTheme) statusBarCustomColorDark else statusBarCustomColor
         val resolved = resolveStatusBarColor(effectiveColorMode, effectiveCustomColor)
-        // Issue #711: while a web video holds HTML5 fullscreen (custom view showing), the
-        // status bar is force-hidden regardless of the static "show status bar in fullscreen"
-        // preference; the flag is cleared in hideCustomView() when the video exits fullscreen.
+        
+        
+        
         val effectiveShowStatusBar = showStatusBarInFullscreen &&
             !(hideStatusBarInVideoFullscreen && customView != null)
         WindowHelper.applyImmersiveFullscreen(
@@ -402,8 +402,8 @@ open class WebViewActivity : AppCompatActivity() {
             keyboardAdjustMode = keyboardAdjustMode,
             tag = "WebViewActivity"
         )
-        // showNavigationBarInFullscreen only applies while fullscreen is on.
-        // Leaving fullscreen always shows the system navigation bar.
+        
+        
         if (!enabled || !shouldHideNavBar) applyPageEdgeNavigation(isDarkTheme)
     }
 
@@ -679,13 +679,13 @@ open class WebViewActivity : AppCompatActivity() {
         capturePermission.onCanceled(request)
     }
 
-    /**
-     * Android runtime permission requests coming from the GeckoView engine
-     * (PermissionDelegate.onAndroidPermissionsRequest). The engine must not auto-grant:
-     * without the real OS dialog, geolocation/camera/mic silently fail because Gecko is
-     * told the permission exists while it was never obtained (#344 — the shell already
-     * does this properly; the host preview used to fall through to the default grant).
-     */
+    
+
+
+
+
+
+
     private val enginePermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
@@ -940,16 +940,16 @@ open class WebViewActivity : AppCompatActivity() {
     private var usageTracker: AppUsageTracker? = null
     private var trackedAppId: Long = -1
 
-    // WebView session state carried across Activity recreation (Bundle path) and
-    // cold restarts after process death (last-URL store path). Parity with
-    // ShellActivity, which already restores the WebView back-forward list.
+    
+    
+    
     private var webViewStateBundle: Bundle? = null
     private val resumeStore by lazy { com.webtoapp.core.webview.WebViewResumeStore(this) }
 
-    /**
-     * External-pointer normalizer (#1031): same OEM button-event quirk handling
-     * as ShellActivity so preview and generated APKs behave alike.
-     */
+    
+
+
+
     private val mouseInputCompat = com.webtoapp.core.webview.MouseInputCompat()
     private var sessionKey: String? = null
     private var launchDirectUrl: String? = null
@@ -1021,10 +1021,10 @@ open class WebViewActivity : AppCompatActivity() {
             }
         } else null
 
-        // savedInstanceState carries the WebView back-forward list written by
-        // onSaveInstanceState; it is consumed by the AndroidView factory once the
-        // surface's WebView exists. On a cold start (null bundle) the resume store
-        // provides the last visited URL instead.
+        
+        
+        
+        
         savedInstanceState?.let { webViewStateBundle = it }
         launchDirectUrl = directUrl
         launchPreviewApp = previewApp
@@ -1111,8 +1111,8 @@ open class WebViewActivity : AppCompatActivity() {
                 onSavedAppLoaded = { app ->
                     resolvedSavedApp = app
                     if (app.name.isNotBlank()) applySeparateTaskDescription(app.name)
-                    // App-id launches resolve these from the saved config; the onCreate pass
-                    // only covers intent-carried preview apps.
+                    
+                    
                     if (previewApp == null) {
                         enableBackStatePreservation = app.webViewConfig.enableBackStatePreservation
                         backgroundMedia.enabled = app.webViewConfig.backgroundMediaPlayback
@@ -1128,8 +1128,8 @@ open class WebViewActivity : AppCompatActivity() {
                     wv.onResume()
                     wv.resumeTimers()
 
-                    // Download location config follows the same preview/intent-vs-appid
-                    // sourcing as the bridges below.
+                    
+                    
                     val effectiveDownloadConfig = previewApp?.webViewConfig ?: loadedApp?.webViewConfig
                     val downloadBridge = com.webtoapp.core.webview.DownloadBridge(
                         this@WebViewActivity,
@@ -1150,11 +1150,11 @@ open class WebViewActivity : AppCompatActivity() {
                         wv.addJavascriptInterface(printBridge, com.webtoapp.core.webview.PrintBridge.JS_INTERFACE_NAME)
                     }
 
-                    // App-id launches resolve the saved config before the WebView is
-                    // created (targetUrl gates the AndroidView on the loaded app);
-                    // preview launches carry it in the intent. Both paths must
-                    // install the media bridge, otherwise playback started from the
-                    // app list never publishes a media session.
+                    
+                    
+                    
+                    
+                    
                     val effectiveMediaConfig = previewApp?.webViewConfig ?: loadedApp?.webViewConfig
                     if (effectiveMediaConfig?.enableMediaSession == true ||
                         effectiveMediaConfig?.backgroundMediaPlayback == true
@@ -1204,8 +1204,8 @@ open class WebViewActivity : AppCompatActivity() {
                     else -> {
 
                         val wv = webView
-                        // "Exit app" (#151) leaves immediately. "Exit at first page"
-                        // (#1329) still walks history, then leaves on one press.
+                        
+                        
                         val backBehavior = (previewApp ?: resolvedSavedApp)?.webViewConfig?.backButtonBehavior
                         if (backBehavior == com.webtoapp.data.model.WebViewConfig.BACK_EXIT) {
                             finish()
@@ -1256,10 +1256,10 @@ open class WebViewActivity : AppCompatActivity() {
                                 )
                             }
                         } else {
-                            // GeckoView engine: no WebView handle — walk the engine's own
-                            // history through the surface. The Escape-key JS probe is skipped
-                            // (it needs an eval result, which Gecko's javascript: URI path
-                            // cannot return).
+                            
+                            
+                            
+                            
                             ShellWebViewNavigation.goBackOrFinish(
                                 this@WebViewActivity,
                                 browserSurface,
@@ -1303,12 +1303,12 @@ open class WebViewActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * Forward keys to the page only when focus actually belongs to the page (the WebView
-     * itself, or no app UI is focused — e.g. arrow/space scrolling right after launch).
-     * While a find session is active, Chromium's WebView consumes DEL unconditionally, so
-     * blindly forwarding ate the backspace of app UI like the find-in-page input.
-     */
+    
+
+
+
+
+
     private fun isFocusInsideWebView(): Boolean {
         var view = currentFocus ?: return true
         while (view is View) {
@@ -1330,7 +1330,7 @@ open class WebViewActivity : AppCompatActivity() {
         ) {
             return true
         }
-        // Same Enter/modifier diagnostics as the shell path (#1032).
+        
         val isEnter = event.keyCode == KeyEvent.KEYCODE_ENTER ||
             event.keyCode == KeyEvent.KEYCODE_NUMPAD_ENTER
         if (shouldForwardKeyToWebView(event) && isFocusInsideWebView() && webView?.dispatchKeyEvent(event) == true) {
@@ -1392,17 +1392,17 @@ open class WebViewActivity : AppCompatActivity() {
 
     private var externalDetachScheduled = false
 
-    /**
-     * Old pinned shortcuts still target the shared singleTask activity. Open a
-     * document task, then send the builder task to the back, so Back returns
-     * to the launcher.
-     *
-     * Posted until the decor is attached: [moveTaskToBack] during [onCreate]
-     * returns false, and moving the task to the back before [startActivity]
-     * makes Android 12+ treat the relaunch as a background start and drop it.
-     * Starting first keeps the privilege of the resumed activity; the move
-     * then places the builder behind the launcher, under the new document.
-     */
+    
+
+
+
+
+
+
+
+
+
+
     private fun detachExternalLaunchIfStacked(source: Intent): Boolean {
         if (!shouldDetachExternalLaunch(this is WebViewDocumentActivity, isTaskRoot, source)) {
             return false
@@ -1425,8 +1425,8 @@ open class WebViewActivity : AppCompatActivity() {
     private fun applySeparateTaskDescription(label: String) {
         if (this !is WebViewDocumentActivity) return
         try {
-            // Builder exists only from API 33. Gating on P (28) resolves a missing
-            // class on Android 12, and NoClassDefFoundError is not an Exception.
+            
+            
             val description = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                 ActivityManager.TaskDescription.Builder().setLabel(label).build()
             } else {
@@ -1445,8 +1445,8 @@ open class WebViewActivity : AppCompatActivity() {
         setIntent(intent)
         if (detachExternalLaunchIfStacked(intent)) return
         HostPreviewMotion.install(this)
-        // Same preview document brought forward. Recreating here would wipe the
-        // page the agent is in the middle of operating.
+        
+        
         if (this is WebViewDocumentActivity &&
             previousKey != null &&
             previousKey == PreviewSessions.sessionKey(intent)
@@ -1459,12 +1459,12 @@ open class WebViewActivity : AppCompatActivity() {
         }
     }
 
-    /**
-     * A relaunch only rebuilds the preview when it carries a different launch
-     * target. Bare intents (task re-delivery, external bring-to-front with no
-     * extras) used to fall into `newAppId <= 0` and recreate(), destroying the
-     * live WebView session for no reason.
-     */
+    
+
+
+
+
+
     internal fun shouldRecreateForNewIntent(intent: Intent, trackedAppId: Long): Boolean {
         val newAppId = intent.getLongExtra(EXTRA_APP_ID, -1)
         if (newAppId > 0) {
@@ -1478,9 +1478,9 @@ open class WebViewActivity : AppCompatActivity() {
 
     override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
         super.onConfigurationChanged(newConfig)
-        // The manifest declares uiMode in configChanges, so switching the system dark/light
-        // theme does NOT recreate this activity. The WebView's dark-mode switch must be
-        // re-derived explicitly (parity with ShellActivity / WebViewManager.refreshSystemDarkMode).
+        
+        
+        
         try {
             val wv = webView
             val follow = activeFollowSystemDarkMode
@@ -1491,8 +1491,8 @@ open class WebViewActivity : AppCompatActivity() {
             AppLogger.w("WebViewActivity", "onConfigurationChanged: refresh dark mode failed", e)
         }
 
-        // Rotating a classic-path window drops the hidden-bar flags (system
-        // re-evaluates bars for the new configuration); re-assert fullscreen.
+        
+        
         if (customView != null || immersiveFullscreenEnabled) {
             applyImmersiveFullscreen(true, isDarkTheme = currentIsDarkTheme)
         }
@@ -1526,7 +1526,7 @@ open class WebViewActivity : AppCompatActivity() {
         persistResumeUrl()
     }
 
-    /** Configured start URL of the launch target; app-id launches resolve it lazily. */
+    
     private fun sessionBaseUrl(): String? = when {
         sessionKey == null -> null
         trackedAppId > 0 -> resolvedSavedApp?.url
@@ -1545,61 +1545,61 @@ open class WebViewActivity : AppCompatActivity() {
 
     private var resumeConsumed = false
 
-    /** Consume the saved-instance-state WebView bundle once (AndroidView factory). */
+    
     internal fun consumeWebViewState(): Bundle? {
         val bundle = webViewStateBundle
         webViewStateBundle = null
         return bundle
     }
 
-    /**
-     * Stash a WebView state bundle for the next creation — the composable-side
-     * memory teardown (#1033) hands the saved navigation stack here so the
-     * restored view picks it up exactly like process-death recovery.
-     */
+    
+
+
+
+
     internal fun stashWebViewState(bundle: Bundle) {
         webViewStateBundle = bundle
     }
 
-    /** Drop activity-level view refs after a composable-side teardown. */
+    
     internal fun clearWebViewRefs() {
         webView = null
         browserSurface = null
     }
 
-    /** Drop activity-level refs that still point at [surface] — release order vs. recreation is not guaranteed. */
+    
     internal fun releaseSurfaceRefs(surface: BrowserSurface?) {
         if (surface != null && browserSurface === surface) browserSurface = null
         val wv = surface?.webView
         if (wv != null && webView === wv) webView = null
     }
 
-    /**
-     * Mark the resume URL as used without reading it — after a successful bundle
-     * restore, a later recreation (render-process-gone) must reload the start URL
-     * rather than the page that may have crashed the renderer.
-     */
+    
+
+
+
+
     internal fun markResumeConsumed() {
         resumeConsumed = true
     }
 
-    /** Last visited URL for this launch target after a cold restart; consumed once. */
+    
     internal fun consumeResumeUrl(): String? {
         if (resumeConsumed) return null
         resumeConsumed = true
         return resumeStore.resumeUrl(sessionKey, sessionBaseUrl())
     }
 
-    /**
-     * The committed page that just handed off to an external app (#1030) — usually
-     * a one-shot OAuth/payment trampoline that must not become the restore target
-     * after process death.
-     */
+    
+
+
+
+
     internal fun persistExternalJump(sourceUrl: String?) {
         resumeStore.persistExternalJump(sessionKey, sessionBaseUrl(), sourceUrl)
     }
 
-    /** Read-and-clear the external-jump marker recorded by [persistExternalJump]. */
+    
     internal fun consumeExternalJump(): String? =
         resumeStore.consumeExternalJump(sessionKey, sessionBaseUrl())
 
@@ -1607,8 +1607,8 @@ open class WebViewActivity : AppCompatActivity() {
         super.onTrimMemory(level)
 
         if (level >= android.content.ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW) {
-            // The real work happens in the screen's ComponentCallbacks2 —
-            // it owns the recreation key needed to rebuild after a teardown.
+            
+            
             com.webtoapp.core.logging.AppLogger.w("WebViewActivity", "Memory pressure (level=$level)")
         }
     }
@@ -1619,10 +1619,10 @@ open class WebViewActivity : AppCompatActivity() {
         com.webtoapp.core.logging.AppLogger.w("WebViewActivity", "Low memory, skipped manual GC")
     }
 
-    /**
-     * Runs [script] on the live page and returns the raw evaluateJavascript
-     * result. Null when the surface is gone or the engine does not answer.
-     */
+    
+
+
+
     internal suspend fun evalForAgent(script: String, timeoutMs: Long = 5_000): String? {
         return withTimeoutOrNull(timeoutMs) {
             suspendCancellableCoroutine { cont ->
@@ -1656,9 +1656,9 @@ open class WebViewActivity : AppCompatActivity() {
 
         if (trackedAppId > 0) usageTracker?.trackClose(trackedAppId)
 
-        // Explicit close (back/finish): forget the last page so the next preview
-        // starts fresh. System-initiated destroys and process death keep the
-        // record so a cold restart can resume on the same page.
+        
+        
+        
         if (isFinishing) resumeStore.clear(sessionKey)
 
         backgroundMedia.close()
@@ -1733,8 +1733,8 @@ fun WebViewScreen(
     var remainingDaysIncludeSplash by remember { mutableStateOf(false) }
     var remainingDaysFromLaunch by remember { mutableStateOf(true) }
 
-    // URL delivered by the remote activation server (dynamic URL mode). Takes precedence over
-    // the configured app URL for plain WEB apps, mirroring ShellScreen.dynamicUrl.
+    
+    
     var remoteDeliveredUrl by remember { mutableStateOf<String?>(null) }
 
     var isActivated by remember { mutableStateOf(false) }
@@ -1742,8 +1742,8 @@ fun WebViewScreen(
     var isActivationChecked by remember { mutableStateOf(false) }
 
     var webViewRecreationKey by remember { mutableIntStateOf(0) }
-    // #1033: set when memory pressure tore the WebView down while backgrounded;
-    // the next ON_RESUME recreates it instead of probing a dead view.
+    
+    
     var memoryTeardownPending by remember { mutableStateOf(false) }
     var canGoBack by remember { mutableStateOf(false) }
     var canGoForward by remember { mutableStateOf(false) }
@@ -1986,9 +1986,9 @@ fun WebViewScreen(
         }
     }
 
-    // MULTI_WEB preview: resolve EXISTING sites' source apps OFF the main thread. This
-    // used to runBlocking a Room query per site inside composition, freezing/ANR-ing the
-    // UI on every recomposition.
+    
+    
+    
     var sourceAppShellConfigs by remember { mutableStateOf<Map<Long, com.webtoapp.core.shell.ShellConfig>>(emptyMap()) }
     LaunchedEffect(webApp?.id, webApp?.multiWebConfig?.sites) {
         val app = webApp ?: return@LaunchedEffect
@@ -2116,10 +2116,10 @@ fun WebViewScreen(
 
                 if (app.activationEnabled) {
 
-                    // Same gate as the generated APK shell: remote re-verifies
-                    // the remembered code (always under "every launch", else only
-                    // when the cached result can't carry this launch); local codes
-                    // re-check the remembered card under "every launch".
+                    
+                    
+                    
+                    
                     val remote = app.activationRemoteConfig?.takeIf { it.enabled }
                     val activated = if (remote != null) {
                         activation.resolveRemoteStartup(
@@ -2197,7 +2197,7 @@ fun WebViewScreen(
                     }
                     com.webtoapp.data.model.OrientationMode.AUTO -> {
 
-                        // USER (not SENSOR) to match ShellScreen's AUTO handling.
+                        
                         activity.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_USER
                     }
                     com.webtoapp.data.model.OrientationMode.PORTRAIT -> {
@@ -2220,7 +2220,7 @@ fun WebViewScreen(
                     com.webtoapp.data.model.ScreenAwakeMode.TIMED -> {
                         activity.window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
-                        // Unset minutes fall back to 30 like the exported shell does.
+                        
                         val timeoutMinutes = app.webViewConfig.screenAwakeTimeoutMinutes
                         val timeoutMs = (if (timeoutMinutes > 0) timeoutMinutes else 30) * 60 * 1000L
                         kotlinx.coroutines.MainScope().launch {

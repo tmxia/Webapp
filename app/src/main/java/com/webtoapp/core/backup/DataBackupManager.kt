@@ -27,11 +27,11 @@ import java.util.zip.ZipInputStream
 import java.util.zip.ZipOutputStream
 import kotlin.coroutines.coroutineContext
 
-/**
- * Time-based gate for high-frequency progress callbacks. A thousand-file backup
- * must not recompose the progress UI a thousand times; milestones (0/50/60/100)
- * bypass the gate and always emit. Pure logic, unit-tested on plain JVM.
- */
+
+
+
+
+
 internal class ProgressThrottle(
     private val minIntervalMs: Long = 150,
     private val clockMs: () -> Long = System::currentTimeMillis
@@ -97,9 +97,9 @@ class DataBackupManager(private val context: Context) {
             "go_projects",
             "wordpress_projects",
 
-            // Added as the app grew: frontend build sandboxes, offline-pack
-            // docs output, website-scraper output. All user content with no
-            // other backup path (regenerable caches stay excluded below).
+            
+            
+            
             "frontend_builds",
             "docs_projects",
             "scraped_sites"
@@ -138,17 +138,17 @@ class DataBackupManager(private val context: Context) {
             "gallery_positions"
         )
 
-        /**
-         * Signing identity lives as loose files in filesDir root (JarSigner):
-         * losing them means published apps can never be updated again.
-         * Restored verbatim by exact file name (no traversal possible).
-         *
-         * NOTE: the password sidecars (custom_keystore_password.txt,
-         * custom_keystore_keypass.txt, .ks_credential) are deliberately NOT backed up:
-         * a user-shared backup zip would carry the private key AND its plaintext
-         * password together. Restore keeps the keystores; passwords are re-entered
-         * the next time a build signs with them.
-         */
+        
+
+
+
+
+
+
+
+
+
+
         private val KEYSTORE_FILES = listOf(
             "webtoapp_keystore.p12",
             "custom_keystore.p12",
@@ -156,15 +156,15 @@ class DataBackupManager(private val context: Context) {
             "signing_scheme_options.json"
         )
 
-        /** Live adblock lists (custom rules + subscription registry). */
+        
         private val ADBLOCK_FILES = listOf(
             "adblock_hosts.txt",
             "adblock_hosts_sources.txt"
         )
 
-        // NOTE: "_rt_prot" (DEX CRC anti-tamper evidence) is deliberately NEVER
-        // backed up: restoring it onto a different install would trip tamper
-        // detection against itself. It regenerates on first launch.
+        
+        
+        
 
         private val SAFE_SHARED_PREF_PREFIXES = listOf(
             "gm_storage_"
@@ -172,7 +172,7 @@ class DataBackupManager(private val context: Context) {
 
         private const val BUFFER_SIZE = 8192
 
-        /** Hard cap for apps.json / extension JSON entries read fully into memory. */
+        
         private const val MAX_JSON_ENTRY_BYTES = 64L * 1024 * 1024
 
         private val backupDateFormat = threadLocalCompat {
@@ -193,7 +193,7 @@ class DataBackupManager(private val context: Context) {
 
         val usageStats: List<AppUsageStats> = emptyList(),
 
-        /** Added in backup v5; absent (empty) in older backups. */
+        
         val healthRecords: List<com.webtoapp.core.stats.AppHealthRecord> = emptyList()
     )
 
@@ -207,8 +207,8 @@ class DataBackupManager(private val context: Context) {
             coroutineContext.ensureActive()
 
             val apps = repository.allWebApps.first()
-            // Zero apps is valid: settings, extensions, keystores and prefs
-            // still deserve a backup.
+            
+            
             AppLogger.i(TAG, "准备导出 ${apps.size} 个应用")
 
             val categories = AppDatabase.getInstance(context).appCategoryDao().getAllCategories().first()
@@ -347,8 +347,8 @@ class DataBackupManager(private val context: Context) {
                 ZipInputStream(BufferedInputStream(inputStream, BUFFER_SIZE)).use { zipIn ->
                     var entry = zipIn.nextEntry
                     var totalEntries = 0
-                    // User-picked backup archive: cap entries + extracted size so a
-                    // crafted "backup" cannot fill app storage.
+                    
+                    
                     val entryGuard = com.webtoapp.util.SafeZip.EntryGuard()
                     val extractThrottle = ProgressThrottle()
 
@@ -403,9 +403,9 @@ class DataBackupManager(private val context: Context) {
                 return@withContext Result.failure(Exception("备份文件格式无效"))
             }
 
-            // The backup has validated — only now overwrite live local config files.
-            // Restart is only needed when local files actually changed: Room writes
-            // take effect immediately, so an apps-only restore stays put.
+            
+            
+            
             val localsRestored = commitPendingLocalEntries(pendingLocalEntries)
 
             onProgress(60, 100, Strings.backupImportingData)
@@ -416,8 +416,8 @@ class DataBackupManager(private val context: Context) {
             var duplicateCount = 0
             val categoryIdMap = restoreCategories(data.categories)
 
-            // Dedup against what's already installed so re-importing the same
-            // backup (or a backup overlapping it) doesn't double the library.
+            
+            
             val existingAppKeys = repository.allWebApps.first()
                 .mapTo(HashSet()) { backupDedupKey(it) }
 
@@ -487,10 +487,10 @@ class DataBackupManager(private val context: Context) {
         }
     }
 
-    /**
-     * Reads a JSON entry fully, bounded by the shared zip-bomb guard and a hard
-     * per-entry cap — a corrupt archive must not OOM the importer mid-read.
-     */
+    
+
+
+
     private fun readJsonEntry(
         zipIn: ZipInputStream,
         guard: com.webtoapp.util.SafeZip.EntryGuard
@@ -506,12 +506,12 @@ class DataBackupManager(private val context: Context) {
         return out.toByteArray()
     }
 
-    /**
-     * Identity used to skip re-imported duplicates. Remote apps dedup on
-     * type+name+normalized URL; local-content apps (HTML/media/multi-web) have
-     * no stable URL across export — resource paths get rewritten to
-     * resources/... and back — so they dedup on type+name.
-     */
+    
+
+
+
+
+
     internal fun backupDedupKey(app: WebApp): String {
         val url = app.url.trim()
         val urlKey = if (url.startsWith("http://", ignoreCase = true) ||
@@ -521,7 +521,7 @@ class DataBackupManager(private val context: Context) {
         return "${app.appType.name}|${app.name.trim().lowercase()}|$urlKey"
     }
 
-    /** Visible for unit tests (backward-compat parsing). */
+    
     internal fun parseBackupData(jsonStr: String): BackupData {
         val root = JsonParser.parseString(jsonStr).asJsonObject
         val version = root.get("version")?.asInt ?: 1
@@ -556,7 +556,7 @@ class DataBackupManager(private val context: Context) {
             }
         } ?: emptyList()
 
-        // v5+: absent in older backups -> empty, restore skips silently.
+        
         val healthRecords = root.getAsJsonArray("healthRecords")?.mapNotNull { element ->
             runCatching {
                 gson.fromJson(element, com.webtoapp.core.stats.AppHealthRecord::class.java)
@@ -580,9 +580,9 @@ class DataBackupManager(private val context: Context) {
     private suspend fun restoreCategories(categories: List<AppCategory>): Map<Long, Long> {
         if (categories.isEmpty()) return emptyMap()
         val dao = AppDatabase.getInstance(context).appCategoryDao()
-        // Same-name categories are reused instead of re-created: re-importing a
-        // backup must not double the category list. New inserts are tracked too
-        // so duplicate names inside the backup itself collapse to one row.
+        
+        
+        
         val idByName = HashMap<String, Long>()
         dao.getAllCategories().first().forEach {
             idByName[it.name.trim().lowercase()] = it.id
@@ -659,10 +659,10 @@ class DataBackupManager(private val context: Context) {
 
     private fun restoreExtensionFiles(modulesJsonBytes: ByteArray?, builtInStatesJsonBytes: ByteArray?) {
         runCatching {
-            // Release before writing the restored bytes, not after: release() cancels the
-            // outgoing instance's startup load, and cancelling it only helps if it happens
-            // before the restored file lands. With the old order the load could still be
-            // mid-migration and rewrite modules.json on top of the bytes just restored.
+            
+            
+            
+            
             com.webtoapp.core.plugin.PluginStore.release()
 
             if (modulesJsonBytes != null || builtInStatesJsonBytes != null) {
@@ -671,8 +671,8 @@ class DataBackupManager(private val context: Context) {
                 builtInStatesJsonBytes?.let { File(extensionDir, "builtin_states.json").writeBytes(it) }
             }
 
-            // Re-init: restored legacy modules.json is converted by PluginMigrator,
-            // restored plugins/ + plugin_state.json are picked up directly.
+            
+            
             com.webtoapp.core.plugin.PluginStore.getInstance(context)
             AppLogger.i(TAG, "插件数据已恢复并重新加载")
         }.onFailure { e ->
@@ -842,8 +842,8 @@ class DataBackupManager(private val context: Context) {
             )
         }
 
-        // Plugin index/overlay lives as a loose file in filesDir root; it rides
-        // the generic local/files restore path (resolveSafeChild → filesDir).
+        
+        
         File(context.filesDir, com.webtoapp.core.plugin.PluginStore.STATE_FILE)
             .takeIf { it.isFile && it.canRead() }
             ?.let { files["$LOCAL_FILES_DIR${it.name}"] = it }
@@ -866,8 +866,8 @@ class DataBackupManager(private val context: Context) {
             }
         }
 
-        // Signing identity + adblock lists live as loose files in filesDir root.
-        // Exact names only: nothing else in the root is user state worth copying.
+        
+        
         (KEYSTORE_FILES.map { it to KEYSTORE_DIR } + ADBLOCK_FILES.map { it to ADBLOCK_DIR })
             .forEach { (name, zipDir) ->
                 val file = File(context.filesDir, name)
@@ -1099,20 +1099,20 @@ class DataBackupManager(private val context: Context) {
             zipPath.startsWith(ADBLOCK_DIR)
     }
 
-    /**
-     * Pends a local entry (files/shared_prefs/datastore) for deferred restore instead of
-     * writing it during zip streaming. Writing live config files before apps.json is parsed
-     * meant a corrupt/truncated backup aborted with "格式无效" AFTER already overwriting
-     * presets, extension storage and theme prefs — with no rollback. Entries are buffered
-     * to temp files first and only swapped in after the backup validates.
-     */
+    
+
+
+
+
+
+
     internal data class PendingLocalEntry(
         val zipPath: String,
         val targetFile: File,
         val tempFile: File
     )
 
-    /** Visible for unit tests (zip-slip staging rules). */
+    
     internal fun stageLocalBackupEntry(
         zipPath: String,
         zipIn: ZipInputStream,
@@ -1140,9 +1140,9 @@ class DataBackupManager(private val context: Context) {
                 val allowed = SAFE_SHARED_PREF_NAMES.map { "$it.xml" }.contains(fileName) ||
                     (fileName.endsWith(".xml") &&
                         SAFE_SHARED_PREF_PREFIXES.any { fileName.startsWith(it) })
-                // resolveSafeChild is load-bearing here: a crafted name like
-                // "gm_storage_/../evil.xml" passes the prefix/suffix checks but
-                // must never escape shared_prefs.
+                
+                
+                
                 if (allowed) {
                     resolveSafeChild(File(context.applicationInfo.dataDir, "shared_prefs"), fileName)
                 } else null
@@ -1177,7 +1177,7 @@ class DataBackupManager(private val context: Context) {
         }
     }
 
-    /** Visible for unit tests (commit accounting). */
+    
     internal fun commitPendingLocalEntries(pending: List<PendingLocalEntry>): Boolean {
         var committed = false
         pending.forEach { entry ->
@@ -1197,12 +1197,12 @@ class DataBackupManager(private val context: Context) {
         pending.forEach { it.tempFile.delete() }
     }
 
-    /** Visible for unit tests (traversal rules). */
+    
     internal fun resolveSafeChild(baseDir: File, relativePath: String): File? {
-        // Lexical rejection first: deterministic on every runtime (backup unit
-        // tests run under Robolectric, whose File resolution must not weaken
-        // this). Legitimate entries come from relativeTo() walks and fixed
-        // names — they never contain ".." segments or absolute paths.
+        
+        
+        
+        
         if (relativePath.isBlank()) return null
         val normalized = relativePath.replace('\\', '/')
         if (normalized.startsWith("/") || normalized.split('/').any { it == ".." }) {
@@ -1224,14 +1224,14 @@ class DataBackupManager(private val context: Context) {
         return "WebToApp_Backup_${backupDateFormat.get()!!.format(Date())}.zip"
     }
 
-    /**
-     * Restarts the host process so restored files actually take effect.
-     *
-     * DataStore and SharedPreferences both cache state in memory: files swapped
-     * in by import would otherwise be ignored until restart — and worse, the
-     * next write from stale memory would clobber the restored values. Call
-     * after a successful import (the UI shows its success toast first).
-     */
+    
+
+
+
+
+
+
+
     fun scheduleAppRestart(delayMs: Long = 800) {
         try {
             val launchIntent = context.packageManager
@@ -1246,8 +1246,8 @@ class DataBackupManager(private val context: Context) {
             )
             val alarm = context.getSystemService(android.content.Context.ALARM_SERVICE)
                 as android.app.AlarmManager
-            // set(), not setExact(): no exact-alarm permission needed for a sub-second
-            // nudge. RTC_WAKEUP so a dozing device still restarts promptly.
+            
+            
             alarm.set(android.app.AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + delayMs, pending)
             AppLogger.i(TAG, "应用将在 ${delayMs}ms 后重启以应用恢复的数据")
             kotlin.system.exitProcess(0)
@@ -1266,8 +1266,8 @@ data class ImportResult(
     val totalCount: Int,
     val importedCount: Int,
     val skippedCount: Int,
-    /** Backup apps already installed (same type+name+URL), skipped not duplicated. */
+    
     val duplicateCount: Int = 0,
-    /** True when any local (prefs/datastore/shared/file) entry was committed. */
+    
     val localFilesRestored: Boolean = false
 )

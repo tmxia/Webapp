@@ -98,7 +98,7 @@ fun ModelCatalogSection(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Header: count + refresh + attribution
+        
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -124,7 +124,7 @@ fun ModelCatalogSection(
             }
         }
 
-        // Search
+        
         OutlinedTextField(
             value = searchQuery,
             onValueChange = { searchQuery = it },
@@ -145,7 +145,7 @@ fun ModelCatalogSection(
             singleLine = true
         )
 
-        // Provider filter
+        
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -169,7 +169,7 @@ fun ModelCatalogSection(
             }
         }
 
-        // Capability filter
+        
         Row(
             modifier = Modifier
                 .fillMaxWidth()

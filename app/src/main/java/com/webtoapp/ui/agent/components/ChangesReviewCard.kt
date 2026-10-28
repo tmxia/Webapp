@@ -70,8 +70,8 @@ fun ChangesReviewCard(
             vertical = 2.dp
         )
     ) {
-        // Dense review chrome: the default 48dp touch floor would put the
-        // header buttons and undo icon back to the height this card is shrinking.
+        
+        
         CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
         WtaCard(
             tone = WtaCardTone.Elevated,
@@ -200,7 +200,7 @@ private fun ChangeRow(
     }
 }
 
-/** Header action short enough to leave the conversation the vertical room. */
+
 @Composable
 internal fun ReviewActionButton(
     text: String,

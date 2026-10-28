@@ -99,9 +99,9 @@ fun StatusBarConfigCard(
         )
     }
 
-    // Zone content: the caller (FullscreenModeCard) already provides the
-    // 16dp padded zone, so this column only spaces sections like its
-    // neighbours (DnsProviderSection / staticAssetPack block).
+    
+    
+    
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(WtaSpacing.SectionGap)
@@ -150,9 +150,9 @@ fun StatusBarConfigCard(
             StatusBarBackgroundType.COLOR -> {
                 Column(verticalArrangement = Arrangement.spacedBy(WtaSpacing.Small)) {
                     GroupLabel(Strings.backgroundColor)
-                    // Four modes no longer fit one weighted row in every locale
-                    // ("Transparent" overflows a quarter-width chip in English),
-                    // so this group wraps like the viewport-mode chips do.
+                    
+                    
+                    
                     FlowRow(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(WtaSpacing.Small),
@@ -198,10 +198,10 @@ fun StatusBarConfigCard(
             }
         }
 
-        // Icon shade used to be permanently auto: the model field was plumbed
-        // end-to-end but the editor exposed no control, so a wrong auto guess
-        // could never be overridden. Tri-state (auto/dark/light) for both tabs —
-        // the dark tab maps through the shared slot like the color fields do.
+        
+        
+        
+        
         Column(verticalArrangement = Arrangement.spacedBy(WtaSpacing.Small)) {
             GroupLabel(Strings.statusBarIconsLabel)
             Row(
@@ -307,9 +307,9 @@ private fun StatusBarPreviewBox(
 
 @Composable
 private fun HeightSlider(currentHeight: Int, systemDefaultHeight: Int, onHeightChange: (Int) -> Unit) {
-    // Same slider-in-zone pattern as the staticAssetPack block: primary group
-    // label plus a raw Slider (WtaSliderRow is a full-bleed row and would
-    // double-pad inside the caller's padded zone).
+    
+    
+    
     Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(WtaSpacing.Tiny)) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             GroupLabel(Strings.statusBarHeight)

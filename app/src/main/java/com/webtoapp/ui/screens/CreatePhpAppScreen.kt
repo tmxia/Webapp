@@ -51,8 +51,8 @@ import kotlinx.coroutines.flow.first
 import java.io.File
 import java.util.zip.ZipInputStream
 
-// User-picked PHP project zips: same extraction caps as ZipProjectImporter so the
-// shared localized limit strings stay truthful.
+
+
 private const val MAX_ZIP_ENTRY_COUNT = 10_000
 private const val MAX_ZIP_TOTAL_BYTES = 1024L * 1024 * 1024
 
@@ -312,8 +312,8 @@ fun CreatePhpAppScreen(
 
                         context.contentResolver.openInputStream(zipUri)?.use { inputStream ->
                             ZipInputStream(inputStream).use { zis ->
-                                // User-picked zip: entries are untrusted — safeChild rejects
-                                // traversal and the caps stop zip-bombs from filling storage.
+                                
+                                
                                 com.webtoapp.util.SafeZip.extractAll(
                                     zis,
                                     extractDir,

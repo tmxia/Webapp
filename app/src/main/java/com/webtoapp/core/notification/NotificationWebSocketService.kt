@@ -186,10 +186,10 @@ class NotificationWebSocketService : Service() {
                 val intent = Intent(context, NotificationWebSocketService::class.java).apply {
                     action = ACTION_RESTART
                 }
-                // The restart alarm fires while the app is backgrounded (that's exactly
-                // when onTaskRemoved / system reclaim happens), so startService() would
-                // throw IllegalStateException on API 26+. Mirror NotificationPollingService
-                // and use a foreground-service PendingIntent on O+.
+                
+                
+                
+                
                 val pending = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     PendingIntent.getForegroundService(
                         context,
@@ -222,8 +222,8 @@ class NotificationWebSocketService : Service() {
                 val intent = Intent(context, NotificationWebSocketService::class.java).apply {
                     action = ACTION_RESTART
                 }
-                // Must match the scheduleRestart flavor (getForegroundService on O+),
-                // otherwise alarmManager.cancel cannot find the pending intent.
+                
+                
                 val pending = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     PendingIntent.getForegroundService(
                         context,
@@ -315,9 +315,9 @@ class NotificationWebSocketService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        // A getForegroundService restart PendingIntent requires startForeground promptly,
-        // even when this start ends in an early stopSelf (missing config) — otherwise the
-        // system raises ForegroundServiceDidNotStartInTimeException.
+        
+        
+        
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !isRunning) {
             try {
                 val earlyNotification = createForegroundNotification()
@@ -756,7 +756,7 @@ class NotificationWebSocketService : Service() {
     private fun acquireWakeLock() {
         synchronized(this) {
             if (wakeLock?.isHeld == true) return
-            // Null when WAKE_LOCK is missing/revoked — degrade, never crash (#1034).
+            
             wakeLock = WakeLockCompat.acquire(this, "WebToApp:WebSocketWakeLock", 15_000L)
         }
     }

@@ -2,14 +2,14 @@ package com.webtoapp.ui.shared
 
 import kotlin.math.roundToInt
 
-/**
- * How far to scroll the document so the focused field stays above the keyboard
- * without moving the WebView itself.
- *
- * Coordinates are the field's position at capture, in WebView pixels. Later
- * frames subtract what has already been scrolled. A field that already sits
- * above the keyboard produces no delta (#1398).
- */
+
+
+
+
+
+
+
+
 internal class ImeDocumentScroll {
     private var generation = 0
     private var trackingGeneration = -1
@@ -35,14 +35,14 @@ internal class ImeDocumentScroll {
     val wantsSnapshot: Boolean
         get() = trackingGeneration == generation && elementBottomPx == null && !snapshotRequested
 
-    /** @return the generation a single snapshot should be tagged with, or null if one is already in flight. */
+    
     fun requestSnapshot(): Int? {
         if (trackingGeneration != generation || elementBottomPx != null || snapshotRequested) return null
         snapshotRequested = true
         return trackingGeneration
     }
 
-    /** The page had no focused field yet. Allow the next frame to ask again. */
+    
     fun snapshotMissed(generation: Int) {
         if (generation != trackingGeneration || elementBottomPx != null) return
         snapshotRequested = false
@@ -63,10 +63,10 @@ internal class ImeDocumentScroll {
         elementBottomPx = (bottomCss * pxPerCss).roundToInt()
     }
 
-    /**
-     * Additional pixels to scroll the document down this frame.
-     * Never negative: closing the keyboard leaves the scroll where it is.
-     */
+    
+
+
+
     fun scrollDelta(webViewHeightPx: Int, overlapPx: Int): Int {
         if (trackingGeneration != generation) return 0
         if (overlapPx <= 0 || webViewHeightPx <= 0) return 0
@@ -87,7 +87,7 @@ internal class ImeDocumentScroll {
     }
 }
 
-/** How many pixels of [webHeight] the keyboard covers. */
+
 internal fun keyboardOverlapPx(
     webTop: Int,
     webHeight: Int,
@@ -107,11 +107,11 @@ internal data class FocusedFieldSnapshot(
     val viewportHeightCss: Float,
 )
 
-/**
- * Parses the string returned by [FOCUSED_FIELD_SNAPSHOT_JS].
- * `evaluateJavascript` JSON-encodes a string result, so the callback value
- * is quoted.
- */
+
+
+
+
+
 internal fun parseFocusedFieldSnapshot(callbackJson: String?): FocusedFieldSnapshot? {
     if (callbackJson.isNullOrBlank() || callbackJson == "null") return null
     var raw = callbackJson.trim()

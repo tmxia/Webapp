@@ -9,23 +9,23 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
 
-/**
- * One-shot migration from the retired `extension_modules/` storage into the
- * plugin package layout. Deliberately parses raw JSON instead of the old
- * `ExtensionModule` model so it keeps working after that class is deleted.
- *
- * Mapping:
- *  - CUSTOM            -> HCJ package (code -> main.js, cssCode -> style.css,
- *                         panelHtml -> panel.html, codeFiles -> files/, ids kept
- *                         so per-app `extensionModuleIds` attachments survive)
- *  - USERSCRIPT/GREASYFORK -> USERSCRIPT package (full script -> main.js,
- *                         grants/requires/resources recorded in plugin.json)
- *  - CHROME_EXTENSION  -> state-file chrome record (content untouched)
- *  - builtin_states.json -> same ids in the new state overlay
- *
- * The old directory is renamed to `extension_modules.migrated/` afterwards —
- * never deleted automatically.
- */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 class PluginMigrator(private val context: Context) {
 
     companion object {
@@ -36,7 +36,7 @@ class PluginMigrator(private val context: Context) {
         private const val BUILTIN_STATES_FILE = "builtin_states.json"
         private val gson get() = GsonProvider.gson
 
-        /** Shared by migration and by fresh Chrome-extension installs. */
+        
         fun chromePluginFrom(m: JsonObject): Plugin? {
             val plugin = Plugin(
                 id = m.str("id"),
@@ -71,7 +71,7 @@ class PluginMigrator(private val context: Context) {
         private fun JsonObject.arr(key: String): com.google.gson.JsonArray? =
             get(key)?.takeIf { it.isJsonArray }?.asJsonArray
 
-        /** Map old capability names onto the small HCJ permission set. */
+        
         fun translatePermissions(m: JsonObject): List<String> {
             val out = linkedSetOf<String>()
             m.arr("permissions")?.forEach { p ->
@@ -83,17 +83,17 @@ class PluginMigrator(private val context: Context) {
                     "DOWNLOAD" -> out.add("DOWNLOAD")
                 }
             }
-            // Migrated scripts had DOM access implicitly; storage was the
-            // common need — err on enabling STORAGE so hcj.config keeps working.
+            
+            
             out.add("STORAGE")
             return out.toList()
         }
 
-        /**
-         * Build the plugin.json field map for a legacy module object. Shared by
-         * the on-disk migrator and by fresh installs (market / agent / GreasyFork)
-         * that still arrive as ExtensionModule records.
-         */
+        
+
+
+
+
         fun manifestMapFrom(
             m: JsonObject,
             id: String,
@@ -144,21 +144,21 @@ class PluginMigrator(private val context: Context) {
                 manifest["noframes"] = m.bool("noframes", false)
             }
             if (kind == PluginKind.HCJ) {
-                // Retired CUSTOM modules speak the old globals; the injector
-                // prelude maps them onto hcj.*. Userscripts never had them.
+                
+                
                 manifest["legacyCompat"] = true
             }
             return manifest
         }
 
-        /** Package-relative files for a legacy module (inline fields only). */
+        
         fun filesFrom(m: JsonObject): Map<String, String> {
             val files = linkedMapOf<String, String>()
             val code = m.str("code")
             val css = m.str("cssCode")
             val panel = m.str("panelHtml")
-            // Canonical single file: page JS + panel document live together in
-            // plugin.html; style.css stays a separate file the loader injects.
+            
+            
             val pluginHtml = buildPluginHtml(code, panel)
             if (pluginHtml.isNotBlank()) files[PluginStore.PLUGIN_FILE] = pluginHtml
             if (css.isNotBlank()) files[PluginStore.CSS_FILE] = css
@@ -169,7 +169,7 @@ class PluginMigrator(private val context: Context) {
             return files
         }
 
-        /** Seed hcj.config from a legacy module's configValues. */
+        
         fun seedConfig(context: Context, id: String, m: JsonObject) {
             m.obj("configValues")?.let { cfg ->
                 if (cfg.entrySet().isNotEmpty()) {
@@ -211,7 +211,7 @@ class PluginMigrator(private val context: Context) {
         }
     }
 
-    // ------------------------------------------------------------------
+    
 
     private fun migrateModules(modulesFile: File, overlay: Overlay) {
         val array = try {
@@ -246,8 +246,8 @@ class PluginMigrator(private val context: Context) {
         if (dir.exists()) dir.deleteRecursively()
         dir.mkdirs()
 
-        // Code payloads were migrated to sidecar files by the old manager; fall
-        // back to inline fields for very old installs.
+        
+        
         val code = sidecar("code_$id.js").ifBlank { m.str("code") }
         val css = sidecar("css_$id.css").ifBlank { m.str("cssCode") }
         val panel = m.str("panelHtml")
@@ -256,7 +256,7 @@ class PluginMigrator(private val context: Context) {
         if (pluginHtml.isNotBlank()) File(dir, PluginStore.PLUGIN_FILE).writeText(pluginHtml)
         if (css.isNotBlank()) File(dir, PluginStore.CSS_FILE).writeText(css)
 
-        // Multi-file modules keep their relative paths under files/.
+        
         val codeFilesDir = File(oldDir, "codefiles_$id")
         if (codeFilesDir.isDirectory) {
             codeFilesDir.walkTopDown().filter { it.isFile }.forEach { f ->
@@ -268,7 +268,7 @@ class PluginMigrator(private val context: Context) {
         }
         filesFrom(m).forEach { (rel, content) ->
             if (rel == PluginStore.PLUGIN_FILE || rel == PluginStore.CSS_FILE) {
-                // Inline fallbacks only — sidecar content above wins.
+                
                 if (File(dir, rel).exists()) return@forEach
             }
             val target = File(dir, rel)
@@ -288,9 +288,9 @@ class PluginMigrator(private val context: Context) {
         ""
     }
 
-    // ------------------------------------------------------------------
-    // State overlay I/O (mirrors PluginStore's file shape)
-    // ------------------------------------------------------------------
+    
+    
+    
 
     private class Overlay {
         val order = mutableListOf<String>()
@@ -320,9 +320,9 @@ class PluginMigrator(private val context: Context) {
 
     private fun writeStateFile(overlay: Overlay) {
         val stateFile = File(context.filesDir, PluginStore.STATE_FILE)
-        // Keep keys this migrator does not own (`enabled`, `hidden`, `styles`).
-        // Rewriting a fresh object used to drop them when a half-migrated
-        // install still had the legacy directory.
+        
+        
+        
         val root = if (stateFile.exists()) {
             runCatching { JsonParser.parseString(stateFile.readText()).asJsonObject }.getOrNull()
                 ?: com.google.gson.JsonObject()
@@ -347,7 +347,7 @@ class PluginMigrator(private val context: Context) {
         }
     }
 
-    // -- raw-json helpers -----------------------------------------------------
+    
 
     private fun JsonObject.str(key: String): String =
         get(key)?.takeIf { it.isJsonPrimitive }?.asString ?: ""

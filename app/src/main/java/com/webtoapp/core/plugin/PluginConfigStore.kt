@@ -6,16 +6,16 @@ import com.webtoapp.core.logging.AppLogger
 import com.webtoapp.util.GsonProvider
 import java.io.File
 
-/**
- * Persistent key-value storage behind `hcj.config.*`.
- *
- * One JSON file per plugin under `files/plugin_config/<pluginId>.json`.
- * Values are stored as raw JSON snippets so plugin code can round-trip any
- * JSON-serializable value; access is process-wide synchronized — files are
- * small and writes are infrequent.
- *
- * Shell-synced: generated APKs persist plugin config the same way.
- */
+
+
+
+
+
+
+
+
+
+
 class PluginConfigStore(private val context: Context) {
 
     companion object {

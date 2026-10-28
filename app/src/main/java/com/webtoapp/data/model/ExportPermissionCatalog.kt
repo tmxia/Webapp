@@ -1,41 +1,41 @@
 package com.webtoapp.data.model
 
-/**
- * Official grantable permission table for generated APKs, from the shell's
- * minSdk 23 through Android 17 (API 37).
- *
- * Included: every public dangerous permission a third-party app can request,
- * the special app-ops a third-party can send the user to Settings for, and
- * the normal permissions that exist only as the version companion of one of
- * those (storage split, bluetooth split, foreground-service types, nearby
- * devices, local network). Each row is one manifest permission.
- *
- * Excluded on purpose: signature / privileged / role / internal permissions
- * (a normal app cannot be granted them), including `RECEIVE_SENSITIVE_NOTIFICATIONS`
- * and `ACCESS_BIOMETRIC_SENSOR_STRENGTHS`; `@hide` hard-restricted permissions
- * such as `READ_CELL_BROADCASTS`; the normal-permission long tail (wallpaper,
- * multicast, hidden profiles); and public-API removals such as
- * `DOWNLOAD_WITHOUT_NOTIFICATION`. Deprecated rows stay, marked with the API
- * that deprecated them, and are not requested past that API.
- *
- * Android 16/17 companions that a third-party app can still declare are rows:
- * `ACCESS_LOCAL_NETWORK` (runtime from API 36; the public constant is API 37),
- * `POST_PROMOTED_NOTIFICATIONS` (normal|appop, API 36), and `USE_LOCATION_BUTTON`
- * (normal, API 37).
- *
- * Boolean fields on [ApkRuntimePermissions] remain the legacy bundles older
- * configs were saved with (camera still implies the camera foreground-service
- * type, and so on). [ApkRuntimePermissions.grants] records a single row the
- * user moved off that bundle. Feature defaults (local network, exact alarms,
- * biometrics, media-playback foreground type) fill in only when the row has
- * no explicit grant.
- */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 enum class ExportPermKind {
-    /** Runtime dialog on the API range where the platform still requests it. */
+    
     DANGEROUS,
-    /** No runtime dialog. The user grants it from a system Settings screen. */
+    
     SPECIAL,
-    /** Granted at install. Declaring it does not show a prompt. */
+    
     NORMAL
 }
 
@@ -65,28 +65,28 @@ data class ExportPerm(
     val kind: ExportPermKind,
     val addedApi: Int,
     val deprecatedApi: Int? = null,
-    /** Runtime request starts at this SDK. Null means "no extra floor". */
+    
     val requestFromApi: Int? = null,
-    /** Runtime request stops at this SDK (exclusive). */
+    
     val requestUntilApi: Int? = null,
     val playRestricted: Boolean = false,
-    /** Ask in its own prompt. Background location and background sensors must not share the first batch. */
+    
     val requestSeparately: Boolean = false,
     val legacy: (ApkRuntimePermissions) -> Boolean = { false },
     val feature: (ApkRuntimePermissions, PermissionFeatureDefaults) -> Boolean = { _, _ -> false },
     val reasonKeys: Set<String> = emptySet()
 )
 
-/**
- * What the generated app's other settings already require. These rows show as
- * on, and are written into the manifest, until the user explicitly turns that
- * one row off.
- */
+
+
+
+
+
 data class PermissionFeatureDefaults(
     val network: Boolean = false,
-    /** WebMediaPlaybackService ships. Background music only posts a notification. */
+    
     val mediaPlayback: Boolean = false,
-    /** Background run, notification polling, or the floating window. */
+    
     val specialUse: Boolean = false,
     val scheduledExactAlarm: Boolean = false,
     val activationBiometric: Boolean = false
@@ -166,19 +166,19 @@ object ExportPermissionCatalog {
     )
 
     val entries: List<ExportPerm> = listOf(
-        // Calendar
+        
         dangerous("READ_CALENDAR", ExportPermGroup.CALENDAR, 1, legacy = { it.readCalendar }),
         dangerous("WRITE_CALENDAR", ExportPermGroup.CALENDAR, 1, legacy = { it.writeCalendar }),
 
-        // Camera
+        
         dangerous("CAMERA", ExportPermGroup.CAMERA, 1, legacy = { it.camera }, reasonKeys = setOf("camera")),
 
-        // Contacts
+        
         dangerous("READ_CONTACTS", ExportPermGroup.CONTACTS, 1, legacy = { it.readContacts }),
         dangerous("WRITE_CONTACTS", ExportPermGroup.CONTACTS, 1, legacy = { it.writeContacts }),
         dangerous("GET_ACCOUNTS", ExportPermGroup.CONTACTS, 1),
 
-        // Location. Fine and coarse are one legacy boolean; background is its own.
+        
         dangerous("ACCESS_COARSE_LOCATION", ExportPermGroup.LOCATION, 1,
             legacy = { it.location || it.backgroundLocation }, reasonKeys = setOf("location")),
         dangerous("ACCESS_FINE_LOCATION", ExportPermGroup.LOCATION, 1,
@@ -187,14 +187,14 @@ object ExportPermissionCatalog {
             requestFromApi = 29, requestSeparately = true,
             legacy = { it.backgroundLocation }, reasonKeys = setOf("location")),
         dangerous("ACCESS_MEDIA_LOCATION", ExportPermGroup.LOCATION, 29, requestFromApi = 29),
-        // API 37. Install-time. The system location button grants a temporary fix on tap.
+        
         normal("USE_LOCATION_BUTTON", ExportPermGroup.LOCATION, 37),
 
-        // Microphone. RECORD_AUDIO is the dangerous permission; modifying audio settings is normal.
+        
         dangerous("RECORD_AUDIO", ExportPermGroup.MICROPHONE, 1, legacy = { it.microphone }),
         normal("MODIFY_AUDIO_SETTINGS", ExportPermGroup.MICROPHONE, 1, legacy = { it.microphone }),
 
-        // Phone
+        
         dangerous("READ_PHONE_STATE", ExportPermGroup.PHONE, 1, legacy = { it.readPhoneState }),
         normal("READ_BASIC_PHONE_STATE", ExportPermGroup.PHONE, 33),
         dangerous("READ_PHONE_NUMBERS", ExportPermGroup.PHONE, 26, requestFromApi = 26),
@@ -207,32 +207,32 @@ object ExportPermissionCatalog {
         dangerous("USE_SIP", ExportPermGroup.PHONE, 9),
         dangerous("ACCEPT_HANDOVER", ExportPermGroup.PHONE, 28, requestFromApi = 28),
 
-        // Call log. PROCESS_OUTGOING_CALLS was deprecated in API 29 (role-based call redirection).
+        
         dangerous("READ_CALL_LOG", ExportPermGroup.CALL_LOG, 16, playRestricted = true, legacy = { it.readCallLog }),
         dangerous("WRITE_CALL_LOG", ExportPermGroup.CALL_LOG, 16, playRestricted = true, legacy = { it.writeCallLog }),
         dangerous("PROCESS_OUTGOING_CALLS", ExportPermGroup.CALL_LOG, 1,
             deprecatedApi = 29, requestUntilApi = 29, playRestricted = true,
             legacy = { it.processOutgoingCalls }),
 
-        // Activity recognition (its own group since API 29)
+        
         dangerous("ACTIVITY_RECOGNITION", ExportPermGroup.ACTIVITY, 29,
             requestFromApi = 29, legacy = { it.activityRecognition }),
 
-        // Sensors. The legacy body-sensors switch also declared the background and high-rate companions.
+        
         dangerous("BODY_SENSORS", ExportPermGroup.SENSORS, 20, legacy = { it.bodySensors }),
         dangerous("BODY_SENSORS_BACKGROUND", ExportPermGroup.SENSORS, 33,
             requestFromApi = 33, requestSeparately = true, legacy = { it.bodySensors }),
         normal("HIGH_SAMPLING_RATE_SENSORS", ExportPermGroup.SENSORS, 31, legacy = { it.bodySensors }),
 
-        // SMS. All five are Play-restricted.
+        
         dangerous("SEND_SMS", ExportPermGroup.SMS, 1, playRestricted = true, legacy = { it.sendSms }),
         dangerous("RECEIVE_SMS", ExportPermGroup.SMS, 1, playRestricted = true, legacy = { it.receiveSms }),
         dangerous("READ_SMS", ExportPermGroup.SMS, 1, playRestricted = true, legacy = { it.readSms }),
         dangerous("RECEIVE_WAP_PUSH", ExportPermGroup.SMS, 1, playRestricted = true),
         dangerous("RECEIVE_MMS", ExportPermGroup.SMS, 1, playRestricted = true),
 
-        // Storage and media. Legacy external storage is not requested from API 33.
-        // Partial photo access is its own API 34 permission, not a side effect of images.
+        
+        
         dangerous("READ_EXTERNAL_STORAGE", ExportPermGroup.STORAGE, 16,
             requestUntilApi = 33, legacy = { it.readExternalStorage }),
         dangerous("WRITE_EXTERNAL_STORAGE", ExportPermGroup.STORAGE, 4,
@@ -247,8 +247,8 @@ object ExportPermissionCatalog {
         dangerous("READ_MEDIA_VISUAL_USER_SELECTED", ExportPermGroup.STORAGE, 34, requestFromApi = 34),
         special("MANAGE_EXTERNAL_STORAGE", ExportPermGroup.STORAGE, 30, playRestricted = true),
 
-        // Nearby devices. Bluetooth's legacy switch is the pre-12 normal permissions
-        // plus the three API 31 runtime permissions. Nearby Wi-Fi is not part of it.
+        
+        
         normal("BLUETOOTH", ExportPermGroup.NEARBY, 1, legacy = { it.bluetooth }),
         normal("BLUETOOTH_ADMIN", ExportPermGroup.NEARBY, 1, legacy = { it.bluetooth }),
         dangerous("BLUETOOTH_SCAN", ExportPermGroup.NEARBY, 31, requestFromApi = 31, legacy = { it.bluetooth }),
@@ -264,15 +264,15 @@ object ExportPermissionCatalog {
             feature = { _, defaults -> defaults.network }
         ),
 
-        // Notifications
+        
         dangerous("POST_NOTIFICATIONS", ExportPermGroup.NOTIFICATIONS, 33,
             requestFromApi = 33, legacy = { it.notifications }, reasonKeys = setOf("notifications")),
-        // normal|appop, required in addition to POST_NOTIFICATIONS. No runtime dialog.
+        
         normal("POST_PROMOTED_NOTIFICATIONS", ExportPermGroup.NOTIFICATIONS, 36),
         special("USE_FULL_SCREEN_INTENT", ExportPermGroup.NOTIFICATIONS, 29),
         normal("ACCESS_NOTIFICATION_POLICY", ExportPermGroup.NOTIFICATIONS, 23),
 
-        // Special app access and the normal permissions that open a Settings screen.
+        
         special("SYSTEM_ALERT_WINDOW", ExportPermGroup.SPECIAL, 1,
             legacy = { it.systemAlertWindow }, reasonKeys = setOf("systemAlertWindow")),
         special("WRITE_SETTINGS", ExportPermGroup.SPECIAL, 1),
@@ -290,10 +290,10 @@ object ExportPermissionCatalog {
         normal("QUERY_ALL_PACKAGES", ExportPermGroup.SPECIAL, 30,
             playRestricted = true, legacy = { it.queryAllPackages }),
 
-        // Each Play foreground-service type follows the service that actually
-        // ships. DATA_SYNC is host-only (ApkBuildService, AgentService) and is
-        // never a feature default — declaring it makes Play ask for a video
-        // of a service the generated app does not have (#1313).
+        
+        
+        
+        
         normal("FOREGROUND_SERVICE", ExportPermGroup.FOREGROUND, 28,
             legacy = { it.foregroundService },
             feature = { _, defaults -> defaults.specialUse || defaults.mediaPlayback },
@@ -319,7 +319,7 @@ object ExportPermissionCatalog {
         normal("FOREGROUND_SERVICE_SYSTEM_EXEMPTED", ExportPermGroup.FOREGROUND, 34),
         normal("FOREGROUND_SERVICE_MEDIA_PROCESSING", ExportPermGroup.FOREGROUND, 35),
 
-        // Install-time companions the shell already exposes, each as its own row.
+        
         normal("WAKE_LOCK", ExportPermGroup.SYSTEM, 1,
             legacy = { it.wakeLock }, reasonKeys = setOf("wakeLock")),
         normal("RECEIVE_BOOT_COMPLETED", ExportPermGroup.SYSTEM, 1,
@@ -343,11 +343,11 @@ object ExportPermissionCatalog {
         check(byKey.size == entries.size) { "Duplicate export permission keys" }
     }
 
-    /**
-     * Manifest order for permissions that already have an export test pinned
-     * to a sequence. Anything granted but not listed here is appended in
-     * catalog order.
-     */
+    
+
+
+
+
     private val emitOrder = listOf(
         "CAMERA",
         "RECORD_AUDIO",
@@ -432,9 +432,9 @@ object ExportPermissionCatalog {
             if (perm.key in granted && perm.manifest !in out) out += perm.manifest
         }
         if (downloadWithoutNotification) {
-            // Removed from the public SDK. The download manager still honors the
-            // declaration, so it stays a build-time companion of downloads rather
-            // than a row in the table.
+            
+            
+            
             out += "android.permission.DOWNLOAD_WITHOUT_NOTIFICATION"
         }
         return out.toList()
@@ -582,7 +582,7 @@ fun ApkRuntimePermissions.withExportGrant(
     return copy(grants = updated.ifEmpty { null })
 }
 
-/** True when this SDK should show the runtime dialog for [perm]. */
+
 fun ExportPerm.requestsAtRuntime(sdk: Int, targetSdk: Int): Boolean {
     if (kind != ExportPermKind.DANGEROUS) return false
     if (requestFromApi != null && sdk < requestFromApi) return false

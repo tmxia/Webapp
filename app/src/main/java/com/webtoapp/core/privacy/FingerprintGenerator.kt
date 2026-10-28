@@ -30,10 +30,10 @@ object FingerprintGenerator {
 
     enum class BrowserType { CHROME, FIREFOX, SAFARI, EDGE }
 
-    // Phone profiles only. These strings are written onto the real request
-    // (User-Agent + Sec-CH-UA-Mobile) and onto navigator.*. A desktop profile
-    // makes the destination site serve its desktop page. Every UA contains
-    // "Mobile" so a previously saved desktop fingerprint can be recognised.
+    
+    
+    
+    
     private val profiles = listOf(
 
         BrowserProfile(
@@ -188,8 +188,8 @@ object FingerprintGenerator {
         "Australia/Sydney", "Pacific/Auckland"
     )
 
-    // CSS pixels of common phones, portrait. Width stays under the 768px
-    // breakpoint sites use to switch to a desktop layout.
+    
+    
     private val screenResolutions = listOf(
         Pair(360, 800), Pair(384, 854), Pair(390, 844),
         Pair(393, 852), Pair(412, 915), Pair(412, 892),
@@ -274,6 +274,6 @@ data class GeneratedFingerprint(
     val canvasNoise: Float get() = (canvasNoiseSeed % 10000) / 100000000f
     val audioNoise: Float get() = (audioNoiseSeed % 10000) / 100000000f
 
-    /** True when this identity asks sites for the mobile page. */
+    
     fun identifiesAsPhone(): Boolean = userAgent.contains("Mobile")
 }

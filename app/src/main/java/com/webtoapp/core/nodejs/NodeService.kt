@@ -28,13 +28,13 @@ class NodeService : Service() {
         private const val HEALTH_CHECK_INTERVAL_MS = 500L
     }
 
-    /**
-     * Node.js runs via dlopen(libnode.so) + V8 JIT, which needs RWX memory. Under the stricter
-     * SELinux policy of a high-targetSdk build this can fail at dlopen/exec time. Surface the
-     * restriction to the user instead of looking like a generic crash. Keyed off the actual
-     * app targetSdk (not the channel flag) so every high-target build gets the note.
-     * Runtime-layer string (shell-synced); intentionally not routed through Strings i18n.
-     */
+    
+
+
+
+
+
+
     private fun channelNote(): String =
         if (!com.webtoapp.core.linux.RuntimeExecPolicy.canExecAppDataBinaries(applicationContext)) {
             com.webtoapp.core.linux.RuntimeExecPolicy.restrictionNote()
@@ -51,12 +51,12 @@ class NodeService : Service() {
     @Volatile private var dnsProxyStarted = false
     @Volatile private var lastExitCode: Int? = null
 
-    /**
-     * Tail of the Node process's stdout/stderr for the current start attempt. On failure
-     * its snapshot is appended to the IPC error message — the generic "启动超时" headline
-     * alone gives users nothing to act on while the real error sits in a log file under
-     * Android/data they cannot easily reach.
-     */
+    
+
+
+
+
+
     private val recentOutput = RecentOutputBuffer()
 
     override fun onBind(intent: Intent?): IBinder = incomingMessenger.binder
@@ -66,15 +66,15 @@ class NodeService : Service() {
         android.util.Log.i(TAG, ":nodejs 子进程 NodeService onCreate, pid=${Process.myPid()}")
         AppLogger.i(TAG, ":nodejs 子进程 NodeService onCreate, pid=${Process.myPid()}")
         ShellLogger.i(TAG, ":nodejs 子进程 NodeService onCreate, pid=${Process.myPid()}")
-        // Strings.lang is per-process state; the :nodejs child never gets the main
-        // process's setLanguage() call. Generated APKs persist config.language to
-        // wta_runtime_lang prefs; the host preview falls back to the DataStore
-        // language — both are readable cross-process.
-        //
-        // Resolve on the worker thread: the DataStore fallback must not
-        // runBlocking the service main thread (StrictMode/ANR risk), and every
-        // Strings consumer already runs on this same handler, so the FIFO
-        // ordering guarantees the language is set before any use.
+        
+        
+        
+        
+        
+        
+        
+        
+        
         workerHandler.post {
             runCatching {
                 val prefLang = getSharedPreferences("wta_runtime_lang", MODE_PRIVATE)
@@ -114,8 +114,8 @@ class NodeService : Service() {
                         val engineKilled = service.stopServerInternal()
                         sendBack(replyTo, NodeServiceProtocol.MSG_SERVER_STOPPED, Bundle())
                         if (engineKilled) {
-                            // Reply already queued; now tear down the poisoned :nodejs process
-                            // so the framework restarts a clean engine on the next start.
+                            
+                            
                             Process.killProcess(Process.myPid())
                         }
                     }
@@ -190,8 +190,8 @@ class NodeService : Service() {
                 return
             }
 
-            // Reset per-attempt diagnostics before any work that can fail — a previous
-            // attempt's output must never leak into this attempt's error message.
+            
+            
             recentOutput.clear()
             lastExitCode = null
 

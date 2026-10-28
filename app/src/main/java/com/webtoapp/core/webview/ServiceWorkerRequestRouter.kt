@@ -6,11 +6,11 @@ import androidx.webkit.ServiceWorkerClientCompat
 import androidx.webkit.ServiceWorkerControllerCompat
 import com.webtoapp.core.logging.AppLogger
 
-/**
- * One process-wide service-worker intercept. Android allows a single
- * [ServiceWorkerClientCompat]; the offline-cache worker and the web-notification
- * bridge both need it, and whichever installed last used to replace the other.
- */
+
+
+
+
+
 internal object ServiceWorkerRequestRouter {
     private val handlers = java.util.concurrent.CopyOnWriteArrayList<
         (WebResourceRequest) -> WebResourceResponse?
@@ -53,9 +53,9 @@ internal object ServiceWorkerRequestRouter {
                 )
                 installed = true
             } catch (t: Throwable) {
-                // Robolectric has no service-worker controller, and a failed class
-                // init throws ExceptionInInitializerError. The page WebViewClient
-                // still serves the bridge. Don't retry a broken controller.
+                
+                
+                
                 installed = true
                 AppLogger.w(
                     "ServiceWorkerRequestRouter",

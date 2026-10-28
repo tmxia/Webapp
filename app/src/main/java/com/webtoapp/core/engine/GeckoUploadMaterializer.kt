@@ -9,21 +9,21 @@ import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStream
 
-/**
- * Turns file-picker results into something GeckoView's FilePrompt.confirm() can hand to the
- * page (#638). confirm() never reads streams — it resolves each Uri to a local path string via
- * the `_data` column / externalstorage document ids, and silently feeds null paths into the
- * upload when a provider refuses (galleries, cloud, most vendor pickers). Firefox avoids this
- * by copying every content:// through ContentResolver into a cache-backed file first
- * (android-components toFileUri); this mirrors that for the shell bridge.
- *
- * Copy failures fall back to the original Uri so one unreadable item cannot sink the whole
- * selection — upstream resolution may still succeed where the copy could not.
- *
- * Copies must outlive the pick dialog (pages upload asynchronously) but cannot be kept forever:
- * stale files are purged on the next prompt and everything is wiped when the engine is
- * destroyed. The caller runs I/O off the UI thread; FilePrompt.confirm() is @UiThread.
- */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 internal object GeckoUploadMaterializer {
 
     private const val TAG = "GeckoUploadMaterializer"
@@ -32,11 +32,11 @@ internal object GeckoUploadMaterializer {
 
     private const val MAX_FILE_NAME_LENGTH = 100
 
-    /**
-     * Returns Uris safe to pass to FilePrompt.confirm(): content:// entries are copied into
-     * [uploadsDir] and replaced by file:// Uris pointing at the copies, other schemes pass
-     * through unchanged. Never throws.
-     */
+    
+
+
+
+
     fun prepare(
         uris: Array<Uri>,
         uploadsDir: File,
@@ -48,7 +48,7 @@ internal object GeckoUploadMaterializer {
         return Array(uris.size) { i -> materialize(uris[i], uploadsDir, resolver) }
     }
 
-    /** Deletes every cached upload (engine teardown: all sessions are gone by then). */
+    
     fun purgeAll(uploadsDir: File) {
         val files = uploadsDir.listFiles() ?: return
         for (file in files) {
@@ -71,7 +71,7 @@ internal object GeckoUploadMaterializer {
         val files = uploadsDir.listFiles() ?: return
         for (file in files) {
             if (!file.isFile) continue
-            // A future lastModified (clock skew) yields a negative age and is kept.
+            
             if (nowMs - file.lastModified() > UPLOAD_TTL_MS) {
                 runCatching { file.delete() }
             }
@@ -109,7 +109,7 @@ internal object GeckoUploadMaterializer {
             if (ch.isLetterOrDigit()) ch else if (ch == '.' || ch == '-' || ch == '_' || ch == ' ') ch else '_'
         }?.joinToString("")?.trim().orEmpty()
 
-        // Trim from the front so an over-long name keeps its extension (the part that matters).
+        
         if (name.length > MAX_FILE_NAME_LENGTH) {
             name = "..." + name.takeLast(MAX_FILE_NAME_LENGTH - 3)
         }

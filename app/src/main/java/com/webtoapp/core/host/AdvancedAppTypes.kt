@@ -3,11 +3,11 @@ package com.webtoapp.core.host
 import android.content.Context
 import com.webtoapp.data.model.AppType
 
-/**
- * App types that stay out of the default create flow. The code is always in the
- * host; the About switch only decides whether they can be created, previewed,
- * and exported.
- */
+
+
+
+
+
 object AdvancedAppTypes {
     val TYPES: Set<AppType> = setOf(
         AppType.IMAGE,

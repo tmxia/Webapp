@@ -5,39 +5,39 @@ import com.webtoapp.core.logging.AppLogger
 import java.io.File
 import java.security.MessageDigest
 
-/**
- * On-device Go build driver for host builds that cannot fork+exec the Go
- * toolchain (targetSdk>=29 SELinux W^X).
- *
- * Instead of running the multi-process `go build` (go -> compile/link/asm via
- * execve, all denied), it replays the exact tool invocations `go build`
- * would perform — captured once via `go build -n` and verified end-to-end:
- *
- *   1. `go list -e -deps -json ./...` (single-shot, pure metadata) for the
- *      package DAG, file lists (already GOOS/GOARCH-filtered), vendoring maps
- *      and DefaultGODEBUG.
- *   2. Per package in topological order: `compile` (+ `asm` symabis/objects
- *      for packages with .s files, folded into the archive with [GoArchive]),
- *      each launched via [com.webtoapp.core.linux.HostProcessLauncher] which
- *      uses the user-mode static exec loader on W^X hosts.
- *   3. `link -buildmode=pie` for the main package with a synthesized
- *      importcfg + modinfo.
- *
- * Every launch is a single process that never spawns children, so nothing
- * ever touches the blocked execve path. Package archives are cached
- * persistently (keyed by content fingerprints, transitively), so the stdlib
- * compiles once and incremental rebuilds only touch what changed.
- */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 object GoDirectBuilder {
 
     private const val TAG = "GoDirectBuilder"
 
-    /**
-     * Mirrors cmd/go/internal/work/gc.go: these std packages carry forward
-     * declarations supplied behind-the-scenes by package runtime, so the
-     * compiler must not assume completeness. (Any package with .s files is
-     * additionally never complete.)
-     */
+    
+
+
+
+
+
     internal val NO_COMPLETE_STD = setOf(
         "bytes", "internal/poll", "net", "os",
         "runtime/metrics", "runtime/pprof", "runtime/trace",

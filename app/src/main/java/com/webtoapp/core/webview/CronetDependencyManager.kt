@@ -12,24 +12,24 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.util.zip.ZipInputStream
 
-/**
- * On-demand fetch of the Cronet native library that powers forced HTTP/3 (issue #721).
- *
- * The `cronet-embedded` Gradle dependency contributes only its Java classes to the
- * host/shell APKs — the .so files are excluded from packaging in both build files,
- * mirroring the GeckoView / libnode precedents (heavy natives are never bundled):
- *  - Host preview loads the library from [getDepsDir] via Cronet's LibraryLoader.
- *  - ApkBuilder injects the same file into exported APKs when 强制 HTTP/3 is on,
- *    so generated apps load it straight from their own nativeLibraryDir.
- */
+
+
+
+
+
+
+
+
+
+
 object CronetDependencyManager {
 
     private const val TAG = "CronetDependencyManager"
 
-    /** Gradle artifact version (app/shell build.gradle.kts must match). */
+    
     const val CRONET_ARTIFACT_VERSION = "143.7445.0"
 
-    /** Native library version baked inside the artifact (differs from the artifact version). */
+    
     const val CRONET_LIB_VERSION = "143.0.7445.0"
 
     const val LIB_FILE_NAME = "libcronet.$CRONET_LIB_VERSION.so"
@@ -39,25 +39,25 @@ object CronetDependencyManager {
 
     private val downloadMutex = Mutex()
 
-    // Google Maven is unreachable from mainland China, and forced HTTP/3 is an
-    // anti-censorship feature whose audience skews exactly there — so the Aliyun
-    // mirror (globally reachable, CDN-backed) goes first and Google Maven is the
-    // fallback for the rare case Aliyun is down or stale.
-    /** Google Maven — canonical source, kept as the fallback (see [downloadUrls]). */
+    
+    
+    
+    
+    
     private val PRIMARY_URL =
         "https://maven.google.com/org/chromium/net/cronet-embedded/$CRONET_ARTIFACT_VERSION/cronet-embedded-$CRONET_ARTIFACT_VERSION.aar"
 
-    // Aliyun's Google-Maven mirror.
+    
     private val CN_MIRROR_URL =
         "https://maven.aliyun.com/repository/google/org/chromium/net/cronet-embedded/$CRONET_ARTIFACT_VERSION/cronet-embedded-$CRONET_ARTIFACT_VERSION.aar"
 
     private fun downloadUrls(): List<String> = listOf(CN_MIRROR_URL, PRIMARY_URL)
 
-    /**
-     * SHA-256 of cronet-embedded-$CRONET_ARTIFACT_VERSION.aar (canonical bytes
-     * from Google Maven; Aliyun mirrors the same artifact). Recompute when
-     * bumping CRONET_ARTIFACT_VERSION — mismatches fail the download loudly.
-     */
+    
+
+
+
+
     private const val CRONET_AAR_SHA256 =
         "afdd7af7568e9758e3690c3a4a228f30993ac3e4ef0f94c72bb68503c0167697"
 
@@ -71,11 +71,11 @@ object CronetDependencyManager {
 
     fun getLibFile(context: Context): File = File(getLibDir(context), LIB_FILE_NAME)
 
-    /**
-     * Resolve the Cronet native library for the current device ABI: the app's own
-     * nativeLibraryDir first (generated APKs get it injected there), then the
-     * downloaded copy (host preview). Null when neither is available.
-     */
+    
+
+
+
+
     fun resolveCronetLib(context: Context): File? {
         val native = File(context.applicationInfo.nativeLibraryDir, LIB_FILE_NAME)
         if (native.isFile && native.length() > 0L) return native
@@ -133,7 +133,7 @@ object CronetDependencyManager {
         val outFile = getLibFile(context)
         outFile.parentFile?.mkdirs()
 
-        // Drop stale libs from other Cronet releases so the deps dir stays bounded.
+        
         getDepsDir(context).listFiles()?.forEach { abiDir ->
             if (abiDir.isDirectory) {
                 abiDir.listFiles()?.forEach { f ->

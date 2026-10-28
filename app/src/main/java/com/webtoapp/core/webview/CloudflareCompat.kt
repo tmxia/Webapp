@@ -104,25 +104,25 @@ object CloudflareCompat {
         }
     }
 
-    /**
-     * Hosts whose documents must stay untouched. Turnstile decides inside its
-     * own iframe; a script that rewrites `Function.prototype.toString` or
-     * invents `chrome.runtime` there makes the check spin on "Verifying...".
-     */
+    
+
+
+
+
     fun isChallengeFrameHost(host: String?): Boolean {
         val h = host?.trim()?.lowercase() ?: return false
         return CHALLENGE_FRAME_SUFFIXES.any { suffix -> h == suffix || h.endsWith(".$suffix") }
     }
 
-    /** Proxy bypass rules so a local DNS or TLS bridge is not the TLS fingerprint. */
+    
     fun challengeProxyBypassRules(): List<String> =
         CHALLENGE_FRAME_SUFFIXES.flatMap { listOf(it, "*.$it") }
 
-    /**
-     * Runs [script] everywhere except challenge iframes. The kernel-flavor and
-     * device-disguise scripts stay out of this wrapper: those frames must see
-     * the same identity as the parent (#1121).
-     */
+    
+
+
+
+
     fun exemptChallengeFrames(script: String): String = """
 (function(){
 try{

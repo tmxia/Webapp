@@ -1,11 +1,11 @@
 package com.webtoapp.ui.shared
 
-/**
- * Colors for the multi-web top tab bar (#1173). A live page sample wins,
- * then the site's stored theme color, then the same light/dark surfaces the
- * status bar uses. Text is chosen from the same luminance cutoff as
- * [WindowHelper.isColorLight].
- */
+
+
+
+
+
+
 object TopTabChrome {
     const val LIGHT_BG = "#FFFBFE"
     const val DARK_BG = "#1C1B1F"
@@ -16,7 +16,7 @@ object TopTabChrome {
         return if (isDark) DARK_BG else LIGHT_BG
     }
 
-    /** True when light text should sit on [backgroundHex]. */
+    
     fun textIsLightOn(backgroundHex: String): Boolean = !isLight(backgroundHex)
 
     fun isLight(hex: String): Boolean {

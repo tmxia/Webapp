@@ -36,20 +36,20 @@ import com.webtoapp.data.model.PortConflictMode
 import com.webtoapp.ui.design.WtaSwitch
 import com.webtoapp.ui.theme.ifDescriptionsShown
 
-/**
- * Shared "local server + port + conflict policy" card for runtime-backed apps
- * (Node.js / PHP / Python / Go / WordPress). Mirrors the controls HTML apps already have,
- * wrapped in the project's standard [EnhancedElevatedCard] + [RuntimeSectionHeader] style so it
- * blends with the neighbouring cards ([RuntimeEnvVarsCard], [PhpExtensionsCard], …).
- *
- * Semantics (matching HTML):
- * - [port] == 0  → auto-assign: the runtime asks PortManager for a free port (REASSIGN); the
- *   conflict-policy segmented control is then irrelevant because a free port never conflicts.
- * - [port] > 0   → fixed port: the conflict mode decides what happens if it is occupied.
- *
- * Callers pass the safest defaults — port = 0, portConflictMode = AUTO_KILL — because
- * auto-assign never collides and never kills another process.
- */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 @Composable
 fun RuntimePortConfigSection(
     port: Int,
@@ -66,9 +66,9 @@ fun RuntimePortConfigSection(
             )
             Spacer(Modifier.height(16.dp))
 
-            // Digits stay in local text so a half-deleted value such as "808"
-            // is not rejected for being below 1024, and clearing the field does
-            // not flip auto-assign back on.
+            
+            
+            
             var portInput by remember {
                 mutableStateOf(if (port > 0) port.toString() else "")
             }
@@ -78,7 +78,7 @@ fun RuntimePortConfigSection(
                 }
             }
 
-            // Auto-assign toggle
+            
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -113,7 +113,7 @@ fun RuntimePortConfigSection(
                 )
             }
 
-            // Fixed-port input (only visible when auto-assign is off).
+            
             val portNumber = portInput.toIntOrNull()
             val portInvalid = portInput.isNotEmpty() && (portNumber == null || portNumber !in 1024..65535)
             AnimatedVisibility(visible = port > 0) {
@@ -143,7 +143,7 @@ fun RuntimePortConfigSection(
 
             Spacer(Modifier.height(16.dp))
 
-            // Conflict-policy segmented control (only meaningful for a fixed port)
+            
             Text(
                 text = Strings.portConflictTitle,
                 style = MaterialTheme.typography.labelLarge,
@@ -159,11 +159,11 @@ fun RuntimePortConfigSection(
     }
 }
 
-/**
- * Conflict-policy selector card only (no port input), for screens that already render their own
- * port field (e.g. CreateNodeJsAppScreen's NodeJsPortCard) but still want the shared policy
- * control in the matching card style.
- */
+
+
+
+
+
 @Composable
 fun RuntimePortConflictSelector(
     portConflictMode: PortConflictMode,

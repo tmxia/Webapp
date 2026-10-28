@@ -49,8 +49,8 @@ class UpdateAppTool : Tool {
             updatedAt = System.currentTimeMillis()
         )
         ctx.appRepository.updateWebApp(safe)
-        // The patch's top-level keys are exactly what the caller asked to change —
-        // they drive the "what changed" line on the app-changes review card.
+        
+        
         val changedFields = patch.takeIf { it.isJsonObject }?.asJsonObject?.keySet()?.toList().orEmpty()
         return ToolResult(
             text = "Updated app id=${safe.id} name=\"${safe.name}\" (type ${safe.appType}).",

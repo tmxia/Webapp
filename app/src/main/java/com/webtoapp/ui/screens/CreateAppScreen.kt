@@ -621,9 +621,9 @@ private fun ExportAndPermissionDrawer(
                 onClick = { expanded = !expanded }
             )
 
-            // Persistent container (#1095): AnimatedVisibility would dispose the whole
-            // export-config subtree on collapse and pay full recomposition on every
-            // cold open; keeping it composed makes each open a pure layout animation.
+            
+            
+            
             WtaPersistentExpandedContent(expanded = expanded) {
                 Column(
                     modifier = Modifier.padding(
@@ -717,10 +717,10 @@ private fun CreateAppBottomBar(
     }
 }
 
-/**
- * AdMob monetization controls. Rendered inside
- * [SpecialSettingsCard]'s monetization section — no card wrapper here.
- */
+
+
+
+
 @Composable
 fun AdsMonetizationSection(
     enabled: Boolean,

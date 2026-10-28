@@ -114,10 +114,10 @@ fun ShellBrowserAndroidView(
                     var lastTouchX = 0f
                     var lastTouchY = 0f
                     var downFromFinger = false
-                    // Top-tab paging is claimed here, below the WebView, because a
-                    // Compose pointerInput never sees events the WebView consumes.
-                    // Until the drag is clearly horizontal the listener returns
-                    // false and the page scrolls as usual.
+                    
+                    
+                    
+                    
                     fun installTouch(target: android.view.View, clickOnUp: Boolean) {
                         var paging = false
                         target.setOnTouchListener { view, event ->
@@ -131,10 +131,10 @@ fun ShellBrowserAndroidView(
                                     paging = false
                                     if (downFromFinger) handler?.onDown(event)
                                     if (event.isFromSource(android.view.InputDevice.SOURCE_MOUSE)) {
-                                        // A mouse click does not always move focus
-                                        // by itself on every OEM path; make it
-                                        // explicit so a hardware keyboard lands in
-                                        // the page afterwards (#1031).
+                                        
+                                        
+                                        
+                                        
                                         view.requestFocus()
                                     }
                                     false
@@ -149,8 +149,8 @@ fun ShellBrowserAndroidView(
                                         paging = true
                                         view.cancelLongPress()
                                         view.parent?.requestDisallowInterceptTouchEvent(true)
-                                        // Drop the slop events the page already saw,
-                                        // or the WebView flings as the pager takes over.
+                                        
+                                        
                                         val cancel = MotionEvent.obtain(event)
                                         cancel.action = MotionEvent.ACTION_CANCEL
                                         view.onTouchEvent(cancel)
@@ -179,10 +179,10 @@ fun ShellBrowserAndroidView(
                         installTouch(wv, clickOnUp = enableLongPress)
                         if (enableLongPress) {
                             wv.setOnLongClickListener {
-                                // A right-click also routes through performLongClick —
-                                // keep the touch menu finger-only so pointer/keyboard
-                                // long-clicks fall back to the default context menu
-                                // instead of a touch menu at a stale position (#1031).
+                                
+                                
+                                
+                                
                                 if (downFromFinger) {
                                     webViewCallbacks.onLongPress(wv, lastTouchX, lastTouchY)
                                 } else {
@@ -231,9 +231,9 @@ fun ShellBrowserAndroidView(
                     swipeLayout.isRefreshing = isRefreshing
                 }
             },
-            // Leaving composition — key bump, hidden multi-web tab eviction, or
-            // teardown — must destroy the surface's WebView too. The explicit
-            // recreation paths already do; this catches every other drop (#1033).
+            
+            
+            
             onRelease = { swipeLayout ->
                 val surface = swipeLayout.tag as? BrowserSurface
                 val retained = surface?.webView

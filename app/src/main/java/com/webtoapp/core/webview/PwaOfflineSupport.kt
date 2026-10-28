@@ -32,10 +32,10 @@ object PwaOfflineSupport {
         "mp3", "mp4", "webm"
     )
 
-    /** Same-origin path the generated service worker script is served from. */
+    
     private const val SW_SCRIPT_PATH = "/__wta_offline_sw__.js"
 
-    /** Service worker script body currently served at [SW_SCRIPT_PATH]. */
+    
     @Volatile
     private var currentSwScript: String? = null
 
@@ -200,7 +200,7 @@ self.addEventListener('fetch', event => {
         """.trimIndent()
     }
 
-    /** Page-side script that registers the service worker from the same-origin path. */
+    
     private fun generateRegistrationScript(): String = """
         (function() {
             if (window.__WTA_SW_INJECTED__) return;
@@ -220,11 +220,11 @@ self.addEventListener('fetch', event => {
         })();
     """.trimIndent()
 
-    /**
-     * Serves the generated service worker script at [SW_SCRIPT_PATH]. WebView refuses
-     * blob: service-worker script URLs, so the script must be served from a same-origin
-     * URL; the ServiceWorkerController intercepts that request and returns the script.
-     */
+    
+
+
+
+
     private fun installServiceWorkerController() {
         if (serviceWorkerControllerInstalled) return
         serviceWorkerControllerInstalled = true

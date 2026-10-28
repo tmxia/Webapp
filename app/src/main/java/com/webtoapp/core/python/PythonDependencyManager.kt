@@ -30,18 +30,18 @@ object PythonDependencyManager {
         RegexOption.IGNORE_CASE
     )
 
-    /** pip reports this when no wheel matches the interpreter/platform, or the index is unreachable. */
+    
     private val NO_DISTRIBUTION_RE = Regex(
         """(?:No matching distribution found for|Could not find a version that satisfies the requirement)\s+(\S+)"""
     )
 
-    /** Evidence that the package index actually responded (downloads started). */
+    
     private val INDEX_PROOF_RE = Regex("""Collecting \S+|Downloading \S+""")
 
-    /** A source build failed while building a wheel (usually a missing compiler). */
+    
     private val FAILED_BUILD_WHEEL_RE = Regex("""Failed building wheel for (\S+)""")
 
-    /** A compiler invocation failed (no toolchain ships with the on-device Python). */
+    
     private val COMPILER_MISSING_RE = Regex("""error: command '[^']*' failed""")
 
     const val PYTHON_VERSION = "3.14"
@@ -50,19 +50,19 @@ object PythonDependencyManager {
 
     private const val SITE_CUSTOMIZE_FILE_NAME = "sitecustomize.py"
 
-    /** Bump when [buildSitecustomizeScript] content changes so existing runtimes re-heal. */
+    
     internal const val SITE_CUSTOMIZE_VERSION = 2
 
-    /** Marker file under the runtime root recording the last applied heal. */
+    
     private const val HEAL_MARKER_FILE_NAME = ".w2a-musl-heal"
 
-    /** Cap on pip output retained for failure analysis (pattern matching). */
+    
     private const val MAX_PIP_OUTPUT_CHARS = 512 * 1024
 
     private const val MUSL_VERSION = "1.2.5-r11"
     private const val MUSL_ALPINE_BRANCH = "v3.21"
 
-    /** ABI → Rust-style triple for the cpython build-standalone artifact. */
+    
     private val PY_TRIPLE_BY_ABI = mapOf(
         "arm64-v8a"   to "aarch64-unknown-linux-musl",
         "x86_64"      to "x86_64-unknown-linux-musl",
@@ -70,19 +70,19 @@ object PythonDependencyManager {
         "x86"         to "x86_64-unknown-linux-musl"
     )
 
-    /**
-     * cpython-${PYTHON_FULL_VERSION}+${PYTHON_BUILD_TAG} install_only_stripped
-     * tarballs, keyed by triple (digests from the astral-sh release API).
-     * Verify against the release `digest` field when bumping PYTHON_BUILD_TAG —
-     * mismatches fail the download loudly.
-     */
+    
+
+
+
+
+
     private val CPYTHON_SHA256_BY_TRIPLE = mapOf(
         "aarch64-unknown-linux-musl"      to "11d463be3e2d34ea67722acfd8f3f2d6d6e5b6b4d4ab27240f220628134a0141",
         "x86_64-unknown-linux-musl"       to "f25064ecb3b07cfe2440b178e72001cf1e0d69a5e53625ca3a32b7ae4e2fdcc6",
         "armv7-unknown-linux-gnueabihf"   to "a5bb63bdd6694477ce8335d57e4c6d032a011fea64396196fe3aca178e2495e5"
     )
 
-    /** musl-$MUSL_VERSION .apk digests (Alpine v3.21 APKINDEX), keyed by device ABI. */
+    
     private val MUSL_SHA256_BY_ABI = mapOf(
         "arm64-v8a" to "721010e6bff908878d9c527428598661be59dde0d9f013f8431d01fd4dd16652",
         "x86_64"    to "61e84757a8bfbc0d7fa8f4ce6de9cd4d791714369d78f6a08e5b03510fb2a623",
@@ -157,7 +157,7 @@ object PythonDependencyManager {
 
     private val downloadCancelled = AtomicBoolean(false)
 
-    /** Abort the in-flight download; the .tmp partial file is kept for a later resume. */
+    
     fun cancelDownload() {
         downloadCancelled.set(true)
         DependencyDownloadEngine.cancel()
@@ -282,11 +282,11 @@ object PythonDependencyManager {
             .any { it.isFile }
     }
 
-    /**
-     * True when [requirementsFile] names at least one package to install.
-     * A file that is empty, comments, or only pip options (index URL, constraints)
-     * is still a project file, but it is not a dependency install.
-     */
+    
+
+
+
+
     fun hasInstallableRequirements(requirementsFile: File): Boolean {
         if (!requirementsFile.isFile || !requirementsFile.canRead()) return false
         return hasInstallableRequirements(requirementsFile.readText())
@@ -305,7 +305,7 @@ object PythonDependencyManager {
         return if (comment >= 0) trimmed.substring(0, comment).trim() else trimmed
     }
 
-    /** Package, URL, editable, or `-r` include. Global pip options are not packages. */
+    
     private fun isInstallableRequirement(line: String): Boolean {
         if (line.isEmpty()) return false
         val token = line.substringBefore('=').substringBefore(' ').trim()
@@ -316,9 +316,9 @@ object PythonDependencyManager {
 
     suspend fun downloadPythonRuntime(context: Context): Boolean = withContext(Dispatchers.IO) {
         coroutineScope {
-            // Bridge engine progress into _downloadState for the whole call —
-            // callers' dialogs otherwise sit on Idle ("preparing") for the
-            // entire download since syncEngineState only ran once at the end.
+            
+            
+            
             val syncJob = launch {
                 DependencyDownloadEngine.state.collect { syncEngineState() }
             }
@@ -331,9 +331,9 @@ object PythonDependencyManager {
                 val pythonReady = resolvePythonBinary(context) != null
                 val muslReady = resolveMuslLinker(context) != null
                 if (pythonReady && muslReady) {
-                    // Runtimes that persisted across an app update never received
-                    // the on-device fixes (they only used to run after a fresh
-                    // download) — heal them in place before declaring ready.
+                    
+                    
+                    
                     ensureRuntimePatched(context)
                     markComplete()
                     return@coroutineScope true
@@ -426,9 +426,9 @@ object PythonDependencyManager {
                 return@withContext false
             }
 
-            // Heal runtimes downloaded by older app versions before pip runs:
-            // pip's subprocess spawns and packaging's musl platform probe both
-            // depend on the patched interpreter / sitecustomize bridge.
+            
+            
+            
             ensureRuntimePatched(context)
 
             val result = runPipWithWrapper(context, projectDir, pythonBin, pythonHome, muslLinker,
@@ -453,13 +453,13 @@ object PythonDependencyManager {
         }
     }
 
-    /**
-     * The absolute loader path to bake into PT_INTERP: the loader co-located
-     * with the runtime under `filesDir`, which is stable across app updates.
-     * The `nativeLibraryDir` loader is deliberately not used — that path is
-     * randomized on every app install/update, which would break embedded
-     * interpreters after the next update.
-     */
+    
+
+
+
+
+
+
     fun resolvedMuslInterpPath(context: Context): String? {
         val linkerName = getMuslLinkerName(getDeviceAbi())
         val coLocated = File(getPythonDir(context), "lib/$linkerName")
@@ -467,16 +467,16 @@ object PythonDependencyManager {
         return null
     }
 
-    /**
-     * Idempotently applies the on-device compatibility fixes to an extracted
-     * Python runtime: patches musl PT_INTERP paths this device cannot resolve
-     * (the stock `/lib/ld-musl-*.so.1`, the `$ORIGIN` form written by the
-     * 2.4.5 patcher, or a stale absolute path) to [resolvedInterp], and
-     * refreshes the `sitecustomize.py` subprocess bridge. A marker file
-     * short-circuits repeated runs.
-     *
-     * @return true when the runtime exists and is (now) healed.
-     */
+    
+
+
+
+
+
+
+
+
+
     internal fun healRuntimeInPlace(pythonHome: File, resolvedInterp: String): Boolean {
         val binDir = File(pythonHome, "bin")
         if (!binDir.isDirectory) return false
@@ -502,15 +502,15 @@ object PythonDependencyManager {
         return true
     }
 
-    /**
-     * Heals a runtime installed by an older app version (or after a partially
-     * failed download): the interp patch and sitecustomize bridge used to run
-     * only right after a fresh download, so runtimes that persisted across an
-     * app update never received them and pip kept failing with
-     * `No such file or directory: '/lib/ld-musl-*.so.1'`.
-     *
-     * @return true when a runtime exists and is (now) healed.
-     */
+    
+
+
+
+
+
+
+
+
     fun ensureRuntimePatched(context: Context): Boolean {
         return try {
             val pythonHome = getPythonDir(context)
@@ -577,45 +577,45 @@ object PythonDependencyManager {
         }
     }
 
-    /**
-     * Extracts the package name pip could not resolve, when the failure is a
-     * missing distribution (no wheel for this Python/platform). Returns null
-     * for other failure modes.
-     */
+    
+
+
+
+
     internal fun findNoWheelPackage(output: String): String? {
         NO_DISTRIBUTION_RE.find(output)?.let { return it.groupValues[1] }
         FAILED_BUILD_WHEEL_RE.find(output)?.let { return it.groupValues[1] }
         return null
     }
 
-    /**
-     * True when the `--only-binary` pass failed because no wheel matched and
-     * the index clearly responded. Retrying without `--only-binary` would try
-     * to build from source, which cannot work on-device (no compiler), so we
-     * skip it and report an actionable hint instead.
-     */
+    
+
+
+
+
+
     internal fun shouldSkipSourceBuildRetry(output: String): Boolean {
         if (!NO_DISTRIBUTION_RE.containsMatchIn(output)) return false
         return INDEX_PROOF_RE.containsMatchIn(output)
     }
 
-    /**
-     * A `sitecustomize.py` installed into the Python runtime dir. It is imported
-     * by *every* Python process (including pip subprocesses and PEP 517 build
-     * isolation venv pythons) and routes any python-like executable through the
-     * on-device musl loader, because the stock ELF interpreter path
-     * (`/lib/ld-musl-<arch>.so.1`) does not exist on Android. This is the safety
-     * net for subprocess spawns on runtimes whose PT_INTERP patch did not apply;
-     * the primary fix is patching PT_INTERP to the on-device absolute loader
-     * path.
-     *
-     * It also rescues `packaging`'s musl version probe: the probe reads the
-     * PT_INTERP string of `sys.executable` and executes it verbatim
-     * (`subprocess.run([ld])`) to compute the `musllinux_*` platform tags. On
-     * Android that string is never directly executable, so it is re-routed to
-     * the bundled loader — without this, compiled wheels (e.g. MarkupSafe for
-     * Flask) never match and pip falls back to a source build that cannot work.
-     */
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     internal fun buildSitecustomizeScript(): String = """
 import os
 import sys

@@ -138,14 +138,14 @@ object Routes {
     fun appModifierModify(packageName: String) = "app_modifier/modify/$packageName"
 }
 
-/**
- * Pop only while the current top entry is RESUMED. Once a pop starts, the
- * outgoing entry drops below RESUMED while still sitting on top of the stack —
- * a second rapid back tap or edge-swipe in that window would otherwise pop the
- * entry UNDERNEATH it, and one pop too many empties the back stack entirely,
- * leaving a permanently blank NavHost (dead white/black screen until the app
- * is restarted).
- */
+
+
+
+
+
+
+
+
 private fun NavController.popBackStackSafely(): Boolean {
     val entry = currentBackStackEntry ?: return false
     if (!entry.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) return false
@@ -216,9 +216,9 @@ fun AppNavigation() {
                             }
                         },
                         onPreviewApp = { summary ->
-                            // Open the activity directly. Routing through an empty
-                            // preview destination started a page slide, popped it,
-                            // then started the activity — three motions for one tap.
+                            
+                            
+                            
                             if (!AdvancedAppTypes.isUsable(context, summary.appType)) {
                                 Toast.makeText(context, Strings.advancedFeaturesOff, Toast.LENGTH_SHORT).show()
                             } else when (summary.appType) {

@@ -33,11 +33,11 @@ import com.webtoapp.ui.plugin.kindLabel
 import com.webtoapp.ui.plugin.pluginIcon
 import com.webtoapp.ui.theme.ifDescriptionsShown
 
-/**
- * Per-app plugin attachment card (create/edit app flows). Apps get the global
- * enabled set unless an explicit id list is attached — the card manages that
- * list against [PluginStore].
- */
+
+
+
+
+
 @Composable
 fun PluginPickerCard(
     enabled: Boolean,

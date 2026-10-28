@@ -12,12 +12,12 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import com.webtoapp.core.i18n.Strings
 
-/**
- * Full-screen dialog that hosts a script-opened window (OAuth popup) above
- * the page that called `window.open`. Closing the dialog does not by itself
- * deliver the sign-in result; the child window has to stay alive until the
- * page calls `window.close()` after `postMessage` (#1316).
- */
+
+
+
+
+
+
 internal object ScriptPopupHost {
 
     private class Entry(val dialog: Dialog, val onDismiss: () -> Unit)

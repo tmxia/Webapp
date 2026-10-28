@@ -33,11 +33,11 @@ class AxmlRebuilder {
         private const val ATTR_SCHEME = 0x01010027
         private const val ATTR_HOST = 0x01010028
 
-        /** `android:mimeType`. Only `<data>` inside an intent-filter uses this attribute. */
+        
         private const val ATTR_MIME_TYPE = 0x01010026
         private const val ATTR_PATH_PATTERN = 0x0101002c
 
-        // Typed-value dataType codes (android.util.TypedValue).
+        
         private const val TYPE_REFERENCE = 0x01
         private const val TYPE_STRING = 0x03
         private const val TYPE_INT_DEC = 0x10
@@ -46,7 +46,7 @@ class AxmlRebuilder {
 
         private const val ANDROID_NS = "http://schemas.android.com/apk/res/android"
 
-        /** android:* attribute name -> framework resource id (fragment merge). */
+        
         private val ANDROID_ATTR_IDS = mapOf(
             "name" to 0x01010003,
             "label" to 0x01010001,
@@ -95,7 +95,7 @@ class AxmlRebuilder {
             "usesPermissionFlags" to 0x010104ef
         )
 
-        /** `@android:<type>/<name>` references used by stack fragments. */
+        
         private val ANDROID_RES_IDS = mapOf(
             "style/Theme.Translucent" to 0x0103000f,
             "style/Theme.Translucent.NoTitleBar" to 0x01030010,
@@ -129,7 +129,7 @@ class AxmlRebuilder {
             "fullUser" to 13, "locked" to 14
         )
 
-        /** Fragment attributes whose numeric literals encode as TYPE_INT_DEC. */
+        
         private val INT_ATTRS = setOf(
             "initOrder", "priority", "order", "minSdkVersion", "maxSdkVersion"
         )
@@ -508,31 +508,31 @@ class AxmlRebuilder {
         }
     }
 
-    /**
-     * Register the app as a system share-sheet target (issue #943).
-     *
-     * Appends, just before `ShellActivity`'s closing `</activity>`, one intent-filter per send
-     * action:
-     *
-     * ```xml
-     * <intent-filter>
-     *   <action android:name="android.intent.action.SEND" />
-     *   <category android:name="android.intent.category.DEFAULT" />
-     *   <data android:mimeType="image-wildcard" />
-     * </intent-filter>
-     * ```
-     *
-     * (The mime value is one of [shareReceiveMimeTypes], e.g. `"image" + "/" + "*"`; it is
-     * spelled out at the call site rather than inline here because a literal wildcard would
-     * open a nested block comment.)
-     *
-     * `CATEGORY_BROWSABLE` is deliberately absent — unlike the `ACTION_VIEW` deep link filter,
-     * a share target must not be reachable from a browser. Two separate filters (rather than
-     * one carrying both actions) mirror what Android Studio emits, and keep `SEND_MULTIPLE`
-     * from being offered by senders that only handle single-item payloads.
-     *
-     * `ShellActivity` is already `android:exported="true"`, which `ACTION_SEND` requires.
-     */
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     private fun addShareReceiveIntentFilter(parsed: ParsedAxml, mimeTypes: List<String>) {
         if (mimeTypes.isEmpty()) return
 
@@ -552,9 +552,9 @@ class AxmlRebuilder {
             return
         }
 
-        // `android:mimeType` may not be present in the template's resource map: the shell
-        // manifest declares no <data> element. Same append-at-string-pool-index dance the
-        // deep link filter does for scheme/host.
+        
+        
+        
         var mimeAttrIndex = parsed.resourceMap!!.indexOf(ATTR_MIME_TYPE)
         if (mimeAttrIndex < 0) {
             mimeAttrIndex = parsed.resourceMap!!.size
@@ -566,7 +566,7 @@ class AxmlRebuilder {
             AppLogger.d(TAG, "Added mimeType to string pool and resource map at index $mimeAttrIndex")
         }
 
-        // Indices moved when the string pool grew above; re-resolve everything we use.
+        
         val currentNameAttrIndex = parsed.resourceMap!!.indexOf(ATTR_NAME)
         val currentMimeAttrIndex = parsed.resourceMap!!.indexOf(ATTR_MIME_TYPE)
 
@@ -606,12 +606,12 @@ class AxmlRebuilder {
         }
     }
 
-    /**
-     * Ensure [attrResId] has a slot in the manifest's resource map, appending its name to the
-     * string pool at the map boundary when absent (the same insert-and-shift dance the
-     * share-receive filter does inline for `mimeType`). Returns the attribute's index into
-     * the resource map — the value stored in the `name` field of attribute records.
-     */
+    
+
+
+
+
+
     private fun ensureAttrIndex(parsed: ParsedAxml, attrResId: Int, attrName: String): Int {
         val map = parsed.resourceMap ?: return -1
         val existing = map.indexOf(attrResId)
@@ -627,35 +627,35 @@ class AxmlRebuilder {
         return insertAt
     }
 
-    /**
-     * Register the app as an "open with" handler for text / config / code files
-     * (`WebViewConfig.openWithEnabled`).
-     *
-     * Two filters are appended before `ShellActivity`'s closing `</activity>`:
-     *
-     * ```xml
-     * <!-- mime-based: catches senders that label the file type -->
-     * <intent-filter>
-     *   <action android:name="android.intent.action.VIEW" />
-     *   <category android:name="android.intent.category.DEFAULT" />
-     *   <data android:mimeType="…" /> (one per ShareReceiveContract.OPEN_WITH_MIME_TYPES)
-     * </intent-filter>
-     *
-     * <!-- extension-based: catches senders declaring octet-stream or nothing -->
-     * <intent-filter>
-     *   <action android:name="android.intent.action.VIEW" />
-     *   <category android:name="android.intent.category.DEFAULT" />
-     *   <data android:scheme="file" android:host="*" android:pathPattern=".*\\.txt" /> …
-     * </intent-filter>
-     * ```
-     *
-     * The two MUST stay separate filters: data attributes across a filter form an AND
-     * across dimensions, so declaring mimeTypes and pathPatterns together would mean "files
-     * whose mime matches AND whose path matches" — the octet-stream case would never fire.
-     *
-     * `CATEGORY_BROWSABLE` is deliberately absent — a file association must not be
-     * reachable from a browser link.
-     */
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     private fun addOpenWithIntentFilters(parsed: ParsedAxml) {
         if (parsed.resourceMap == null) {
             AppLogger.e(TAG, "No resource map found, cannot add open-with intent-filters")
@@ -666,8 +666,8 @@ class AxmlRebuilder {
             return
         }
 
-        // Resource-map slots for every attribute we emit. scheme/host may already exist
-        // (deep link filter ran first); mimeType/pathPattern usually do not.
+        
+        
         val mimeAttrIndex = ensureAttrIndex(parsed, ATTR_MIME_TYPE, "mimeType")
         val schemeAttrIndex = ensureAttrIndex(parsed, ATTR_SCHEME, "scheme")
         val hostAttrIndex = ensureAttrIndex(parsed, ATTR_HOST, "host")
@@ -700,7 +700,7 @@ class AxmlRebuilder {
 
         val newChunks = mutableListOf<Chunk>()
 
-        // Filter 1 — mime types.
+        
         newChunks.addFilterHead()
         for (mimeType in com.webtoapp.core.share.ShareReceiveContract.OPEN_WITH_MIME_TYPES) {
             val mimeValueIndex = getOrAddString(pool, mimeType)
@@ -709,7 +709,7 @@ class AxmlRebuilder {
         }
         newChunks.add(buildEndElement(androidNsIndex, intentFilterNameIndex))
 
-        // Filter 2 — extension path patterns under both file and content schemes.
+        
         newChunks.addFilterHead()
         for (schemeValueIndex in listOf(fileSchemeIndex, contentSchemeIndex)) {
             for (ext in com.webtoapp.core.share.ShareReceiveContract.OPEN_WITH_EXTENSIONS) {
@@ -1055,11 +1055,11 @@ class AxmlRebuilder {
         return Chunk(CHUNK_START_ELEMENT, 0, chunkSize, buffer.array())
     }
 
-    /**
-     * `<data>` carrying exactly one string-typed attribute — `android:scheme` for the deep link
-     * filter, `android:mimeType` for the share-receive filter. The attribute's resource id is
-     * [attrNameIndex]; only its position in the resource map distinguishes the two uses.
-     */
+    
+
+
+
+
     private fun buildSingleAttrDataElement(
         androidNsIndex: Int,
         elementNameIndex: Int,
@@ -1098,11 +1098,11 @@ class AxmlRebuilder {
         return Chunk(CHUNK_START_ELEMENT, 0, chunkSize, buffer.array())
     }
 
-    /**
-     * `<data>` carrying an arbitrary list of string-typed attributes — used by the
-     * extension-based open-with filter, where one element combines `scheme`, `host`
-     * and `pathPattern`.
-     */
+    
+
+
+
+
     private fun buildMultiAttrDataElement(
         androidNsIndex: Int,
         elementNameIndex: Int,
@@ -1314,31 +1314,31 @@ class AxmlRebuilder {
         }
     }
 
-    // -----------------------------------------------------------------------
-    // Feature-stack manifest fragment merge (issue #1115)
-    //
-    // `mergeManifestFragment` grafts a curated TEXT XML fragment (shipped inside
-    // each feature-stack bundle) into the binary AndroidManifest of the output
-    // APK. Fragment root is <fragment>: its <application> child's elements are
-    // appended inside the manifest's <application>, every other top-level
-    // element (<uses-permission>, <queries>, <uses-feature>, …) lands at
-    // manifest level directly before <application>.
-    //
-    // Attribute values are literal strings except:
-    //   true / false            -> TYPE_INT_BOOLEAN
-    //   @android:<type>/<name>  -> TYPE_REFERENCE via ANDROID_RES_IDS
-    //   @ref:0xNN / @int:N / @hex:0xNN -> explicit typed values
-    //   configChanges           -> flag names OR-ed into TYPE_INT_HEX
-    //   launchMode etc          -> enum tables into TYPE_INT_DEC
-    //   ${applicationId}        -> substituted from [vars] before encoding
-    // -----------------------------------------------------------------------
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
 
-    /**
-     * Merge [fragmentXml] (a curated `<fragment>` document) into [axmlData].
-     * [vars] substitutes `${key}` placeholders inside attribute values
-     * (e.g. `applicationId` for provider authorities).
-     * Returns the original bytes untouched when the fragment is empty/invalid.
-     */
+    
+
+
+
+
+
     fun mergeManifestFragment(
         axmlData: ByteArray,
         fragmentXml: ByteArray,
@@ -1375,9 +1375,9 @@ class AxmlRebuilder {
             return axmlData
         }
 
-        // Collect elements first, then pre-register every attribute name via
-        // ensureAttrIndex (it inserts into the string pool mid-list and fixes
-        // all EXISTING chunk indices — chunk buffers built afterwards are safe).
+        
+        
+        
         val manifestEls = mutableListOf<org.w3c.dom.Element>()
         val appEls = mutableListOf<org.w3c.dom.Element>()
         for (node in root.childNodes.elementIterator()) {
@@ -1403,17 +1403,17 @@ class AxmlRebuilder {
         manifestEls.forEach { registerAttrs(it) }
         appEls.forEach { registerAttrs(it) }
 
-        // ensureAttrIndex inserts attribute names mid-pool (at the resource-map
-        // boundary) and shifts every index after the insertion point, so the ns
-        // index must be resolved AFTER registration — a value captured earlier
-        // goes stale and lands on an unrelated pool string.
+        
+        
+        
+        
         val androidNsIndex =
             getOrAddString(parsed.stringPool, "http://schemas.android.com/apk/res/android")
 
         val appChunks = appEls.flatMap { buildFragmentElement(parsed, it, androidNsIndex, vars) }
         if (appChunks.isNotEmpty()) parsed.chunks.addAll(appEnd, appChunks)
 
-        // Skip uses-permission entries the manifest already has.
+        
         val nameAttrIndex = parsed.resourceMap!!.indexOf(ATTR_NAME)
         val manifestChunks = manifestEls.filter {
             it.tagName != "uses-permission" || nameAttrIndex < 0 ||
@@ -1433,7 +1433,7 @@ class AxmlRebuilder {
         return rebuildAxml(parsed)
     }
 
-    /** Serialize a DOM element (with children) into start/end AXML chunks. */
+    
     private fun buildFragmentElement(
         parsed: ParsedAxml,
         el: org.w3c.dom.Element,
@@ -1441,11 +1441,11 @@ class AxmlRebuilder {
         vars: Map<String, String>
     ): List<Chunk> {
         val nameIndex = getOrAddString(parsed.stringPool, el.tagName)
-        // AXML attribute arrays MUST be sorted by attribute resource id:
-        // PackageParser resolves them via TypedArray's id-indexed lookup and
-        // rejects elements whose android:name isn't found ("<activity> does
-        // not specify android:name"), while lenient readers (aapt2) scan
-        // linearly and never notice the disorder.
+        
+        
+        
+        
+        
         val attrList = (0 until el.attributes.length)
             .mapNotNull { el.attributes.item(it) as? org.w3c.dom.Attr }
             .sortedBy { attr ->
@@ -1478,8 +1478,8 @@ class AxmlRebuilder {
             buf.putInt(o, if (isAndroid) androidNsIndex else -1)
             buf.putInt(o + 4, nameIdx)
             buf.putInt(o + 8, rawIdx)
-            buf.putShort(o + 12, 8)          // typed value size
-            buf.put(o + 14, 0)               // res0
+            buf.putShort(o + 12, 8)          
+            buf.put(o + 14, 0)               
             buf.put(o + 15, dataType.toByte())
             buf.putInt(o + 16, dataValue)
         }
@@ -1498,7 +1498,7 @@ class AxmlRebuilder {
         return out
     }
 
-    /** Map a fragment attribute value onto (dataType, data). */
+    
     private fun encodeAttrValue(
         attrName: String,
         raw: String,
@@ -1540,12 +1540,12 @@ class AxmlRebuilder {
     private fun org.w3c.dom.NodeList.elementIterator(): List<org.w3c.dom.Element> =
         (0 until length).mapNotNull { item(it) as? org.w3c.dom.Element }
 
-    /**
-     * Rewrite package name + expand relative class names.
-     * FAIL-LOUD: an unparseable or unrewritable manifest throws instead of
-     * returning the original bytes — shipping an unmodified manifest would
-     * silently export/clone the template's identity.
-     */
+    
+
+
+
+
+
     fun expandAndModify(axmlData: ByteArray, originalPackage: String, newPackage: String): ByteArray {
         val parsed = parseAxml(axmlData)
             ?: throw IllegalStateException("Failed to parse AndroidManifest.xml (package rewrite)")
@@ -1582,21 +1582,21 @@ class AxmlRebuilder {
         requiredComponents: Set<String> = DEFAULT_RUNTIME_COMPONENTS,
         targetSdk: Int? = null,
         minSdk: Int? = null,
-        /**
-         * Resolved mime filters for the inbound share channel (issue #943). Non-empty
-         * registers an `ACTION_SEND` / `ACTION_SEND_MULTIPLE` intent-filter on
-         * `ShellActivity` so the exported app appears in the system share sheet. Empty
-         * leaves the manifest untouched.
-         *
-         * Declared last, after [targetSdk], purely so the existing callers keep compiling —
-         * it is conceptually a sibling of `deepLinkHosts` / `deepLinkSchemes`.
-         */
+        
+
+
+
+
+
+
+
+
         shareReceiveMimeTypes: List<String> = emptyList(),
-        /**
-         * `WebViewConfig.openWithEnabled` — registers `ACTION_VIEW` intent-filters for
-         * text/config/code files so the exported app appears in the system's "open with"
-         * sheet. The mime/extension sets are `ShareReceiveContract.OPEN_WITH_*` constants.
-         */
+        
+
+
+
+
         openWithEnabled: Boolean = false
     ): ByteArray {
         val parsed = parseAxml(axmlData)
@@ -1654,16 +1654,16 @@ class AxmlRebuilder {
         }
     }
 
-    /**
-     * Activates the template's real raw resource reference, or removes the opt-in.
-     * Never manufacture an ID or substitute an android:value string for android:resource.
-     */
+    
+
+
+
     internal fun rewriteSaepPolicyMetadata(axmlData: ByteArray, resourceId: Int?): ByteArray {
         val parsed = checkNotNull(parseAxml(axmlData)) { "SAEP: invalid AndroidManifest.xml" }
         val strings = parsed.stringPool.strings
         val resourceMap = parsed.resourceMap ?: intArrayOf()
         val androidNs = strings.indexOf("http://schemas.android.com/apk/res/android")
-        val matches = mutableListOf<Pair<Int, Int>>() // chunk index, android:name offset
+        val matches = mutableListOf<Pair<Int, Int>>() 
         var depth = 0
         var inApplication = false
 
@@ -1807,19 +1807,19 @@ class AxmlRebuilder {
         }
     }
 
-    /**
-     * Rewrites the `<uses-sdk android:targetSdkVersion>` integer attribute in place. The shell
-     * template ships targetSdkVersion = 35; this lets a generated APK pin a different value
-     * (e.g. to 34+) for Play Store compliance without changing the template.
-     */
+    
+
+
+
+
     private fun modifyTargetSdk(parsed: ParsedAxml, targetSdk: Int) {
         modifyUsesSdkIntAttr(parsed, ATTR_TARGET_SDK_VERSION, targetSdk, "targetSdkVersion")
     }
 
-    /**
-     * Rewrites the `<uses-sdk android:minSdkVersion>` integer attribute in place. Raise-only
-     * from the template's 23 — the packed DEX cannot run below that API.
-     */
+    
+
+
+
     private fun modifyMinSdk(parsed: ParsedAxml, minSdk: Int) {
         modifyUsesSdkIntAttr(parsed, ATTR_MIN_SDK_VERSION, minSdk, "minSdkVersion")
     }

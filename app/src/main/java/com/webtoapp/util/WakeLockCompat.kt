@@ -7,24 +7,24 @@ import android.os.PowerManager
 import androidx.core.content.ContextCompat
 import com.webtoapp.core.logging.AppLogger
 
-/**
- * Fail-soft WakeLock helpers.
- *
- * Generated APKs only declare android.permission.WAKE_LOCK when an enabled
- * feature needs it, and OEM permission managers (MIUI/HyperOS) can revoke even
- * install-time "normal" permissions. A denied WakeLock.acquire() throws
- * SecurityException — that must degrade to running without the lock, never
- * crash the app (issue #1034).
- */
+
+
+
+
+
+
+
+
+
 object WakeLockCompat {
 
     private const val TAG = "WakeLockCompat"
 
-    /**
-     * Acquires a fresh partial wake lock for [timeoutMs], or returns null when
-     * the permission is missing or the acquire fails. The wake lock is a
-     * best-effort optimization — callers must keep working without it.
-     */
+    
+
+
+
+
     fun acquire(context: Context, tag: String, timeoutMs: Long): PowerManager.WakeLock? {
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.WAKE_LOCK) !=
             PackageManager.PERMISSION_GRANTED

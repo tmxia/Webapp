@@ -25,8 +25,8 @@ internal class OpenAiCompatProvider(@Suppress("UNUSED_PARAMETER") context: Conte
 
     override fun supports(provider: AiProvider) = provider != AiProvider.ANTHROPIC && provider != AiProvider.GOOGLE && provider != AiProvider.OLLAMA
 
-    // CUSTOM endpoints speaking Anthropic Messages or OpenAI Responses are owned by
-    // their dedicated providers; only Chat Completions stays here.
+    
+    
     override fun supports(req: ChatRequest): Boolean {
         if (!supports(req.apiKey.provider)) return false
         if (req.apiKey.provider == AiProvider.CUSTOM) {
@@ -37,9 +37,9 @@ internal class OpenAiCompatProvider(@Suppress("UNUSED_PARAMETER") context: Conte
 
     override fun chatStream(req: ChatRequest): Flow<LlmEvent> = callbackFlow {
         trySend(LlmEvent.Started)
-        // Track the live call across retries so a cancelled/aborted collection
-        // (idle timeout, user abort) tears down the actual HTTP connection instead
-        // of leaving an orphaned request streaming into a closed channel.
+        
+        
+        
         val inFlight = AtomicReference<Call?>()
         executeCall(req, isRetry = false, inFlight = inFlight)
         awaitClose { inFlight.get()?.cancel() }
@@ -65,8 +65,8 @@ internal class OpenAiCompatProvider(@Suppress("UNUSED_PARAMETER") context: Conte
                     try { Thread.sleep(1000) } catch (_: InterruptedException) {}
                     executeCall(req, isRetry = true, inFlight = inFlight)
                 } else {
-                    // Include the endpoint so a connection-level failure is
-                    // attributable to a specific base URL, not just "network error".
+                    
+                    
                     trySend(LlmEvent.Error("Network error: ${e.message ?: "connection failed"} [$url]")); close()
                 }
             }

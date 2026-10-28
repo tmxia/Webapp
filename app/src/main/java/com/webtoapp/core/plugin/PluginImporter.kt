@@ -10,20 +10,20 @@ import java.io.File
 import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 
-/**
- * Imports plugins from external sources into the package layout:
- *
- *  - `.user.js` / `.js` — Greasemonkey scripts. The `==UserScript==` metadata
- *    block becomes `plugin.json`; the full source (metadata included, it is
- *    just comments) becomes the `hcj/page` block of `plugin.html`.
- *  - `.hcj` — a zip of one plugin directory (`plugin.json` + files). Exported
- *    via [exportHcj].
- *  - `.zip` — same handling; a top-level `plugin.json` or a single root folder
- *    containing it are both accepted.
- *
- * No manifest block is required for plain `.js`: it imports as a plugin that
- * runs on all sites at document_end (same rule Tampermonkey applies).
- */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 class PluginImporter(private val context: Context) {
 
     companion object {
@@ -96,12 +96,12 @@ class PluginImporter(private val context: Context) {
         )
     }
 
-    /**
-     * Registers the content-script records of a parsed Chrome extension.
-     * The unpacked extension directory itself is managed by
-     * `ExtensionFileManager`; here we only mirror its modules into the
-     * unified plugin list.
-     */
+    
+
+
+
+
+
     suspend fun installChromeRecords(
         modules: List<com.webtoapp.core.extension.ExtensionModule>
     ): ImportResult {
@@ -122,11 +122,11 @@ class PluginImporter(private val context: Context) {
         }
     }
 
-    /**
-     * One-line bridge for producers that still emit [ExtensionModule] records
-     * (module market, GreasyFork installs, agent tools). The record is
-     * converted to a plugin package using the same mapping as the migrator.
-     */
+    
+
+
+
+
     suspend fun installLegacyModule(
         module: com.webtoapp.core.extension.ExtensionModule
     ): ImportResult {
@@ -148,9 +148,9 @@ class PluginImporter(private val context: Context) {
         return install(manifest, kind, PluginMigrator.filesFrom(m))
     }
 
-    // ------------------------------------------------------------------
-    // userscript metadata -> plugin.json
-    // ------------------------------------------------------------------
+    
+    
+    
 
     data class ParsedMeta(val manifest: PluginManifest, val warnings: List<String>)
 
@@ -201,7 +201,7 @@ class PluginImporter(private val context: Context) {
                 "run-at" -> runAt = value
                 "grant" -> grants.add(value)
                 "require" -> requires.add(value)
-                // @resource <name> <url>
+                
                 "resource" -> {
                     val sp = value.indexOf(' ').takeIf { it > 0 }
                         ?: value.indexOf('\t').takeIf { it > 0 }
@@ -257,9 +257,9 @@ class PluginImporter(private val context: Context) {
     fun isUserScript(content: String): Boolean =
         METADATA_BLOCK_REGEX.containsMatchIn(content)
 
-    // ------------------------------------------------------------------
-    // .hcj zip
-    // ------------------------------------------------------------------
+    
+    
+    
 
     private fun unzipPackage(uri: Uri): Map<String, String>? {
         val files = linkedMapOf<String, String>()
@@ -274,7 +274,7 @@ class PluginImporter(private val context: Context) {
                         var name = e.name
                         total += e.size.coerceAtLeast(0)
                         if (total > MAX_PACKAGE_BYTES) throw IllegalStateException("package too large")
-                        // Detect a single wrapping root folder on the fly.
+                        
                         val body = zis.readBytes()
                         if (name.endsWith("/" + PluginStore.MANIFEST_FILE) || name == PluginStore.MANIFEST_FILE) {
                             if (rootPrefix == null && name != PluginStore.MANIFEST_FILE) {
@@ -296,7 +296,7 @@ class PluginImporter(private val context: Context) {
         return if (files.containsKey(PluginStore.MANIFEST_FILE)) files else null
     }
 
-    // ------------------------------------------------------------------
+    
 
     suspend fun exportHcj(plugin: Plugin): File? = withContext(Dispatchers.IO) {
         val out = File(context.cacheDir, "${plugin.name.replace(Regex("[^a-zA-Z0-9\\u4e00-\\u9fa5]"), "_")}.hcj")

@@ -157,7 +157,7 @@ fun ChoiceBottomSheet(
                 color = MaterialTheme.colorScheme.onSurface
             )
 
-            // Scrollable so long option lists never push the action row off-screen.
+            
             Column(
                 modifier = Modifier
                     .weight(1f, fill = false)

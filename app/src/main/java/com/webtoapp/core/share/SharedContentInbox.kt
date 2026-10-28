@@ -15,26 +15,26 @@ import java.io.File
 import java.io.FileOutputStream
 import java.security.SecureRandom
 
-/**
- * The inbox behind the inbound share channel (issue #943).
- *
- * A received payload is **copied out of the sender's `content://` URI immediately**, while the
- * one-shot read grant that ships with `ACTION_SEND` is still valid — the URI is never stored.
- * Items live under `cacheDir/shared_inbox/` and are handed to the page through two channels:
- *
- * * the JS channel (`WTAShareInbox`, pushed by the caller), for pages and extension modules
- *   that opt in, and
- * * the file-chooser channel ([findForFileChooser] + [claim]), which works on any site because
- *   every upload control has to go through `onShowFileChooser`.
- *
- * An item stays in the inbox until a chooser claims it or
- * [ShareReceiveContract.TTL_MS] expires, so the two channels do not starve each other. Every
- * entry point is `suspend` and touches disk only off the main thread.
- *
- * Failure policy: this is a convenience channel, never a source of truth. Anything unexpected
- * (unreadable stream, oversize payload, malformed index) is logged and dropped, and the caller
- * carries on — a share that cannot be delivered must not affect app startup.
- */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 object SharedContentInbox {
 
     private const val TAG = "SharedContentInbox"
@@ -47,15 +47,15 @@ object SharedContentInbox {
     private fun indexFile(context: Context): File =
         File(inboxDir(context), ShareReceiveContract.INDEX_FILE_NAME)
 
-    /**
-     * Validate an inbound `ACTION_SEND` / `ACTION_SEND_MULTIPLE` intent and persist everything
-     * it carries that [allowedMimeTypes] admits.
-     *
-     * @param allowedMimeTypes the resolved filter list from the export config, e.g.
-     *   `["image"]`-style wildcards such as [ShareReceiveContract.MIME_IMAGES]. A wildcard
-     *   entry matches every subtype of its top-level type.
-     * @return the items that were accepted (possibly empty).
-     */
+    
+
+
+
+
+
+
+
+
     suspend fun acceptIntent(
         context: Context,
         intent: Intent?,
@@ -63,8 +63,8 @@ object SharedContentInbox {
     ): List<SharedItem> = withContext(Dispatchers.IO) {
         if (intent == null || allowedMimeTypes.isEmpty()) return@withContext emptyList()
 
-        // Issue #1029: a Recents relaunch replays the task's original ACTION_SEND —
-        // restoring history is not a new share, so it must never persist a second copy.
+        
+        
         if (isHistoryRelaunchIntent(intent)) return@withContext emptyList()
 
         val action = intent.action
@@ -85,8 +85,8 @@ object SharedContentInbox {
                     }
                 }
 
-                // Text only rides along with a single-send and only when nothing else was
-                // accepted, so a caption on a shared image does not turn into a second item.
+                
+                
                 if (accepted.isEmpty() && !text.isNullOrEmpty()) {
                     persistText(text, allowedMimeTypes)?.let { accepted += it }
                 }
@@ -110,21 +110,21 @@ object SharedContentInbox {
         }
     }
 
-    /**
-     * Accept an `ACTION_VIEW` "open with" intent (`WebViewConfig.openWithEnabled`).
-     *
-     * Same persistence contract as [acceptIntent] — the file is copied while the read grant
-     * is alive, then announced through both delivery channels — but the admit gate is wider:
-     * a file manager that labels `settings.conf` as `application/octet-stream` (or nothing)
-     * is still accepted when the URI's extension is in [ShareReceiveContract.OPEN_WITH_EXTENSIONS].
-     */
+    
+
+
+
+
+
+
+
     suspend fun acceptViewIntent(
         context: Context,
         intent: Intent?
     ): SharedItem? = withContext(Dispatchers.IO) {
         if (intent?.action != Intent.ACTION_VIEW) return@withContext null
-        // Issue #1029: same replay guard as [acceptIntent] — a Recents relaunch of a task
-        // originally opened via "open with" must not re-persist the file.
+        
+        
         if (isHistoryRelaunchIntent(intent)) return@withContext null
         val uri = intent.data ?: return@withContext null
         val scheme = uri.scheme?.lowercase()
@@ -155,21 +155,21 @@ object SharedContentInbox {
         }
     }
 
-    /**
-     * True when the intent is a Recents-task relaunch replaying the task's original
-     * launch intent rather than a fresh share (issue #1029). The system sets
-     * [Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY] on it; honouring it would persist —
-     * and re-announce to the page — a payload that was already consumed once.
-     */
+    
+
+
+
+
+
     internal fun isHistoryRelaunchIntent(intent: Intent?): Boolean =
         intent != null && (intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY) != 0
 
-    /**
-     * Mark [ids] consumed (issue #1038): the page took them via `WTAShareInbox.take()` /
-     * `consume(ids)`. Consumed items leave [pending] and [findForFileChooser] so they are
-     * never re-announced, but their payload is kept until TTL — a `fileUrl` the page just
-     * received must keep resolving for the rest of the window.
-     */
+    
+
+
+
+
+
     suspend fun consume(context: Context, ids: Collection<String>) = withContext(Dispatchers.IO) {
         if (ids.isEmpty()) return@withContext
         synchronized(lock) {
@@ -188,7 +188,7 @@ object SharedContentInbox {
         }
     }
 
-    /** Every queued item still awaiting use, newest first. */
+    
     suspend fun pending(context: Context): List<SharedItem> = withContext(Dispatchers.IO) {
         synchronized(lock) {
             pruneLocked(context)
@@ -196,10 +196,10 @@ object SharedContentInbox {
         }
     }
 
-    /**
-     * Look up any item still on disk, including consumed ones. A `fileUrl` / `readBlob`
-     * the page already received must keep resolving until TTL (issue #1296).
-     */
+    
+
+
+
     fun lookup(context: Context, id: String): SharedItem? {
         if (id.isBlank()) return null
         synchronized(lock) {
@@ -207,14 +207,14 @@ object SharedContentInbox {
         }
     }
 
-    /**
-     * Read up to [length] bytes of a file item starting at [offset]. Returns `null` when
-     * the id is unknown, is text, or the payload file is gone. An empty array is a
-     * successful EOF (offset past the end, or [length] clamped to zero).
-     *
-     * Synchronous: [ShareInboxBridge.readChunk] is a `@JavascriptInterface` return, so
-     * the JS caller blocks on this. Cap [length] at [ShareReceiveContract.READ_CHUNK_MAX_BYTES].
-     */
+    
+
+
+
+
+
+
+
     fun readChunk(context: Context, id: String, offset: Int, length: Int): ByteArray? {
         if (id.isBlank()) return null
         synchronized(lock) {
@@ -247,14 +247,14 @@ object SharedContentInbox {
         }
     }
 
-    /**
-     * The newest item that would satisfy a file chooser asking for [acceptTypes], without
-     * removing it. Returns null when nothing matches, in which case the caller must fall back
-     * to the system picker.
-     *
-     * Non-consuming on purpose: a caller that is about to ask the user first must not have
-     * dropped the item before the user answers.
-     */
+    
+
+
+
+
+
+
+
     suspend fun findForFileChooser(context: Context, acceptTypes: List<String>?): SharedItem? =
         withContext(Dispatchers.IO) {
             synchronized(lock) {
@@ -265,7 +265,7 @@ object SharedContentInbox {
             }
         }
 
-    /** Remove one item and its payload, after a chooser has taken it. */
+    
     suspend fun claim(context: Context, id: String) = withContext(Dispatchers.IO) {
         synchronized(lock) {
             val items = readIndex(context)
@@ -275,7 +275,7 @@ object SharedContentInbox {
         }
     }
 
-    /** Drop every queued item and its payload. */
+    
     suspend fun clear(context: Context) = withContext(Dispatchers.IO) {
         synchronized(lock) {
             readIndex(context).forEach { deletePayload(context, it) }
@@ -285,21 +285,21 @@ object SharedContentInbox {
         }
     }
 
-    /**
-     * Expire old items and evict oldest-first past the total-size ceiling. Also reclaims
-     * payload files whose index entry disappeared (e.g. a crash between the two writes).
-     */
+    
+
+
+
     suspend fun prune(context: Context) = withContext(Dispatchers.IO) {
         synchronized(lock) { pruneLocked(context) }
     }
 
-    // ──────────────────────────────────────────────────────────────────────────────
-    //  Internals
-    // ──────────────────────────────────────────────────────────────────────────────
+    
+    
+    
 
     private val lock = Any()
 
-    /** Extensions for the types the share filters actually admit. */
+    
     private val COMMON_EXTENSIONS = mapOf(
         "image/png" to "png",
         "image/jpeg" to "jpg",
@@ -314,7 +314,7 @@ object SharedContentInbox {
         ShareReceiveContract.MIME_TEXT to "txt"
     )
 
-    /** Caller must hold [lock]. */
+    
     private fun pruneLocked(context: Context) {
         try {
             val now = System.currentTimeMillis()
@@ -339,7 +339,7 @@ object SharedContentInbox {
 
             if (kept.size != all.size) writeIndex(context, kept)
 
-            // Orphan sweep: a payload with no index entry is unreachable, so reclaim it.
+            
             val referenced = kept.mapNotNull { it.path }.toSet()
             inboxDir(context).listFiles()?.forEach { file ->
                 val isIndex = file.name == ShareReceiveContract.INDEX_FILE_NAME
@@ -363,8 +363,8 @@ object SharedContentInbox {
         }
 
         val resolver = context.contentResolver
-        // A provider is free to omit the descriptor or report no length; neither is an error,
-        // and the streaming copy below enforces the cap regardless.
+        
+        
         val length = runCatching {
             resolver.openAssetFileDescriptor(uri, "r")?.use { it.length }
         }.getOrNull() ?: -1L
@@ -381,7 +381,7 @@ object SharedContentInbox {
         val copied = try {
             resolver.openInputStream(uri)?.use { input ->
                 FileOutputStream(target).use { output ->
-                    // Cap the copy itself: a sender can lie about the length above.
+                    
                     val buffer = ByteArray(64 * 1024)
                     var written = 0L
                     while (true) {
@@ -429,12 +429,12 @@ object SharedContentInbox {
         )
     }
 
-    /**
-     * A stored [ShareReceiveContract.MIME_IMAGES] entry also satisfies a chooser asking for a
-     * concrete type such as
-     * `image/png`, and vice versa — otherwise the pre-fill silently never fires on sites that
-     * list explicit extensions.
-     */
+    
+
+
+
+
+
     internal fun chooserAccepts(acceptTypes: List<String>?, mimeType: String): Boolean {
         if (acceptTypes.isNullOrEmpty()) return true
         if (acceptTypes.any { it.isNullOrBlank() }) return true
@@ -445,8 +445,8 @@ object SharedContentInbox {
                 accept == "*/*" -> true
                 accept == mimeType.lowercase() -> true
                 accept.endsWith("/*") -> mimeType.lowercase().startsWith(accept.removeSuffix("*"))
-                // Extension-style accepts (".png") are matched against the extension derived
-                // from the mime type, not against the mime string itself.
+                
+                
                 accept.startsWith(".") -> {
                     val extension = extensionForMimeType(mimeType)
                     extension != null && extension == accept.removePrefix(".")
@@ -469,11 +469,11 @@ object SharedContentInbox {
         }
     }
 
-    /**
-     * Suffix-based admit gate for the "open with" channel: the URI's path extension is in
-     * the configured list. Used only for `ACTION_VIEW` file/content payloads — send intents
-     * stay strictly mime-gated.
-     */
+    
+
+
+
+
     internal fun extensionAllowed(allowedExtensions: Collection<String>, uri: Uri): Boolean {
         if (allowedExtensions.isEmpty()) return false
         val ext = uri.lastPathSegment
@@ -492,15 +492,15 @@ object SharedContentInbox {
         }
     }
 
-    /**
-     * File extension for a mime type, or null when it cannot be determined.
-     *
-     * Deliberately not delegated to [MimeTypeMap] alone. That table is populated by the
-     * platform, is not guaranteed to contain a given entry, and is empty in unit tests — which
-     * would make an extension-dependent code path behave differently under test than on a
-     * device. The common share types are therefore resolved locally, with the platform table
-     * and finally the subtype itself as fallbacks.
-     */
+    
+
+
+
+
+
+
+
+
     internal fun extensionForMimeType(mimeType: String): String? {
         val type = mimeType.lowercase().trim()
         if (type.isEmpty()) return null
@@ -509,8 +509,8 @@ object SharedContentInbox {
 
         MimeTypeMap.getSingleton().getExtensionFromMimeType(type)?.let { return it }
 
-        // `image/svg+xml` -> "svg", `video/x-matroska` -> "x-matroska" (harmless, and still a
-        // single safe path segment).
+        
+        
         val subtype = type.substringAfter('/', "")
             .substringBefore('+')
             .replace(Regex("[^a-z0-9]"), "")
@@ -534,12 +534,12 @@ object SharedContentInbox {
         null
     }
 
-    /**
-     * Never trust a sender-supplied filename: strip directory separators and control
-     * characters, keep a single path segment, and fall back to an id-derived name. The stored
-     * name is only ever used inside the inbox directory, but a traversal here would still let
-     * one app overwrite another app's cache files.
-     */
+    
+
+
+
+
+
     internal fun sanitizeFileName(raw: String?, id: String, mimeType: String): String {
         val cleaned = raw
             ?.substringAfterLast('/')

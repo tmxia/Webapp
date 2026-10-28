@@ -57,8 +57,8 @@ fun ShellActivationDialog(
                     config.activationCodes
                 )
             }
-            // AlreadyActivated counts too: re-entering the card that already backs
-            // the grant must still let the user in, not trap them on the dialog.
+            
+            
             when (result) {
                 is ActivationResult.Success -> onActivated(result.url)
                 is ActivationResult.AlreadyActivated -> onActivated(null)
@@ -129,8 +129,8 @@ fun ShellAnnouncementDialog(
             }
         },
         onLinkClick = { url ->
-            // Guarded like the preview's announcement dialog: normalize, reject blank targets,
-            // and survive a missing browser app instead of crashing inside composition.
+            
+            
             try {
                 val safeUrl = normalizeExternalUrlForIntent(url)
                 if (safeUrl.isBlank()) {
