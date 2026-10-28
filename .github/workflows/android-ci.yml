@@ -112,7 +112,23 @@ jobs:
           echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 -d > ${{ github.workspace }}/release.keystore
           test -s ${{ github.workspace }}/release.keystore && echo "Keystore decoded successfully"
 
-      - name: Build APKs
+      # ★ Push 触发时：只构建 Standard 变体，节约时间
+      - name: Build APKs (Standard Only)
+        if: github.event_name == 'push'
+        env:
+          RELEASE_STORE_FILE: ${{ github.workspace }}/release.keystore
+          RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        run: |
+          ./gradlew --no-daemon --no-configuration-cache \
+            -Dkotlin.compiler.execution.strategy=in-process \
+            -PallowDebugSignedRelease=true \
+            :app:assembleStandardRelease
+
+      # ★ 手动触发时：构建所有变体 (Standard/Gplay, Debug/Release, Shell)
+      - name: Build APKs (Full)
+        if: github.event_name == 'workflow_dispatch'
         env:
           RELEASE_STORE_FILE: ${{ github.workspace }}/release.keystore
           RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
