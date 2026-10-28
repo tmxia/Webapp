@@ -59,9 +59,22 @@ if (isFdroidBuild) {
 android {
 
     signingConfigs {
-        if (hasReleaseSigningConfig) {
-            create("release") {
-                storeFile = releaseSigningStoreFile
+        create("release") {
+            // 优先读取 GitHub Actions 注入的环境变量，否则退回本地 local.properties
+            val envStoreFile = System.getenv("RELEASE_STORE_FILE")
+            val envStorePassword = System.getenv("RELEASE_STORE_PASSWORD")
+            val envKeyAlias = System.getenv("RELEASE_KEY_ALIAS")
+            val envKeyPassword = System.getenv("RELEASE_KEY_PASSWORD")
+
+            val localStoreFile = localProperties.getProperty("signing.storeFile")
+
+            if (!envStoreFile.isNullOrBlank()) {
+                storeFile = file(envStoreFile)
+                storePassword = envStorePassword
+                keyAlias = envKeyAlias
+                keyPassword = envKeyPassword
+            } else if (!localStoreFile.isNullOrBlank()) {
+                storeFile = file(localStoreFile)
                 storePassword = localProperties.getProperty("signing.storePassword")
                 keyAlias = localProperties.getProperty("signing.keyAlias")
                 keyPassword = localProperties.getProperty("signing.keyPassword")

@@ -107,7 +107,17 @@ jobs:
             "cmake;3.22.1" \
             "ndk;28.2.13676358"
 
+      - name: Decode Keystore
+        run: |
+          echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 -d > ${{ github.workspace }}/release.keystore
+          test -s ${{ github.workspace }}/release.keystore && echo "Keystore decoded successfully"
+
       - name: Build APKs
+        env:
+          RELEASE_STORE_FILE: ${{ github.workspace }}/release.keystore
+          RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
         run: |
           ./gradlew --no-daemon --no-configuration-cache \
             -Dkotlin.compiler.execution.strategy=in-process \
