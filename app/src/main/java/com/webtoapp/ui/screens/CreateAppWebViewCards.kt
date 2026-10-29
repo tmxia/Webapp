@@ -441,14 +441,14 @@ fun AdBlockCard(
     val context = LocalContext.current
     val adBlocker = remember { com.webtoapp.WebToAppApplication.adBlock }
     var hostsEpoch by remember { mutableStateOf(0) }
-    
-    
+    // Preset sources plus the user's custom imports (file picks / custom URLs) so the
+    // per-app subscription selector can reference anything loaded in Hosts Blocking (#623).
     val allSources = remember(hostsEpoch) {
         com.webtoapp.core.adblock.AdBlocker.getPopularHostsSources() + adBlocker.getCustomHostsSources()
     }
     LaunchedEffect(Unit) {
-        
-        
+        // Lightweight metadata-only hydration — just enough to know which sources are downloaded.
+        // A full loadHostsRules() here loaded the entire filter DB on scroll and could OOM (#356).
         adBlocker.hydrateSourcesMetadata(context)
         hostsEpoch += 1
     }
@@ -954,8 +954,8 @@ fun BrowserAdvancedConfigCard(
                     ),
                     verticalArrangement = Arrangement.spacedBy(WtaSpacing.SectionGap)
                 ) {
-                    
-                    
+                    // Documented home of User-Agent mode. This block used to sit outside any
+                    // section, so the identity controls had no category fold of their own.
                     WtaSection(
                         title = Strings.sectionBrowserIdentity,
                         headerStyle = WtaSectionHeaderStyle.Quiet,
@@ -1000,9 +1000,9 @@ fun BrowserAdvancedConfigCard(
                                 onCheckedChange = { onConfigChange(config.copy(zoomEnabled = it)) }
                             )
                             WtaSectionDivider()
-                            
-                            
-                            
+                            // Per-app page zoom (#654): transferred from the runtime hidden
+                            // toolbar into Advanced Settings — this is THE zoom for the app,
+                            // applied via initialScale (whole page) on every run. Same Chrome-style presets.
                             var pageZoomDialogOpen by remember { mutableStateOf(false) }
                             WtaChoiceRow(
                                 title = Strings.pageZoomSettingLabel,
@@ -1015,8 +1015,8 @@ fun BrowserAdvancedConfigCard(
                                     currentZoom = config.pageZoomPercent,
                                     onSelect = { percent ->
                                         onConfigChange(config.copy(
-                                            
-                                            
+                                            // 0 means "reset" in the presets dialog; the editor
+                                            // stores the concrete default (100) instead.
                                             pageZoomPercent = if (percent > 0) percent else 100
                                         ))
                                     },
@@ -1048,8 +1048,8 @@ fun BrowserAdvancedConfigCard(
                                 onCheckedChange = { onConfigChange(config.copy(swipeRefreshEnabled = it)) }
                             )
 
-                            
-                            
+                            // Same radio-group pattern as the PWA offline
+                            // strategy selector in sectionOfflinePerformance.
                             androidx.compose.animation.AnimatedVisibility(
                                 visible = config.swipeRefreshEnabled,
                                 enter = CardExpandTransition,
@@ -2055,10 +2055,10 @@ private fun UserAgentControls(
         else -> null
     }
 
-    
-    
-    
-    
+    // Picking a flavor is the entire identity decision. It has to clear the custom mode (or a
+    // leftover UA string would keep winning) and switch the kernel disguise on, because the
+    // anti-detection JS that accompanies a flavor is gated behind that flag. Desktop flavors
+    // also request the desktop layout; that flag is what `desktopMode` exports.
     fun selectFlavor(choice: com.webtoapp.core.kernel.KernelFlavor) {
         onConfigChange(
             config.copy(
@@ -2156,10 +2156,10 @@ private fun UserAgentControls(
                 onConfigChange(
                     config.copy(
                         userAgentMode = UserAgentMode.CUSTOM,
-                        
-                        
-                        
-                        
+                        // A leftover flavor would keep winning whenever the typed string
+                        // cannot be described, and kernel disguise rewrites the UA after
+                        // the identity is applied. Custom means the typed string is the
+                        // identity; disguise can be turned back on from Special Settings.
                         kernelFlavor = com.webtoapp.core.kernel.KernelFlavor.SYSTEM_DEFAULT,
                         enableKernelDisguise = false
                     )
@@ -2297,12 +2297,10 @@ fun FullscreenModeCard(
     enabled: Boolean,
     showStatusBar: Boolean = false,
     showNavigationBar: Boolean = false,
-    hideBrowserToolbarInFullscreen: Boolean = true,
     webViewConfig: WebViewConfig = WebViewConfig(),
     onEnabledChange: (Boolean) -> Unit,
     onShowStatusBarChange: (Boolean) -> Unit = {},
     onShowNavigationBarChange: (Boolean) -> Unit = {},
-    onHideBrowserToolbarInFullscreenChange: (Boolean) -> Unit = {},
     onWebViewConfigChange: (WebViewConfig) -> Unit = {}
 ) {
     var statusBarConfigExpanded by remember { mutableStateOf(false) }
@@ -2367,9 +2365,9 @@ fun FullscreenModeCard(
                     exit = CardCollapseTransition
                 ) {
                     Column {
-                        
-                        
-                        
+                        // #916: an unset side (null) follows the uniform value above;
+                        // dragging a side pins it. Left/right map to start/end so RTL
+                        // layouts mirror automatically.
                         val uniform = webViewConfig.fullscreenContentPaddingDp
                         WtaSliderRow(
                             title = Strings.paddingSideTop,
@@ -2490,9 +2488,9 @@ fun FullscreenModeCard(
                                                     statusBarBackgroundTypeDark = newConfig.statusBarBackgroundType,
                                                     statusBarBackgroundImageDark = newConfig.statusBarBackgroundImage,
                                                     statusBarBackgroundAlphaDark = newConfig.statusBarBackgroundAlpha,
-                                                    
-                                                    
-                                                    
+                                                    // statusBarHeightDp is a shared (non-per-theme)
+                                                    // field: the dark tab edits it in place, so it
+                                                    // must be written back like the light tab does.
                                                     statusBarHeightDp = newConfig.statusBarHeightDp
                                                 )
                                             )
@@ -2508,18 +2506,18 @@ fun FullscreenModeCard(
     }
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
+/**
+ * Inbound share sheet configuration (issue #943).
+ *
+ * Lets other apps hand content into this app through the Android share sheet. This is the
+ * mirror image of the outbound `navigator.share` support: that one pushes the page's content
+ * out to the system, this one pulls the system's content in.
+ *
+ * Rendered as rows inside [SpecialSettingsCard]'s links section: full-bleed
+ * [WtaToggleRow] / [WtaChoiceRow] headers carrying their own padding, with anything that is
+ * not a row (radio group, notes) inside a [WtaSpacing.RowHorizontal]-padded column. Expansion
+ * state is its own `remember`, never bound to the feature switch.
+ */
 @Composable
 private fun ShareReceiveRows(
     webViewConfig: WebViewConfig,
@@ -2539,9 +2537,9 @@ private fun ShareReceiveRows(
             subtitle = Strings.receiveShareHint.ifDescriptionsShown(),
             checked = enabled,
             onCheckedChange = { on ->
-                
-                
-                
+                // The master switch is a convenience over the two filters: turning it on
+                // enables the common case (images) and keeps any text opt-in the user already
+                // made; turning it off clears both so the exported manifest drops the filter.
                 onWebViewConfigChange(
                     webViewConfig.copy(
                         receiveShareImages = on,
@@ -2636,8 +2634,8 @@ private fun ShareReceiveRows(
                             }
                         )
 
-                        
-                        
+                        // One description for the current selection — the radio options
+                        // themselves stay label-only, per the config-card grammar.
                         Text(
                             text = when (deliveryMode) {
                                 ShareDeliveryMode.JS_EVENT -> Strings.receiveShareModeEventHint

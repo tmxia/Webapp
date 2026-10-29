@@ -34,6 +34,7 @@ import com.webtoapp.ui.shared.parseBandColor
 import com.webtoapp.core.webview.WebViewCallbacks
 import com.webtoapp.data.model.WebViewConfig
 import com.webtoapp.data.model.hasAnyToolbarItem
+import com.webtoapp.data.model.isBrowserToolbarVisible
 import com.webtoapp.data.model.resolveToolbarButtons
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -99,8 +100,8 @@ fun BoxScope.ShellScaffoldLayout(
         val controller = com.webtoapp.core.webview.AutoRefreshController(
             intervalSec = webViewConfig.autoRefreshIntervalSec.coerceAtLeast(1),
             showCountdown = webViewConfig.autoRefreshShowCountdown,
-            
-            
+            // Surface-first: webViewRef stays null on the GeckoView kernel, where the
+            // countdown used to run against a reload that never happened.
             onReload = { browserSurface?.reload() ?: webViewRef?.reload() }
         )
         autoRefreshController = controller
@@ -114,8 +115,8 @@ fun BoxScope.ShellScaffoldLayout(
     }
 
     val toolbarCfg = config.webViewConfig
-    
-    
+    // Find-in-page runs on both kernels: WebView findAllAsync on the system engine,
+    // GeckoView's native SessionFinder on the Gecko engine (BrowserSurface.findInPage).
     val toolbarEnabled = toolbarCfg.browserToolbarEnabled
     val hasAnyItem = hasAnyToolbarItem(
         toolbarShowTitle = toolbarCfg.toolbarShowTitle,
@@ -126,10 +127,11 @@ fun BoxScope.ShellScaffoldLayout(
         toolbarShowConsole = toolbarCfg.toolbarShowConsole,
         toolbarShowFind = toolbarCfg.toolbarShowFind
     )
-    val showToolbar = toolbarEnabled && hasAnyItem &&
-        (!hideToolbar || config.webViewConfig.showToolbarInFullscreen)
+    // Fullscreen hides the system bars only. The toolbar stays when its own switch is on.
+    val showToolbar = isBrowserToolbarVisible(toolbarEnabled, hasAnyItem)
+    val chromeHost = remember { BrowserChromeHost() }
 
-    
+    // Every button requires both the master switch and its own flag.
     val toolbarVisibility = resolveToolbarButtons(
         toolbarEnabled = toolbarEnabled,
         toolbarShowTitle = toolbarCfg.toolbarShowTitle,
@@ -141,14 +143,17 @@ fun BoxScope.ShellScaffoldLayout(
         toolbarShowFind = toolbarCfg.toolbarShowFind
     )
 
+    CompositionLocalProvider(LocalBrowserChromeHost provides if (showToolbar) chromeHost else null) {
     Scaffold(
 
-        contentWindowInsets = if (hideToolbar && !showToolbar) {
+        // Fullscreen already owns the system bars, so the scaffold must not add
+        // them again under the toolbar. Otherwise the page sits below a second inset.
+        contentWindowInsets = if (hideToolbar) {
             WindowInsets(0, 0, 0, 0)
         } else {
-            
-            
-            
+            // #1075: the window-level IME padding already lifts the layout above
+            // the keyboard, so the navigation-bar inset must not stack on top of
+            // it — the double inset rendered as a black band above the IME.
             ScaffoldDefaults.contentWindowInsets.exclude(WindowInsets.ime)
         },
         modifier = Modifier,
@@ -174,7 +179,8 @@ fun BoxScope.ShellScaffoldLayout(
                     showFindButton = toolbarVisibility.showFind,
                     showFindBar = showFindBar,
                     onToggleFindBar = onToggleFindBar,
-                    showPluginButton = config.pluginsEnabled
+                    showPluginButton = config.pluginsEnabled,
+                    leadingAction = chromeHost.leadingAction
                 )
             }
         }
@@ -182,10 +188,10 @@ fun BoxScope.ShellScaffoldLayout(
 
         val density = LocalDensity.current
 
-        
-        
-        
-        
+        // On the classic pre-API-30 resize path the decor fits system windows: the status-bar
+        // inset is 0 whether or not a bar is drawn, and nothing renders behind the bar area
+        // (issue #683). Never pad the content by a guessed status-bar band there — only the
+        // user's explicit statusBarHeightDp override may reserve space.
         val classicSystemBars = LocalContext.current.let { ctx ->
             (ctx as? android.app.Activity)?.let { com.webtoapp.ui.shared.WindowHelper.isClassicSystemBarsWindow(it) } ?: false
         }
@@ -203,19 +209,19 @@ fun BoxScope.ShellScaffoldLayout(
 
         val actualStatusBarPadding = if (statusBarHeightDp >= 0) statusBarHeightDp.dp else systemStatusBarHeightDp
 
-        
-        
-        
+        // 全屏模式下可选的内容内边距：把网页交互区从屏幕边缘内移，让角落按钮易于点按，
+        // 同时缓解与系统返回手势边缘带的冲突。默认 0 → 向后兼容旧行为。
+        // #916: each side may override the uniform value; null follows the base.
         val padTop = config.webViewConfig.fullscreenPadTop.dp
         val padStart = config.webViewConfig.fullscreenPadStart.dp
         val padEnd = config.webViewConfig.fullscreenPadEnd.dp
-        
-        
+        // #1172: the bottom band is anchored to the screen edge. The keyboard
+        // already covers it, so it must not ride up as a second gap.
         val padBottom = effectiveBottomContentPadding(config.webViewConfig.fullscreenPadBottom.dp)
 
-        
-        
-        
+        // Issue #771: transparent/image bars overlay the content (persistent
+        // WeChat-style bar) instead of reserving a strip; solid bars keep the
+        // reservation so page controls stay clear of the status icons.
         val shellDark = androidx.compose.foundation.isSystemInDarkTheme()
         val shellBgType = if (shellDark) config.webViewConfig.statusBarBackgroundTypeDark else config.webViewConfig.statusBarBackgroundType
         val shellMode = if (shellDark) config.webViewConfig.statusBarColorModeDark else config.webViewConfig.statusBarColorMode
@@ -318,7 +324,7 @@ fun BoxScope.ShellScaffoldLayout(
                 onDismiss = onErrorDismiss
             )
 
-            
+            // Console panel (slides up from bottom when toggled)
             AnimatedVisibility(
                 visible = showConsole,
                 enter = androidx.compose.animation.slideInVertically(initialOffsetY = { it }) + fadeIn(),
@@ -335,7 +341,7 @@ fun BoxScope.ShellScaffoldLayout(
                 )
             }
 
-            
+            // Find-in-page bar (native engine search; slides up like the console)
             AnimatedVisibility(
                 visible = showFindBar,
                 enter = androidx.compose.animation.slideInVertically(initialOffsetY = { it }) + fadeIn(),
@@ -348,8 +354,8 @@ fun BoxScope.ShellScaffoldLayout(
                 )
             }
 
-            
-            
+            // Unified plugin surface: sheet, panel host and the floating handle
+            // (entry style TOOLBAR mounts inside ShellTopAppBar instead).
             if (config.pluginsEnabled) {
                 val pluginContext = LocalContext.current
                 val pluginsUnsupported = remember(config.engineType, webViewConfig.dnsConfig.echEffective) {
@@ -370,9 +376,9 @@ fun BoxScope.ShellScaffoldLayout(
             }
         }
     }
+    }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ShellTopAppBar(
     pageTitle: String,
@@ -394,119 +400,44 @@ private fun ShellTopAppBar(
     showFindButton: Boolean = true,
     showFindBar: Boolean = false,
     onToggleFindBar: () -> Unit = {},
-    showPluginButton: Boolean = false
+    showPluginButton: Boolean = false,
+    leadingAction: BrowserChromeAction? = null
 ) {
     val context = LocalContext.current
-
-    TopAppBar(
-        windowInsets = TopAppBarDefaults.windowInsets,
-        title = {
-            Column {
-                if (showTitle) {
-                    Text(
-                        text = pageTitle.ifEmpty { appName },
-                        style = MaterialTheme.typography.titleMedium,
-                        maxLines = 1,
-                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-                if (showUrl && currentUrl.isNotEmpty()) {
-                    Text(
-                        text = currentUrl.shortenForShellToolbar(),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
-                    )
+    BrowserChromeBar(
+        title = pageTitle.ifEmpty { appName },
+        showTitle = showTitle,
+        url = currentUrl,
+        showUrl = showUrl,
+        showBack = showBack,
+        showForward = showForward,
+        showRefresh = showRefresh,
+        canGoBack = canGoBack,
+        canGoForward = canGoForward,
+        onBack = {
+            (context as? AppCompatActivity)?.let { activity ->
+                // Surface-first: on the GeckoView kernel webViewRef is null and
+                // the engine's own history must drive back navigation.
+                if (browserSurface != null) {
+                    ShellWebViewNavigation.goBackOrFinish(activity, browserSurface)
+                } else {
+                    ShellWebViewNavigation.goBackOrFinish(activity, webViewRef)
                 }
             }
         },
-        actions = {
-            if (showBack) {
-                com.webtoapp.ui.design.WtaIconButton(
-                    onClick = {
-                        (context as? AppCompatActivity)?.let { activity ->
-                            
-                            
-                            if (browserSurface != null) {
-                                ShellWebViewNavigation.goBackOrFinish(activity, browserSurface)
-                            } else {
-                                ShellWebViewNavigation.goBackOrFinish(activity, webViewRef)
-                            }
-                        }
-                    },
-                    icon = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = "Back",
-                    enabled = canGoBack
-                )
-            }
-            if (showForward) {
-                com.webtoapp.ui.design.WtaIconButton(
-                    onClick = { browserSurface?.goForward() ?: webViewRef?.goForward() },
-                    icon = Icons.AutoMirrored.Filled.ArrowForward,
-                    contentDescription = "Forward",
-                    enabled = canGoForward
-                )
-            }
-            if (showRefresh) {
-                com.webtoapp.ui.design.WtaIconButton(
-                    onClick = { browserSurface?.reload() ?: webViewRef?.reload() },
-                    icon = Icons.Default.Refresh,
-                    contentDescription = "Refresh"
-                )
-            }
-            
-            
-            if (showConsoleButton) {
-                BadgedBox(
-                    badge = {
-                        if (consoleErrorCount > 0) {
-                            Badge { Text("$consoleErrorCount") }
-                        }
-                    }
-                ) {
-                    com.webtoapp.ui.design.WtaIconButton(
-                        onClick = onToggleConsole,
-                        icon = if (showConsole) Icons.Default.Terminal else Icons.Outlined.Terminal,
-                        contentDescription = Strings.console
-                    )
-                }
-            }
-            
-            
-            if (showFindButton) {
-                com.webtoapp.ui.design.WtaIconButton(
-                    onClick = onToggleFindBar,
-                    icon = if (showFindBar) Icons.Filled.Search else Icons.Outlined.Search,
-                    contentDescription = Strings.nativeBridgeCapsFindInPage
-                )
-            }
-            
-            
-            if (showPluginButton) {
-                com.webtoapp.ui.plugin.PluginToolbarEntries(
-                    onOpenSheet = { com.webtoapp.core.plugin.PluginHostState.openPluginSheet() }
-                )
-            }
-        },
-        colors = TopAppBarDefaults.topAppBarColors(
-
-            containerColor = androidx.compose.ui.graphics.Color.Transparent,
-            scrolledContainerColor = androidx.compose.ui.graphics.Color.Transparent,
-            titleContentColor = MaterialTheme.colorScheme.onSurface
-        )
+        onForward = { browserSurface?.goForward() ?: webViewRef?.goForward() },
+        onRefresh = { browserSurface?.reload() ?: webViewRef?.reload() },
+        showConsoleButton = showConsoleButton,
+        consoleExpanded = showConsole,
+        onToggleConsole = onToggleConsole,
+        consoleErrorCount = consoleErrorCount,
+        showFindButton = showFindButton,
+        findExpanded = showFindBar,
+        onToggleFind = onToggleFindBar,
+        showPluginButton = showPluginButton,
+        leadingAction = leadingAction,
+        containerColor = androidx.compose.ui.graphics.Color.Transparent
     )
-}
-
-private fun String.shortenForShellToolbar(): String {
-    val withoutScheme = when {
-        startsWith("https://") -> substring(8)
-        startsWith("http://") -> substring(7)
-        else -> this
-    }
-
-    return withoutScheme.substringBefore('?').substringBefore('#')
 }
 
 @Composable
