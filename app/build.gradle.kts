@@ -65,6 +65,10 @@ if (isFdroidBuild) {
 }
 
 android {
+    testOptions {
+        unitTests.isReturnDefaultValues = true
+    }
+
 
     signingConfigs {
         create("release") {
@@ -93,7 +97,7 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.webtoapp"
+        applicationId = "com.webapp.client"
         // Play automatic protection rejects a bundle below 24. Both flavors share this floor.
         minSdk = 24
 
