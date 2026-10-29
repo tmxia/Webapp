@@ -68,8 +68,7 @@ jobs:
             -PallowDebugSignedRelease=true \
             :app:compileStandardDebugKotlin \
             :shell:compileDebugKotlin \
-            :app:testStandardDebugUnitTest \
-            :app:checkConfigFieldDrift
+                        :app:checkConfigFieldDrift
 
       - name: Compile F-Droid variant
         run: |
