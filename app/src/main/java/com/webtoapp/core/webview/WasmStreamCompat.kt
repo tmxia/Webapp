@@ -1,17 +1,17 @@
 package com.webtoapp.core.webview
 
-
-
-
-
-
-
-
-
-
-
-
-
+/**
+ * Keeps a large WebAssembly download moving inside System WebView.
+ *
+ * Godot's web loader wraps the wasm response in a progress stream and then
+ * reads only `response.clone().body`. The unread branch of that tee applies
+ * backpressure, so a multi-megabyte `.wasm` stops mid-transfer and the splash
+ * never finishes. Draining the unread branch lets the clone keep flowing.
+ *
+ * The same script retries a WebGL context that the GPU rejected only because
+ * `failIfMajorPerformanceCaveat` was set. Godot's feature check uses a bare
+ * `getContext("webgl2")`; the real context comes later with that flag.
+ */
 internal object WasmStreamCompat {
     const val SCRIPT: String = """(function(){
 'use strict';

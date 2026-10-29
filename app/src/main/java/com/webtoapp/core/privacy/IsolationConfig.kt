@@ -32,7 +32,7 @@ data class IsolationConfig(
         private val gson = com.webtoapp.util.GsonProvider.gson
         val DISABLED = IsolationConfig(enabled = false)
 
-        
+        /** 基础防护：指纹随机化 + Canvas 噪音 + WebRTC 屏蔽，行为最不易被察觉。 */
         val BASIC = IsolationConfig(
             enabled = true,
             protectCanvas = true,
@@ -42,7 +42,7 @@ data class IsolationConfig(
             blockWebRTC = true
         )
 
-        
+        /** 标准防护：完整指纹防护（无环境伪装）。 */
         val STANDARD = IsolationConfig(
             enabled = true,
             protectCanvas = true,
@@ -52,7 +52,7 @@ data class IsolationConfig(
             blockWebRTC = true
         )
 
-        
+        /** 最强防护：全部防护 + 语言/时区/分辨率伪装 + 每次启动换指纹。 */
         val MAXIMUM = IsolationConfig(
             enabled = true,
             fingerprintConfig = FingerprintConfig(randomize = true, regenerateOnLaunch = true),
@@ -75,7 +75,7 @@ data class IsolationConfig(
         }
     }
 
-    
+    /** 当前配置匹配的防护等级；返回 null 表示自定义组合。 */
     fun level(): IsolationLevel? = when {
         !enabled -> null
         matches(MAXIMUM) -> IsolationLevel.MAXIMUM
@@ -84,7 +84,7 @@ data class IsolationConfig(
         else -> null
     }
 
-    
+    /** 仅比较“防护强度”相关的字段，忽略各伪装项的具体取值。 */
     private fun matches(preset: IsolationConfig): Boolean {
         return fingerprintConfig.randomize == preset.fingerprintConfig.randomize &&
             fingerprintConfig.regenerateOnLaunch == preset.fingerprintConfig.regenerateOnLaunch &&
@@ -103,9 +103,9 @@ data class IsolationConfig(
 
 enum class IsolationLevel { BASIC, STANDARD, MAXIMUM }
 
-
-
-
+/**
+ * 应用“防护强度”预设：只重置防护开关与伪装启停，保留用户已选的伪装取值与指纹种子。
+ */
 fun IsolationConfig.withLevel(level: IsolationLevel): IsolationConfig {
     val preset = when (level) {
         IsolationLevel.BASIC -> IsolationConfig.BASIC
@@ -145,13 +145,13 @@ data class FingerprintConfig(
     val fingerprintId: String = UUID.randomUUID().toString()
 )
 
-
+/** 语言伪装可选地区（label 为原生名称，无需随界面语言翻译）。 */
 data class SpoofLocaleOption(val tag: String, val label: String)
 
-
+/** 时区伪装可选项（label 附标准 UTC 偏移，运行期按 Intl 自动处理夏令时）。 */
 data class SpoofTimezoneOption(val id: String, val label: String)
 
-
+/** 分辨率伪装可选项（CSS 像素尺寸 + 配套 DPR，保证 screen/innerWidth/matchMedia 一致）。 */
 data class SpoofScreenOption(val width: Int, val height: Int, val dpr: Float) {
     val label: String get() = "${width} × ${height}"
 }
@@ -208,7 +208,7 @@ object IsolationPresets {
         SpoofScreenOption(3840, 2160, 1.5f)
     )
 
-    
+    /** 由 BCP-47 主语言标签推导 navigator.languages（["en-US", "en"]）。 */
     fun languageList(tag: String): List<String> {
         val base = tag.substringBefore('-')
         return if (base == tag) listOf(tag) else listOf(tag, base)

@@ -122,8 +122,8 @@ class AppCloner(private val context: Context) {
                     action = Intent.ACTION_VIEW
                     val payloadJson = payload.toJson()
                     putExtra(SplashLauncherActivity.EXTRA_PAYLOAD_JSON, payloadJson)
-                    
-                    
+                    // The launcher replays this intent — sign the payload so the
+                    // exported SplashLauncherActivity can reject forged extras.
                     putExtra(
                         SplashLauncherActivity.EXTRA_PAYLOAD_SIGNATURE,
                         PayloadIntegrity.sign(context, payloadJson)
@@ -188,7 +188,7 @@ class AppCloner(private val context: Context) {
 
     private fun loadBitmapFromPath(path: String): Bitmap? {
         return try {
-            
+            // Clone icons are re-encoded small; never decode hostile originals raw (#779).
             val cap = com.webtoapp.util.BoundedBitmaps.ICON_MAX_DIMENSION * 2
             when {
                 path.startsWith("/") -> com.webtoapp.util.BoundedBitmaps.decodeBoundedBitmapFile(path, cap)
@@ -461,9 +461,9 @@ class AppCloner(private val context: Context) {
                                 AppLogger.d("AppCloner", "AndroidManifest.xml size after modification: ${modifiedData.size} bytes")
                                 writeEntryDeflated(zipOut, entry.name, modifiedData)
                             } catch (e: Exception) {
-                                
-                                
-                                
+                                // Identity-critical: a manifest we failed to rewrite must abort
+                                // the clone (caught by cloneAndInstall -> AppModifyResult.Error),
+                                // never be copied through unmodified.
                                 AppLogger.e("AppCloner", "Failed to modify AndroidManifest.xml", e)
                                 throw IllegalStateException("AndroidManifest.xml 修改失败: ${e.message}", e)
                             }
@@ -604,8 +604,8 @@ class AppCloner(private val context: Context) {
             }
 
             entryName.contains("background") -> {
-                
-                
+                // Adaptive background layer: solid backing color, never the user image
+                // itself (launchers would composite the picture twice).
                 ApkTemplate.createSolidBackgroundIcon(bitmap, size)
             }
 
@@ -687,8 +687,8 @@ class AppCloner(private val context: Context) {
         }
         canvas.drawBitmap(bitmap, null, android.graphics.RectF(left, top, left + scaledWidth, top + scaledHeight), paint)
 
-        
-        
+        // Mask with DST_IN over the full canvas: an SRC_IN composite against a pre-drawn
+        // circle would leave the circle visible wherever the letterboxed content didn't cover.
         val maskPaint = android.graphics.Paint().apply {
             isAntiAlias = true
             xfermode = android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.DST_IN)

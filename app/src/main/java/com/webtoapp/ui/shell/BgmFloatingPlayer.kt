@@ -49,10 +49,10 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 
-
-
-
-
+/**
+ * Small music chip. Dragging the title snaps it to the nearer side of the screen.
+ * Play, pause, previous, and next stay on the chip so the page can stay underneath.
+ */
 @Composable
 fun BoxScope.BgmFloatingPlayer(
     title: String,

@@ -5,14 +5,14 @@ import androidx.activity.ComponentActivity
 import androidx.activity.result.contract.ActivityResultContracts
 import com.webtoapp.core.logging.AppLogger
 
-
-
-
-
-
-
-
-
+/**
+ * System folder picker for [LocalDirectoryStore].
+ *
+ * The activity-result launcher has to be registered before the activity is
+ * started, so each hosting activity owns one and publishes it for as long as
+ * it is alive. [NativeBridge] reaches the foreground activity through
+ * [DirectoryPickerRegistry] instead of holding the launcher itself.
+ */
 class DirectoryPickerHost(activity: ComponentActivity) {
     private var pending: ((Uri?) -> Unit)? = null
 

@@ -22,31 +22,31 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+/**
+ * Host-side plugin store. The package directory is the source of truth:
+ *
+ * ```
+ * files/plugins/
+ *   <id>/plugin.json     manifest (authored for HCJ, generated for userscripts)
+ *   <id>/plugin.html     the authored document: inert `<script type="hcj/page">`
+ *                        block = page script; the rest = the panel UI
+ *   <id>/main.js         legacy page script — still injected when present
+ *   <id>/style.css       legacy optional — still injected when present
+ *   <id>/panel.html      legacy optional — hosted by the plugin panel surface
+ *   <id>/icon.*          optional package icon
+ *   <id>/files/...       optional extra files (migrated multi-file modules)
+ * files/plugin_state.json   list order, enabled ids, chrome-extension records
+ * ```
+ *
+ * CHROME_EXTENSION records live in the state file only; their content stays in
+ * the extension engine's own directory (`ExtensionFileManager`).
+ *
+ * Built-in HCJ packages ship read-only in `assets/plugins/`. A plugin runs
+ * where an app attaches it. An app that turns plugins on without its own
+ * list uses the `enabled` ids in the state file. That list is empty when
+ * the key is absent. Installing a plugin adds its id; built-ins stay off
+ * until the user turns them on.
+ */
 @Suppress("StaticFieldLeak")
 class PluginStore private constructor(private val context: Context) {
 
@@ -105,18 +105,18 @@ class PluginStore private constructor(private val context: Context) {
     @Volatile
     private var builtInsLanguage: AppLanguage? = null
 
-    
-
+    /** Per-plugin style overrides chosen in the manager (id → entry/panel).
+     *  Declared before init: loadBuiltIns runs during construction. */
     private val styleOverrides = java.util.concurrent.ConcurrentHashMap<String, StyleOverride>()
 
-    
+    /** Built-ins the user hid via the row menu; restorable from the ⋮ menu. */
     private val _hiddenBuiltIns = MutableStateFlow<Set<String>>(emptySet())
     val hiddenBuiltIns: StateFlow<Set<String>> = _hiddenBuiltIns.asStateFlow()
 
-    
-
-
-
+    /**
+     * Ids turned on in Manage Plugins, in list order. Absent `enabled` in
+     * the state file stays empty so an upgrade does not inject every built-in.
+     */
     private val _enabledIds = MutableStateFlow<List<String>>(emptyList())
     val enabledIds: StateFlow<List<String>> = _enabledIds.asStateFlow()
 
@@ -141,9 +141,9 @@ class PluginStore private constructor(private val context: Context) {
         isLoading.first { !it }
     }
 
-    
-    
-    
+    // ------------------------------------------------------------------
+    // State overlay
+    // ------------------------------------------------------------------
 
     private data class StyleOverride(val entry: String, val panel: String)
 
@@ -191,7 +191,7 @@ class PluginStore private constructor(private val context: Context) {
         saveMutex.withLock { writeOverlayLocked() }
     }
 
-    
+    /** Caller holds [saveMutex]. A nested lock would deadlock; this Mutex is not reentrant. */
     private fun writeOverlayLocked() {
         try {
             val overlay = JsonParser.parseString("{}").asJsonObject
@@ -230,13 +230,13 @@ class PluginStore private constructor(private val context: Context) {
             copy(entryStyle = PluginEntryStyle.parse(it.entry), panelStyle = PluginPanelStyle.parse(it.panel))
         } ?: this
 
-    
-    
-    
+    // ------------------------------------------------------------------
+    // Loading
+    // ------------------------------------------------------------------
 
     private suspend fun loadPackages() = withContext(Dispatchers.IO) {
-        
-        
+        // The same lock covers installPackage, so a load cannot snapshot the
+        // directory mid-install and then overwrite the package that just landed.
         saveMutex.withLock {
             try {
                 recoverPluginPackageDirs(pluginsDir)
@@ -269,10 +269,10 @@ class PluginStore private constructor(private val context: Context) {
                         )
                     }
 
-                
-                
-                
-                
+                // An install that updated memory after this snapshot was taken
+                // cannot happen while the lock is held. Keep a package whose
+                // directory is still on disk anyway, so a listing that missed
+                // a just-published id does not drop it.
                 val diskIds = loaded.map { it.id }.toSet()
                 for (current in _plugins.value) {
                     if (current.id in diskIds || current.kind == PluginKind.CHROME_EXTENSION) continue
@@ -286,7 +286,7 @@ class PluginStore private constructor(private val context: Context) {
                 loaded.addAll(overlay.chromeRecords)
                 _enabledIds.value = overlay.enabled.toList()
 
-                
+                // Stored order first; anything new (fresh installs, migrated) after.
                 val byId = loaded.associateBy { it.id }
                 val ordered = overlay.order.mapNotNull { byId[it] } +
                     loaded.filter { it.id !in overlay.order }
@@ -300,7 +300,7 @@ class PluginStore private constructor(private val context: Context) {
         }
     }
 
-    
+    /** plugin.html wins when it carries markup; legacy panel.html is the fallback signal. */
     private fun dirHasPanel(dir: File): Boolean =
         (File(dir, PLUGIN_FILE).takeIf { it.exists() }
             ?.let { runCatching { hasPanelMarkup(it.readText()) }.getOrDefault(false) }
@@ -348,7 +348,7 @@ class PluginStore private constructor(private val context: Context) {
         )
     }
 
-    
+    /** Drop hidden built-ins and any shadowed by an installed copy of the same id. */
     private fun filterBuiltIns(list: List<Plugin>): List<Plugin> {
         val installedIds = _plugins.value.map { it.id }.toSet()
         return list.filter { it.id !in _hiddenBuiltIns.value && it.id !in installedIds }
@@ -377,9 +377,9 @@ class PluginStore private constructor(private val context: Context) {
             .filter { it.id !in userIds && it.id !in _hiddenBuiltIns.value } + _plugins.value
     }
 
-    
-    
-    
+    // ------------------------------------------------------------------
+    // Queries
+    // ------------------------------------------------------------------
 
     fun getAllPlugins(): List<Plugin> = allCache
 
@@ -392,7 +392,7 @@ class PluginStore private constructor(private val context: Context) {
 
     fun isGloballyEnabled(id: String): Boolean = id in _enabledIds.value
 
-    
+    /** Enabled ids that still exist, in the order stored in the state file. */
     fun globalEnabledIds(): List<String> {
         val known = allCache.map { it.id }.toSet()
         return _enabledIds.value.map { it.trim() }.filter { it.isNotEmpty() && it in known }.distinct()
@@ -408,9 +408,9 @@ class PluginStore private constructor(private val context: Context) {
         }
     }
 
-    
-    
-    
+    // ------------------------------------------------------------------
+    // Code loading (injection path)
+    // ------------------------------------------------------------------
 
     data class PackageCode(
         val mainJs: String = "",
@@ -441,11 +441,11 @@ class PluginStore private constructor(private val context: Context) {
         return combine(read(PLUGIN_FILE), read(MAIN_FILE), read(CSS_FILE), read(PANEL_FILE))
     }
 
-    
-
-
-
-
+    /**
+     * Merge the single-file layout with legacy files. plugin.html supplies the
+     * page script via its inert `hcj/page` block and doubles as the panel
+     * document; main.js / panel.html are kept working for older packages.
+     */
     private fun combine(
         pluginHtml: String,
         legacyMainJs: String,
@@ -456,16 +456,16 @@ class PluginStore private constructor(private val context: Context) {
             .filter { it.isNotBlank() }
             .joinToString("\n"),
         css = css,
-        
-        
+        // A page-only plugin.html must not shadow a real legacy panel.html,
+        // and must not pose as a panel document itself.
         panelHtml = pluginHtml.takeIf { hasPanelMarkup(it) } ?: legacyPanelHtml
     )
 
-    
-
-
-
-
+    /**
+     * Resolve plugins into injectable payloads. `ids == null` resolves every
+     * installed plugin (marked unattached so local-runtime pages can skip
+     * them); an explicit id list marks everything app-attached.
+     */
     fun resolveForInjection(ids: List<String>? = null): List<PluginSession.Resolved> {
         val attached = ids != null
         val base = if (ids == null) allCache else getPluginsByIds(ids)
@@ -488,9 +488,9 @@ class PluginStore private constructor(private val context: Context) {
     fun panelHtmlFor(plugin: Plugin): String? =
         loadPackageCode(plugin).panelHtml.takeIf { it.isNotBlank() }
 
-    
-    
-    
+    // ------------------------------------------------------------------
+    // Raw package access (editor)
+    // ------------------------------------------------------------------
 
     private fun assetText(path: String): String? = try {
         context.assets.open(path).bufferedReader().use { it.readText() }
@@ -512,7 +512,7 @@ class PluginStore private constructor(private val context: Context) {
         return out
     }
 
-    
+    /** One text file inside a package; null when absent. Built-ins read from assets. */
     suspend fun readPackageFile(pluginId: String, rel: String): String? =
         withContext(Dispatchers.IO) {
             if (rel.isBlank() || rel.contains("..")) return@withContext null
@@ -529,7 +529,7 @@ class PluginStore private constructor(private val context: Context) {
             }
         }
 
-    
+    /** Every file in the package keyed by relative path (editor round-trip). */
     suspend fun readPackageFiles(pluginId: String): Map<String, String> =
         withContext(Dispatchers.IO) {
             val plugin = getPlugin(pluginId)
@@ -542,14 +542,14 @@ class PluginStore private constructor(private val context: Context) {
             }
         }
 
-    
-    
-    
+    // ------------------------------------------------------------------
+    // Mutation
+    // ------------------------------------------------------------------
 
-    
-
-
-
+    /**
+     * Persist a new list order (long-press drag in the manager). Ids not in
+     * [orderedIds] keep their relative position at the end.
+     */
     suspend fun reorder(orderedIds: List<String>, builtIn: Boolean) = withContext(Dispatchers.IO) {
         saveMutex.withLock {
             val flow = if (builtIn) _builtInPlugins else _plugins
@@ -561,7 +561,7 @@ class PluginStore private constructor(private val context: Context) {
         }
     }
 
-    
+    /** Persist a per-plugin host-style override (entry + panel). */
     suspend fun setPluginStyle(id: String, entry: PluginEntryStyle, panel: PluginPanelStyle) = withContext(Dispatchers.IO) {
         saveMutex.withLock {
             styleOverrides[id] = StyleOverride(entry.name, panel.name)
@@ -588,8 +588,8 @@ class PluginStore private constructor(private val context: Context) {
         }
     }
 
-    
-
+    /** Hide a built-in plugin (row ⋮ → Delete); restore from the screen ⋮ menu.
+     *  The id stays in the enabled set so un-hiding leaves it on. */
     suspend fun hideBuiltIn(id: String) = withContext(Dispatchers.IO) {
         saveMutex.withLock {
             _hiddenBuiltIns.value = _hiddenBuiltIns.value + id
@@ -599,24 +599,24 @@ class PluginStore private constructor(private val context: Context) {
         }
     }
 
-    
+    /** Bring back every hidden built-in. */
     suspend fun restoreBuiltIns() = withContext(Dispatchers.IO) {
         saveMutex.withLock {
             if (_hiddenBuiltIns.value.isEmpty()) return@withLock
             _hiddenBuiltIns.value = emptySet()
-            
-            
+            // Write first so loadBuiltIns, which re-reads the state file, does
+            // not put the old hidden set back.
             writeOverlayLocked()
             loadBuiltIns()
             rebuildCache()
         }
     }
 
-    
-
-
-
-
+    /**
+     * Install/overwrite an HCJ package. Returns the installed plugin id.
+     * `files` maps package-relative paths ("plugin.html", "files/x.js"; legacy
+     * "main.js" / "panel.html" / "style.css" are still honored on load).
+     */
     suspend fun installPackage(
         manifest: PluginManifest,
         kind: PluginKind = PluginKind.HCJ,
@@ -675,7 +675,7 @@ class PluginStore private constructor(private val context: Context) {
         }
     }
 
-    
+    /** Register/update a chrome-extension record (content lives in ext engine). */
     suspend fun upsertChromeRecord(plugin: Plugin) = withContext(Dispatchers.IO) {
         saveMutex.withLock {
             val isNew = _plugins.value.none { it.id == plugin.id }
@@ -712,11 +712,11 @@ internal fun isPluginPackageDirName(name: String): Boolean =
         !name.endsWith(PLUGIN_PACKAGE_TMP_SUFFIX) &&
         !name.endsWith(PLUGIN_PACKAGE_BAK_SUFFIX)
 
-
-
-
-
-
+/**
+ * A crashed install leaves `<id>.tmp` or `<id>.bak`. Drop the staging dir.
+ * If only the backup remains, move it back. If the live dir also exists, the
+ * install finished and the backup is leftover.
+ */
 internal fun recoverPluginPackageDirs(pluginsDir: File) {
     if (!pluginsDir.isDirectory) return
     val dirs = pluginsDir.listFiles()?.filter { it.isDirectory }.orEmpty()
@@ -738,11 +738,11 @@ internal fun recoverPluginPackageDirs(pluginsDir: File) {
     }
 }
 
-
-
-
-
-
+/**
+ * Write [write] into `<id>.tmp`, then swap it over the live directory.
+ * The live tree is never deleted before the new tree is complete, and a
+ * failed publish puts the previous tree back.
+ */
 internal fun replacePluginPackageDir(pluginsDir: File, id: String, write: (File) -> Unit) {
     check(isPluginPackageDirName(id)) { "plugin id cannot use a staging suffix: $id" }
     pluginsDir.mkdirs()

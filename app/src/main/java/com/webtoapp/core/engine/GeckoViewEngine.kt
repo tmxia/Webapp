@@ -50,19 +50,19 @@ class GeckoViewEngine(
     companion object {
         private const val TAG = "GeckoViewEngine"
 
-        
+        /** Cache dir (under cacheDir) holding materialized file-picker uploads (#638). */
         private const val UPLOAD_CACHE_DIR = "gecko_uploads"
 
         @Volatile
         private var sharedRuntime: GeckoRuntime? = null
 
-        
-
-
-
-
-
-
+        /**
+         * Every GeckoSession opened on [sharedRuntime] across all engine
+         * instances. Multi-web apps run several sessions on one shared runtime
+         * — recreating the runtime for a config change would kill every live
+         * session, so [ensureRuntimeForConfig] defers the recreate while any
+         * are open (#1035).
+         */
         private val liveSessions =
             java.util.Collections.synchronizedSet(mutableSetOf<GeckoSession>())
 
@@ -78,21 +78,21 @@ class GeckoViewEngine(
         @Volatile
         private var nativeBridgeInstallFailed = false
 
-        
-
-
-
-
-
+        /**
+         * One bridge per [GeckoSession]. The extension is installed once on the
+         * shared runtime and its content script runs in every session, so a
+         * single process-wide bridge would authorize one site's fetch as
+         * another's page (#1206).
+         */
         private val bridgesBySession =
             java.util.concurrent.ConcurrentHashMap<GeckoSession, com.webtoapp.core.webview.NativeBridge>()
 
-        
-
-
-
-
-
+        /**
+         * Sessions waiting until the built-in extension is installed and its
+         * content-script delegate is attached. The first document must not
+         * start before that: a profile left by an older build still injects
+         * the previous content script at document_start (#1242).
+         */
         private val readyListeners =
             java.util.concurrent.ConcurrentHashMap<GeckoSession, Runnable>()
 
@@ -127,9 +127,9 @@ class GeckoViewEngine(
                         }.toString()
                     )
                 }
-                
-                
-                
+                // onMessage runs on the UI thread. The blocking OkHttp call has to
+                // leave it, or Android throws NetworkOnMainThreadException and the
+                // page fetch fails (#1283).
                 return dispatchGeckoNativeHttp(nativeBridgeHttpScope) {
                     bridge.httpRequest(requestJson)
                 }
@@ -138,11 +138,11 @@ class GeckoViewEngine(
 
         private val nativeBridgeHttpScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-        
-
-
-
-
+        /**
+         * Runs a native-bridge HTTP call off the UI thread and completes the
+         * [GeckoResult] Gecko is waiting on. [perform] is the bridge's blocking
+         * `httpRequest` for production callers.
+         */
         internal fun dispatchGeckoNativeHttp(
             scope: CoroutineScope,
             perform: () -> String
@@ -178,19 +178,19 @@ class GeckoViewEngine(
             }
         }
 
-        
-
-
-
-
-
-
-
-
-
-
-
-
+        /**
+         * Installs the CORS bridge and keeps it privileged across process
+         * restarts. [WebExtensionController.installBuiltIn] updates an
+         * extension when its manifest version increases, so 1.0 profiles pick
+         * up [nativeMessagingFromContent]. Copies installed before the
+         * extension had an id are uninstalled first; otherwise both content
+         * scripts inject and the old one still lacks sendNativeMessage.
+         *
+         * Content-script messages are delivered only through
+         * [GeckoSession.getWebExtensionController], not the extension-level
+         * delegate (that one is for a background script, which this extension
+         * does not have).
+         */
         fun ensureNativeBridgeExtension(runtime: GeckoRuntime) {
             if (nativeBridgeExtension != null || nativeBridgeInstallStarted) return
             synchronized(this) {
@@ -243,7 +243,7 @@ class GeckoViewEngine(
 
         private fun isForeignNativeBridge(extension: WebExtension): Boolean {
             if (extension.id == NATIVE_BRIDGE_ID) return false
-            
+            // list() leaves location empty and puts the install URI in metaData.downloadUrl.
             val meta = extension.metaData
             val downloadUrl = meta?.downloadUrl.orEmpty()
             return meta?.name == "WTA Native Bridge" ||
@@ -361,12 +361,12 @@ class GeckoViewEngine(
 
         fun hasLiveRuntime(): Boolean = sharedRuntime != null
 
-        
-
-
-
-
-
+        /**
+         * Clears the live Gecko profile and holds shell navigation until
+         * [StorageController.clearData] finishes. [clearData] returns a
+         * [GeckoResult]; loading the page before it completes replays the
+         * previous cookies and site storage.
+         */
         fun clearStoredDataHoldingNavigation() {
             val runtime = sharedRuntime ?: return
             val ticket = com.webtoapp.core.webview.WebViewManager.openFreshSessionGate()
@@ -410,9 +410,9 @@ class GeckoViewEngine(
                 }
                 if (want != runtimeConfigFingerprint) {
                     if (liveSessions.isNotEmpty()) {
-                        
-                        
-                        
+                        // Multi-web: a recreate would kill the sessions other
+                        // sites are using. Keep the existing runtime — the new
+                        // global config applies on next process start (#1035).
                         AppLogger.w(
                             TAG,
                             "GeckoRuntime config change (want=$want, current=$runtimeConfigFingerprint) " +
@@ -455,9 +455,9 @@ class GeckoViewEngine(
 
         fun setTlsMitmActive(active: Boolean) {
             tlsMitmActive = active
-            
-            
-            
+            // Gecko's network stack has no per-request callback the host can feed the MITM
+            // bridge's host allowlist from, so enforcing it here would block legitimate
+            // third-party resource CONNECTs. The WebView engine path keeps enforcement on.
             com.webtoapp.core.webview.TlsMitmBridge.setHostAllowlistEnforcement(!active)
         }
 
@@ -469,12 +469,12 @@ class GeckoViewEngine(
         @Volatile
         private var autoplayAllowed: Boolean = true
 
-        
-
-
-
-
-
+        /**
+         * Autoplay parity with the WebView path's `mediaPlaybackRequiresUserGesture`:
+         * mediaAutoplayEnabled=false (the default) must block un-gestured playback on
+         * Gecko too, instead of silently leaving Gecko's allow-by-default policy in place.
+         * Applied through the `media.autoplay.default` pref at runtime creation.
+         */
         fun applyAutoplayPolicy(allowed: Boolean) {
             autoplayAllowed = allowed
             AppLogger.d(TAG, "applyAutoplayPolicy: allowed=$allowed")
@@ -483,13 +483,13 @@ class GeckoViewEngine(
         @Volatile
         private var overscrollEffectEnabled: Boolean = true
 
-        
-
-
-
-
-
-
+        /**
+         * Gecko draws its own edge stretch ([org.mozilla.geckoview.OverscrollEdgeEffect]);
+         * [android.view.View.setOverScrollMode] on the GeckoView does not reach it.
+         * `apz.overscroll.enabled` drops the excess scroll instead. Like autoplay,
+         * the pref is read when the runtime is created, so it is part of the
+         * runtime fingerprint.
+         */
         fun applyOverscrollEffect(enabled: Boolean) {
             overscrollEffectEnabled = enabled
             AppLogger.d(TAG, "applyOverscrollEffect: enabled=$enabled")
@@ -613,11 +613,11 @@ class GeckoViewEngine(
                 appProxy?.let { prefs.putAll(buildProxyPrefs(it)) }
             }
 
-            
-            
+            // media.autoplay.default: 0 = allow, 1 = block audible without user gesture
+            // (Firefox's own default). Mirrors WebView's mediaPlaybackRequiresUserGesture.
             prefs["media.autoplay.default"] = if (autoplayAllowed) 0 else 1
-            
-            
+            // false discards scroll that cannot be handed off, so the page stops
+            // at the edge instead of stretching (#1193).
             prefs["apz.overscroll.enabled"] = overscrollEffectEnabled
 
             if (antiCaptureActive) {
@@ -653,19 +653,19 @@ class GeckoViewEngine(
             else -> "\"" + value.toString().replace("\\", "\\\\").replace("\"", "\\\"") + "\""
         }
 
-        
-
-
-
-
-
-
-
-
-
-
-
-
+        /**
+         * GeckoView 142 race workaround (#582). GeckoRuntime.init() calls
+         * ProcessLifecycleOwner.addObserver(LifecycleListener) right after
+         * GeckoThread.launch(). When the process lifecycle is already RESUMED at that
+         * moment (generated apps create the engine from Compose's first layout, after
+         * the activity has resumed), LifecycleRegistry synchronously dispatches
+         * ON_RESUME and LifecycleListener.onResume() dereferences
+         * ThreadUtils.sGeckoHandler — a field the native side only assigns later on
+         * the gecko thread, so the dereference is a guaranteed NPE. Seed it with the
+         * main handler; the only runnable ever posted through this path
+         * (Clipboard.updateSequenceNumber) is main-thread safe, and native overwrites
+         * the field with the real gecko-thread handler once the thread boots.
+         */
         internal fun ensureGeckoHandlerSeeded() {
             try {
                 if (org.mozilla.gecko.util.ThreadUtils.sGeckoHandler == null) {

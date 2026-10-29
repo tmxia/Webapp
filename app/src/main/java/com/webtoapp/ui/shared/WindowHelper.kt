@@ -30,12 +30,12 @@ object WindowHelper {
     private val lastImeOcclusionPx =
         Collections.synchronizedMap(WeakHashMap<View, Int>())
 
-    
-
-
-
-
-
+    /**
+     * Fires with the content view whose bottom padding was just set to the
+     * keyboard height, and that height in px. 0 means the keyboard padding
+     * was cleared. Listeners re-read their own window; the view argument
+     * stops another activity's keyboard from changing this one.
+     */
     fun addImeOcclusionListener(listener: (View, Int) -> Unit): () -> Unit {
         imeOcclusionListeners.add(listener)
         return { imeOcclusionListeners.remove(listener) }
@@ -60,13 +60,13 @@ object WindowHelper {
     ) {
         val controller = WindowInsetsControllerCompat(activity.window, activity.window.decorView)
         val alpha = backgroundAlpha.coerceIn(0f, 1f)
-        
-        
+        // Android 15 ignores window status-bar color and may lay a light scrim on top.
+        // That scrim stays white when the page or theme goes dark, so the icons vanish.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             activity.window.isStatusBarContrastEnforced = false
         }
-        
-        
+        // The classic resize window (below API 30, RESIZE mode) does not draw behind the
+        // status bar, so a transparent bar would just show the window background.
         val colorMode = if (colorMode == "TRANSPARENT" && isClassicKeyboardResizeWindow(activity.window)) {
             "THEME"
         } else {
@@ -143,13 +143,13 @@ object WindowHelper {
                     WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
             }
 
-            
-            
-            
-            
-            
-            
-            
+            // Below API 30 the platform has no native IME-inset dispatch: with the window laid
+            // out edge-to-edge, the system neither resizes it for the keyboard nor reports IME
+            // insets, leaving RESIZE mode with no working keyboard avoidance at all (issue #613;
+            // the #634 softInputMode-only fix did not help because of these layout flags).
+            // Those devices keep the decor fitting system windows and rely on the classic
+            // SOFT_INPUT_ADJUST_RESIZE path instead. Nothing draws behind the system bars
+            // there, so translucent status-bar styles degrade to solid theme colors.
             val classicKeyboardResize = isClassicKeyboardResize(keyboardAdjustMode)
             val effectiveStatusBarColorMode =
                 if (classicKeyboardResize && statusBarColorMode == "TRANSPARENT") "THEME" else statusBarColorMode
@@ -159,15 +159,15 @@ object WindowHelper {
             WindowInsetsControllerCompat(activity.window, activity.window.decorView).let { controller ->
                 var decorFitsSystemWindows = true
 
-                
-                
-                
-                
-                
-                
-                
-                
-                
+                // Classic path only: hiding the status bar via the legacy decor flag merely
+                // *requests* a relayout. On some pre-30 ROMs (observed on Android 10 cutout
+                // devices) the flag holds — the bar is gone — yet the decor never relayouts,
+                // leaving the status-bar strip painted as bare window background; the #925
+                // re-assert restores cleared flags but cannot force that layout pass.
+                // FLAG_FULLSCREEN is a window attribute the system cannot clear, and it
+                // resizes the decor to full height through relayoutWindow — the mechanism
+                // fullscreen relied on before edge-to-edge existed. Every other branch
+                // clears it so the window attribute cannot leak across config changes.
                 if (enabled && !showStatusBar && classicKeyboardResize) {
                     activity.window.addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
                 } else {
@@ -221,7 +221,7 @@ object WindowHelper {
                         decorFitsSystemWindows = classicKeyboardResize
                         WindowCompat.setDecorFitsSystemWindows(activity.window, classicKeyboardResize)
                         activity.window.statusBarColor = if (classicKeyboardResize) {
-                            
+                            // nothing draws behind a hidden bar on the classic path
                             android.graphics.Color.parseColor(if (isDarkTheme) "#1C1B1F" else "#FFFBFE")
                         } else {
                             android.graphics.Color.TRANSPARENT
@@ -229,10 +229,10 @@ object WindowHelper {
                         controller.hide(WindowInsetsCompat.Type.statusBars())
                     }
 
-                    
-                    
-                    
-                    
+                    // Issue #771: a shown status bar must stay (BEHAVIOR_DEFAULT).
+                    // Transient bars auto-hide seconds after appearing, which is
+                    // why "show status bar" never stayed until swiped back.
+                    // Hidden paths keep the transient swipe-to-peek behavior.
                     val barsBehavior = if (shouldShowStatusBar) {
                         WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
                     } else {
@@ -249,8 +249,8 @@ object WindowHelper {
                     decorFitsSystemWindows = classicKeyboardResize
                     WindowCompat.setDecorFitsSystemWindows(activity.window, classicKeyboardResize)
                     controller.show(WindowInsetsCompat.Type.systemBars())
-                    
-                    
+                    // Non-fullscreen bars are permanently shown chrome: default
+                    // behavior, never transient auto-hide (issue #771).
                     controller.systemBarsBehavior =
                         WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
                     if (!classicKeyboardResize) {
@@ -297,21 +297,21 @@ object WindowHelper {
                     }
                 }
                 if (classicKeyboardResize) {
-                    
-                    
+                    // Not edge-to-edge: keep the nav bar in sync with the solid status bar
+                    // instead of leaving a default dark bar under light nav icons.
                     activity.window.navigationBarColor = activity.window.statusBarColor
                 }
                 applyKeyboardMode(activity, keyboardAdjustMode, tag, decorFitsSystemWindows)
                 if (classicKeyboardResize && enabled) {
-                    
-                    
-                    
-                    
-                    
-                    
-                    
-                    
-                    
+                    // Classic (below API 30, RESIZE) windows have no insets controller: hiding
+                    // a bar sets the legacy SYSTEM_UI_FLAG_* bits, and the system clears the
+                    // fullscreen flag again whenever the hidden bar finishes animating away
+                    // (no ViewCompat.requestApplyInsets pass re-asserts it there). Without
+                    // this re-assert the window background shows through as a white strip
+                    // where the status bar was (2.5.5 fullscreen regression on Android 10).
+                    // One fixed delay is a race — the clear lands whenever the hide
+                    // animation finishes, which varies by device — so re-check a few
+                    // times over ~1.6s. Each pass is a no-op while flags still hold.
                     listOf(350L, 900L, 1600L).forEach { delayMs ->
                         activity.window.decorView.postDelayed({
                             try {
@@ -328,11 +328,11 @@ object WindowHelper {
         }
     }
 
-    
-
-
-
-
+    /**
+     * Re-set the hidden-bar bits the system dropped. [hideNavBar] and [hideStatusBar]
+     * mirror the caller's bar choices so a config that keeps a bar visible is not
+     * force-hidden here.
+     */
     @Suppress("DEPRECATION")
     private fun reAssertImmersiveFlags(window: Window, hideNavBar: Boolean, hideStatusBar: Boolean) {
         val decorView = window.decorView
@@ -344,8 +344,8 @@ object WindowHelper {
                 View.SYSTEM_UI_FLAG_LOW_PROFILE or
                 View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
         }
-        
-        
+        // The window attribute cannot be cleared by the system, but re-add it
+        // defensively in case an OEM rewrites window flags on a config change.
         if (hideStatusBar &&
             window.attributes.flags and WindowManager.LayoutParams.FLAG_FULLSCREEN == 0) {
             window.addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
@@ -357,21 +357,21 @@ object WindowHelper {
         return (keyboardAdjustMode ?: KeyboardAdjustMode.RESIZE) == KeyboardAdjustMode.RESIZE
     }
 
-    
+    /** True when the window runs the classic (non-edge-to-edge) resize path below API 30. */
     private fun isClassicKeyboardResizeWindow(window: Window): Boolean {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) return false
         return window.attributes.softInputMode and WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE != 0
     }
 
-    
-
-
-
-
-
-
-
-
+    /**
+     * Runtime truth for "this window does not draw behind the status bar and
+     * [androidx.compose.foundation.layout.WindowInsets.statusBars] cannot be used to size a
+     * status-bar band": on the classic pre-API-30 resize path the decor fits system windows,
+     * the insets value is 0 whether or not a bar is actually shown, and nothing renders behind
+     * the bar area. Compose callers must not fall back to a made-up 24dp band there (issue
+     * #683: fullscreen + "show status bar" left a blank strip because the content padding and
+     * the overlay each guessed an independent height).
+     */
     fun isClassicSystemBarsWindow(activity: Activity): Boolean =
         isClassicKeyboardResizeWindow(activity.window)
 
@@ -388,10 +388,10 @@ object WindowHelper {
         when (mode) {
             KeyboardAdjustMode.RESIZE -> {
 
-                
-                
-                
-                
+                // Manual IME padding needs native IME-inset dispatch (API 30+). Below that,
+                // applyImmersiveFullscreen keeps the window fitting system windows so the
+                // system SOFT_INPUT_ADJUST_RESIZE path actually resizes for the keyboard and
+                // the WebView scrolls the focused input into view on its own (issue #613).
                 val useManualImePadding = !decorFitsSystemWindows &&
                     Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
 
@@ -441,10 +441,10 @@ object WindowHelper {
         val documentScroll = ImeDocumentScroll()
 
         fun applyFrame(frame: ImeFrame) {
-            
-            
-            
-            
+            // Never leave a pan or a bottom padding in place. Padding shrinks
+            // the WebView at the moment the field meets the keyboard, and
+            // Chromium then applies the window IME inset again, so the field
+            // flashes. Translation does the same to fixed elements (#1398).
             if (contentView.translationY != 0f) contentView.translationY = 0f
             if (contentView.paddingBottom != 0) {
                 contentView.setPadding(
@@ -503,8 +503,8 @@ object WindowHelper {
                         heightPx,
                         generation,
                     )
-                    
-                    
+                    // The rect arrives after this frame. Catch up immediately
+                    // instead of waiting for the next inset tick.
                     webView.post {
                         if (webView.isAttachedToWindow) applyDocumentScroll(webView, latestImeBottom)
                     }
@@ -552,10 +552,10 @@ object WindowHelper {
                     val imeVisible = rootInsets?.isVisible(WindowInsetsCompat.Type.ime()) ?: false
                     val imeBottom = rootInsets?.getInsets(WindowInsetsCompat.Type.ime())?.bottom ?: 0
                     val finalBottom = if (imeVisible) imeBottom else 0
-                    
-                    
-                    
-                    
+                    // Last step of the same scroll, still in the unresized
+                    // coordinate space. Do not scrollIntoView afterwards:
+                    // the field is already on the keyboard, and a second
+                    // scroll is the flash.
                     if (finalBottom > follow.settledBottom) scrollCoveredField(finalBottom)
                     documentScroll.end()
                     applyFrame(follow.onEnd(finalBottom))
@@ -566,8 +566,8 @@ object WindowHelper {
         ViewCompat.setOnApplyWindowInsetsListener(contentView) { _, windowInsets ->
             val imeBottom = windowInsets.getInsets(WindowInsetsCompat.Type.ime()).bottom
             if (imeAnimating) {
-                
-                
+                // The dispatch during an animation carries the final inset. Keep it
+                // for direction, and let onProgress move the page without a layout.
                 follow.onTarget(imeBottom)
             } else {
                 applyFrame(follow.jumpTo(imeBottom))
@@ -612,11 +612,11 @@ object WindowHelper {
     ): Int {
         val originalOrientation = activity.requestedOrientation
 
-        
-        
-        
-        
-        
+        // Only re-parent the view if it isn't already attached. System WebView hands us a
+        // detached video surface (add it to the decorView); GeckoView fullscreen passes the
+        // already-attached GeckoView itself, which must stay in its current container while we
+        // change orientation and hide the system bars — re-parenting it throws
+        // "The specified child already has a parent" (issue #298).
         if (view.parent == null) {
             val decorView = activity.window.decorView as FrameLayout
             decorView.addView(
@@ -693,9 +693,9 @@ object WindowHelper {
         callback: WebChromeClient.CustomViewCallback?,
         originalOrientation: Int
     ) {
-        
-        
-        
+        // Only remove the view if we were the ones who added it (to the decorView). A GeckoView
+        // fullscreen view stays attached to its original container (see showCustomView), so there
+        // is nothing to remove here.
         val decorView = activity.window.decorView as FrameLayout
         if (view.parent === decorView) {
             decorView.removeView(view)

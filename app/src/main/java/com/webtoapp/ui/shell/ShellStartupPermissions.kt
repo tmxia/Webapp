@@ -53,9 +53,9 @@ class ShellStartupPermissions(private val activity: AppCompatActivity) {
         if (prefs.getBoolean(KEY_REQUESTED, false)) {
             return
         }
-        
-        
-        
+        // commit() (not apply()): the flag must survive an immediate process
+        // kill after the system permission dialogs appear, otherwise every
+        // cold start would re-request permissions ("dialog won't go away").
         prefs.edit().putBoolean(KEY_REQUESTED, true).commit()
 
         val declared = declaredPermissions()
@@ -93,12 +93,12 @@ class ShellStartupPermissions(private val activity: AppCompatActivity) {
         emptySet()
     }
 
-    
-
-
-
-
-
+    /**
+     * Dangerous rows from the official table, gated by the API that still
+     * shows a dialog. Background location and background body sensors are
+     * requested one at a time after the first batch: Android rejects them
+     * when they share a prompt with the foreground permission.
+     */
     private fun dangerousRequests(declared: Set<String>): Pair<List<String>, List<String>> {
         val sdk = Build.VERSION.SDK_INT
         val target = runtimeTargetSdk()
@@ -119,8 +119,8 @@ class ShellStartupPermissions(private val activity: AppCompatActivity) {
     private fun runtimeTargetSdk(): Int = try {
         activity.applicationInfo.targetSdkVersion
     } catch (e: Exception) {
-        
-        
+        // Fall back to the template's own target so permission gating still works
+        // if the package info read unexpectedly fails.
         AppLogger.w(TAG, "读取 targetSdkVersion 失败，按 35 处理", e)
         Build.VERSION_CODES.VANILLA_ICE_CREAM
     }

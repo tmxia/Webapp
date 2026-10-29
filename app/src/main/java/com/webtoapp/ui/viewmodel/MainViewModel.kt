@@ -60,8 +60,8 @@ class MainViewModel(
     val selectedCategoryId: StateFlow<Long?> = _selectedCategoryId.asStateFlow()
 
     init {
-        
-        
+        // Restore the last category filter on cold start when the setting is on.
+        // A saved id whose category was deleted in the meantime falls back to All.
         viewModelScope.launch {
             if (!categoryFilterStore.rememberEnabled) return@launch
             val saved = categoryFilterStore.loadSelection() ?: return@launch
@@ -100,10 +100,10 @@ class MainViewModel(
         appListSortStore.save(sort)
     }
 
-    
-
-
-
+    /**
+     * Starts a drag from a non-custom sort: pin the list the user is looking
+     * at as custom order so the rows do not jump, then keep later drops.
+     */
     fun switchToCustomOrder(visibleIds: List<Long>) {
         if (visibleIds.isEmpty()) return
         if (_appListSort.value != AppListSort.CUSTOM) {
@@ -113,11 +113,11 @@ class MainViewModel(
         saveVisibleHomeOrder(visibleIds)
     }
 
-    
-
-
-
-
+    /**
+     * Writes custom order for the whole library. [visibleIdsInOrder] is the
+     * list the user just dragged, which may be one category; hidden apps keep
+     * their slots. Does not change `updatedAt`.
+     */
     fun saveVisibleHomeOrder(visibleIdsInOrder: List<Long>) {
         if (visibleIdsInOrder.isEmpty()) return
         viewModelScope.launch {
@@ -197,8 +197,8 @@ class MainViewModel(
     fun deleteAppById(id: Long) {
         viewModelScope.launch {
             try {
-                
-                
+                // Fetch the full WebApp before deleting the DB row so we can resolve the project
+                // directory and clean it up (otherwise wordpress_projects/<id> etc. are orphaned).
                 val webApp = repository.getWebApp(id)
                 repository.deleteWebAppById(id)
                 withContext(Dispatchers.IO) {
@@ -264,11 +264,11 @@ class MainViewModel(
         _hasUnsavedChanges.value = true
     }
 
-    
-
-
-
-
+    /**
+     * Applies a transform to the runtime permissions based on the *current* edit state,
+     * so rapid consecutive permission toggles accumulate instead of overwriting each
+     * other (a Compose callback may still hold a pre-recomposition snapshot otherwise).
+     */
     fun updateRuntimePermissions(transform: (ApkRuntimePermissions) -> ApkRuntimePermissions) {
         updateEditState {
             val currentExport = apkExportConfig
@@ -419,13 +419,13 @@ class MainViewModel(
         }
     }
 
-    
-
-
-
-
-
-
+    /**
+     * Icon/splash files referenced by a saved app's DB row must not be deleted during the
+     * editing session: the DB row is only rewritten on save, so discarding the edit (back
+     * press → 放弃更改) would leave the row pointing at a deleted file — a permanently
+     * broken icon/splash. Deletes are deferred to [deleteReplacedIconIfUnused] /
+     * [deleteReplacedSplashIfUnused], which run after the save has committed the new path.
+     */
     fun handleIconSelected(uri: Uri) {
         viewModelScope.launch {
             val savedPath = withContext(Dispatchers.IO) {
@@ -467,13 +467,13 @@ class MainViewModel(
         )
     }
 
-    
+    /** Deletes the app's previous icon file once the DB row references the replacement. */
     private suspend fun deleteReplacedIconIfUnused(previousPath: String?, currentPath: String?) {
         if (previousPath.isNullOrBlank() || previousPath == currentPath) return
         withContext(Dispatchers.IO) { IconStorage.deleteIcon(previousPath) }
     }
 
-    
+    /** Deletes the app's previous splash media once the DB row references the replacement. */
     private suspend fun deleteReplacedSplashIfUnused(previousPath: String?, currentPath: String?) {
         if (previousPath.isNullOrBlank() || previousPath == currentPath) return
         withContext(Dispatchers.IO) { SplashStorage.deleteMedia(previousPath) }
@@ -505,7 +505,7 @@ class MainViewModel(
 
                 if (_currentApp.value != null) {
                     repository.updateWebApp(webApp)
-                    
+                    // DB now references the new files — safe to remove the replaced ones.
                     deleteReplacedIconIfUnused(previousIconPath, state.savedIconPath ?: state.iconUri?.toString())
                     deleteReplacedSplashIfUnused(previousSplashPath, state.splashConfig?.mediaPath)
                 } else {
@@ -538,8 +538,8 @@ class MainViewModel(
                     com.webtoapp.core.script.UserScriptStorage.deleteScriptsForApp(
                         getApplication(), webApp.id
                     )
-                    
-                    
+                    // Remove the on-disk project directory (e.g. wordpress_projects/<id>) so the
+                    // source files — including the WordPress SQLite DB — don't linger as orphans.
                     com.webtoapp.core.app.ProjectDirCleaner.deleteForApp(getApplication(), webApp)
                 }
                 _uiState.value = UiState.Success(Strings.appDeleted)
@@ -761,7 +761,7 @@ class MainViewModel(
                 val updatedApp = applyUpdate(existingApp, savedIconPath)
 
                 withContext(Dispatchers.IO) { repository.updateWebApp(updatedApp) }
-                
+                // DB now references the new files — safe to remove the replaced ones.
                 deleteReplacedIconIfUnused(existingApp.iconPath, updatedApp.iconPath)
                 deleteReplacedSplashIfUnused(existingApp.splashConfig?.mediaPath, updatedApp.splashConfig?.mediaPath)
                 _uiState.value = UiState.Success(Strings.appUpdatedSuccessfully.replaceFirst("%s", typeName))

@@ -153,11 +153,11 @@ class ExtensionFileManager(private val context: Context) {
         }
     }
 
-    
-
-
-
-
+    /**
+     * Downloads a CRX from the Chrome Web Store update endpoint.
+     *
+     * @return null on success, or a user-actionable error message on failure.
+     */
     private fun downloadCrxFromStore(
         storeId: String,
         dest: File,
@@ -516,8 +516,8 @@ class ExtensionFileManager(private val context: Context) {
     }
 
     private fun extractZipStream(zis: ZipInputStream, targetDir: File) {
-        
-        
+        // Entries are untrusted (user-imported / CRX-parsed archives): safeChild rejects
+        // traversal and the caps stop zip-bombs from filling storage.
         com.webtoapp.util.SafeZip.extractAll(
             zis,
             targetDir,

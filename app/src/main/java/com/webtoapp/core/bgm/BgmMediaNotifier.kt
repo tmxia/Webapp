@@ -20,10 +20,10 @@ import com.webtoapp.core.i18n.Strings
 import com.webtoapp.core.logging.AppLogger
 import com.webtoapp.util.SafeNotificationChannels
 
-
-
-
-
+/**
+ * Native media notification for background music. The session token is what
+ * the shade and the lock screen use for pause, skip, and scrub.
+ */
 internal class BgmMediaNotifier(
     context: Context,
     private val transport: BgmTransport

@@ -17,24 +17,24 @@ import java.net.InetSocketAddress
 import java.net.Proxy
 import java.util.concurrent.TimeUnit
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+/**
+ * Fallback proxy path for devices whose system WebView predates PROXY_OVERRIDE
+ * (WebView provider < 67, e.g. frozen Android 7.x boxes without Play updates).
+ *
+ * AndroidX WebKit is only a shim: [androidx.webkit.ProxyController] silently does
+ * nothing there, so [PacProxyManager] arms this bridge instead and WebView traffic
+ * is fetched through OkHttp with the same proxy settings. Anything that cannot go
+ * through [shouldInterceptRequest] (WebSocket, WebRTC, plugins) still connects
+ * directly — an documented downgrade, not a full tunnel.
+ *
+ * Fail-closed by design: when a proxy is configured, fetch failures return HTTP
+ * 502 instead of falling back to a direct connection, so a dead proxy can never
+ * silently leak the real IP. Only bypass-listed hosts and non-http(s) schemes
+ * return null (let WebView handle them).
+ *
+ * Runs on Chromium's IO thread; all blocking calls below are safe there.
+ * Shell-synced: used by generated APKs, reads no host-only state.
+ */
 object LegacyProxyFetchBridge {
 
     private const val TAG = "LegacyProxyFetch"
@@ -47,10 +47,10 @@ object LegacyProxyFetchBridge {
 
     enum class Kind { HTTP, SOCKS, BROKEN }
 
-    
-
-
-
+    /**
+     * @param kind HTTP/HTTPS-forward proxy or SOCKS5. BROKEN marks a configured
+     * proxy OkHttp cannot speak (e.g. HTTPS upstream): every request fail-closes.
+     */
     data class Spec(
         val kind: Kind,
         val host: String = "",
@@ -60,10 +60,10 @@ object LegacyProxyFetchBridge {
         val bypassRules: List<String> = emptyList()
     )
 
-    
+    /** Hosts that must never be proxied: local runtimes and bridges live here. */
     private val ALWAYS_BYPASS = setOf("localhost", "127.0.0.1", "[::1]", "::1", "10.0.2.2")
 
-    
+    /** Hop-by-hop / framing headers OkHttp owns; forwarding them corrupts the exchange. */
     private val STRIP_REQUEST_HEADERS = setOf(
         "host", "connection", "keep-alive", "proxy-authorization",
         "transfer-encoding", "content-length", "upgrade", "trailer"
@@ -105,11 +105,11 @@ object LegacyProxyFetchBridge {
 
     fun isArmed(): Boolean = spec != null
 
-    
-
-
-
-
+    /**
+     * Resolve STATIC settings to a [Spec]. Returns null when there is nothing to
+     * do (mode NONE / DIRECT intent). HTTPS upstream proxies cannot be spoken by
+     * OkHttp 4 and resolve to [Kind.BROKEN] (fail-closed) instead of null.
+     */
     fun resolveStatic(
         mode: String,
         host: String,
@@ -135,11 +135,11 @@ object LegacyProxyFetchBridge {
         }
     }
 
-    
-
-
-
-
+    /**
+     * Resolve already-parsed PAC entries (same extraction as [PacProxyManager])
+     * to a single [Spec]. Only the first usable entry is honored; multi-proxy
+     * PAC failover lists degrade to primary-only on this path.
+     */
     fun resolvePacEntries(
         entries: List<String>,
         bypassRules: List<String>,
@@ -207,12 +207,12 @@ object LegacyProxyFetchBridge {
         return false
     }
 
-    
-
-
-
-
-
+    /**
+     * Fetch [url] through the armed proxy. Returns null when the fallback does
+     * not apply (disarmed, bypassed host, non-http(s) scheme) so the caller falls
+     * through to normal loading; returns a 502 response on fetch failure so a
+     * dead proxy can never silently downgrade to direct.
+     */
     fun intercept(url: String, method: String?, requestHeaders: Map<String, String>): WebResourceResponse? {
         val active = spec ?: return null
         if (!url.startsWith("http://", ignoreCase = true) &&
@@ -250,23 +250,23 @@ object LegacyProxyFetchBridge {
             val body = if (httpMethod == "GET" || httpMethod == "HEAD") {
                 null
             } else {
-                
-                
+                // shouldInterceptRequest exposes no request body; forward the
+                // method/headers/cookies without one (privacy over fidelity).
                 ByteArray(0).toRequestBody(null)
             }
             builder.method(httpMethod, body)
 
             val okClient = clientFor(active)
             val response = okClient.newCall(builder.build()).execute()
-            
-            
-            
+            // NOTE: no .use{} here — the body stream is handed to WebView, which
+            // owns (and closes) it. Closing the response here would close the
+            // stream out from under the renderer.
             try {
                 val code = response.code
                 val message = response.message.ifBlank { if (code < 400) "OK" else "Error" }
                 val respHeaders = LinkedHashMap<String, String>()
                 for (name in response.headers.names()) {
-                    
+                    // OkHttp already consumed chunk framing; forwarding it would corrupt the body.
                     if (name.equals("transfer-encoding", ignoreCase = true)) continue
                     respHeaders[name] = response.headers.values(name).joinToString(", ")
                 }
@@ -351,10 +351,10 @@ object LegacyProxyFetchBridge {
         }
     }
 
-    
-
-
-
+    /**
+     * Bridges OkHttp's cookie jar to the WebView store so sessions survive
+     * redirects and subresource hops exactly as with direct loading.
+     */
     internal class WebViewCookieJar : CookieJar {
         override fun saveFromResponse(url: HttpUrl, cookies: List<Cookie>) {
             val cm = try {

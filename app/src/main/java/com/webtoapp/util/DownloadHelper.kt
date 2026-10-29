@@ -306,10 +306,10 @@ object DownloadHelper {
             return
         }
 
-        
-        
-        
-        
+        // Downloads from the app's own loopback webserver skip the system DownloadManager:
+        // it runs out-of-process and adds OEM failure modes (disabled/throttled provider),
+        // while the in-app client reaches the embedded server directly with cookies and
+        // headers attached.
         if (DocumentDownloadPolicy.isLoopbackUrl(safeUrl) && runsAsGeneratedApp(context)) {
             AppLogger.d(TAG, "Loopback URL routed to in-app downloader: $safeUrl")
             downloadInApp(context, safeUrl, userAgent, fileName, mimeType, scope, downloadLocationMode, customDownloadDirUri, albumName)
@@ -433,7 +433,7 @@ object DownloadHelper {
         ) == PackageManager.PERMISSION_GRANTED
     }
 
-    
+    /** Generated shells carry a shell config in assets; the host app does not. */
     private fun runsAsGeneratedApp(context: Context): Boolean = try {
         com.webtoapp.WebToAppApplication.shellMode.isShellMode()
     } catch (_: Exception) {

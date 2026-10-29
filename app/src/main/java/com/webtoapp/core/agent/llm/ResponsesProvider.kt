@@ -17,11 +17,11 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.IOException
 
-
-
-
-
-
+/**
+ * OpenAI Responses API (/responses) streaming provider. Selected when a CUSTOM
+ * endpoint declares [ApiFormat.OPENAI_RESPONSES]; the named providers all speak
+ * Chat Completions and never route here.
+ */
 internal class ResponsesProvider(@Suppress("UNUSED_PARAMETER") context: Context) : LlmProvider {
     private val gson = GsonProvider.gson
     private val sse = SseParser()
@@ -53,7 +53,7 @@ internal class ResponsesProvider(@Suppress("UNUSED_PARAMETER") context: Context)
                 }
                 try {
                     val source = response.body?.source() ?: run { trySend(LlmEvent.Error("Empty response body")); close(); return }
-                    
+                    // callId -> accumulated function arguments
                     val toolArgs = LinkedHashMap<String, StringBuilder>()
                     val toolNames = LinkedHashMap<String, String>()
                     var finishReason = FinishReason.STOP
@@ -94,7 +94,7 @@ internal class ResponsesProvider(@Suppress("UNUSED_PARAMETER") context: Context)
                                             ?: item.get("id")?.asString ?: return@consume true
                                         val name = item.get("name")?.takeUnless { it.isJsonNull }?.asString
                                             ?: toolNames[id].orEmpty()
-                                        
+                                        // Prefer the final assembled arguments from the done item.
                                         val finalArgs = item.get("arguments")?.takeUnless { it.isJsonNull }?.asString
                                             ?: toolArgs[id]?.toString().orEmpty()
                                         toolArgs[id] = StringBuilder(finalArgs)
@@ -142,7 +142,7 @@ internal class ResponsesProvider(@Suppress("UNUSED_PARAMETER") context: Context)
         names.forEach { (id, name) ->
             trySend(LlmEvent.ToolCallEnd(id, name, args[id]?.toString().orEmpty()))
         }
-        
+        // Safety net: any function call that accumulated args without a recorded name.
         args.forEach { (id, argsBuilder) ->
             if (id !in names) trySend(LlmEvent.ToolCallEnd(id, "", argsBuilder.toString()))
         }

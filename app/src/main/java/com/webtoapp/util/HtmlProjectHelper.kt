@@ -179,9 +179,9 @@ object HtmlProjectHelper {
 
         val files = mutableListOf<HtmlFile>()
         outputDir.walkTopDown().forEach { file ->
-            
-            
-            
+            // Skip internal change-tracking directories (e.g. Agent's ".changes/"
+            // which contains ".__deleted__" markers). These are not real project
+            // files and a 0-byte marker would fail the build preflight.
             val relativePath = file.relativeTo(outputDir).path
             if (relativePath.startsWith(".changes/") || relativePath == ".changes") return@forEach
             if (file.isFile) {

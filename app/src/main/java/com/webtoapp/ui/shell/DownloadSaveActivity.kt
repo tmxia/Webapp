@@ -5,11 +5,11 @@ import androidx.appcompat.app.AppCompatActivity
 import com.webtoapp.util.CreateDownloadDocument
 import com.webtoapp.util.DownloadSavePrompter
 
-
-
-
-
-
+/**
+ * Invisible host for the system save dialog. Downloads can start from a
+ * WebView callback or a service, neither of which can register an activity
+ * result launcher of its own.
+ */
 class DownloadSaveActivity : AppCompatActivity() {
 
     private var launched = false

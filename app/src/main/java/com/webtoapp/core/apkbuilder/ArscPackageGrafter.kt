@@ -4,36 +4,36 @@ import com.webtoapp.core.logging.AppLogger
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+/**
+ * Grafts a prebuilt feature-stack resource package into an existing binary
+ * `resources.arsc` table.
+ *
+ * Feature stacks are compiled offline with `aapt2 link --package-id 0x8N`, so
+ * their R constants use a fixed package id that never collides with the app's
+ * own `0x7f`. The graft appends the stack's self-contained package chunk to the
+ * base table and remaps its string-valued resource data (string values and
+ * res file paths) onto the rebuilt global string pool. `res/` path values are
+ * rewritten under [resPathPrefix] so stack files can never collide with — or
+ * overwrite — app files in the output zip.
+ *
+ * Validated on device (issue #1115): an APK carrying packages `0x7f` + `0x80`
+ * in a single arsc resolves `getString`/`getDrawable`/`getResourceName` for the
+ * grafted package at runtime.
+ */
 class ArscPackageGrafter {
 
     data class Result(
-        
+        /** The rewritten binary resource table. */
         val arsc: ByteArray,
-        
+        /** res path as stored in the stack bundle -> destination path in the output APK. */
         val resPaths: Map<String, String>
     )
 
-    
-
-
-
-
+    /**
+     * Merge the first package chunk found in [stackArsc] into [baseArsc].
+     * Every `res/...` string value inside the stack package is namespaced under
+     * [resPathPrefix] (must end with '/').
+     */
     fun graft(baseArsc: ByteArray, stackArsc: ByteArray, resPathPrefix: String): Result {
         require(resPathPrefix.endsWith("/")) { "resPathPrefix must end with '/'" }
 
@@ -52,9 +52,9 @@ class ArscPackageGrafter {
 
         val baseStringCount = base.globalStrings.size
 
-        
-        
-        val refs = mutableListOf<Pair<Int, Int>>() 
+        // Pass 1: collect every TYPE_STRING value; map its feature-global index
+        // onto the (growing) base global pool.
+        val refs = mutableListOf<Pair<Int, Int>>() // chunkOffset -> new pool index
         val resPaths = linkedMapOf<String, String>()
         stackPkg.forEachStringValue { chunkOffset, poolIndex ->
             val value = stack.globalStrings[poolIndex]
@@ -68,17 +68,17 @@ class ArscPackageGrafter {
             refs += chunkOffset to base.indexOfOrAppend(rewritten)
         }
 
-        
+        // Pass 2: rebuild global pool with the new strings appended.
         val newPool = buildUtf8StringPool(base.globalStrings)
 
-        
+        // Pass 3: patch the stack package chunk's string indices.
         val chunk = stackPkg.raw.copyOf()
         val buf = ByteBuffer.wrap(chunk).order(ByteOrder.LITTLE_ENDIAN)
         for ((chunkOffset, newIndex) in refs) {
             buf.putInt(chunkOffset, newIndex)
         }
 
-        
+        // Assemble: header + new global pool + existing package chunks + stack chunk.
         val head = baseArsc.copyOfRange(0, base.headerSize)
         val body = baseArsc.copyOfRange(
             base.headerSize + base.globalPoolSize,
@@ -89,8 +89,8 @@ class ArscPackageGrafter {
             .put(head).put(newPool).put(body).put(chunk)
             .array()
         ByteBuffer.wrap(out).order(ByteOrder.LITTLE_ENDIAN).apply {
-            putInt(4, out.size)              
-            putInt(8, base.packageCount + 1) 
+            putInt(4, out.size)              // table chunk size
+            putInt(8, base.packageCount + 1) // packageCount
         }
 
         AppLogger.d(
@@ -102,7 +102,7 @@ class ArscPackageGrafter {
         return Result(out, resPaths)
     }
 
-    
+    // -- binary arsc model ------------------------------------------------------
 
     internal class ArscTable(
         val headerSize: Int,
@@ -119,14 +119,14 @@ class ArscPackageGrafter {
         }
 
         class PackageChunk(val id: Int, val name: String, val raw: ByteArray) {
-            
-
-
-
-
+            /**
+             * Visit the `data` field of every Res_value whose dataType is
+             * TYPE_STRING, yielding its absolute offset inside [raw] and the
+             * feature-global string index it currently holds.
+             */
             fun forEachStringValue(visit: (chunkOffset: Int, poolIndex: Int) -> Unit) {
                 val buf = ByteBuffer.wrap(raw).order(ByteOrder.LITTLE_ENDIAN)
-                var off = buf.getShort(2).toInt() and 0xFFFF 
+                var off = buf.getShort(2).toInt() and 0xFFFF // package header size
                 while (off + 8 <= raw.size) {
                     val type = buf.getShort(off).toInt() and 0xFFFF
                     val size = buf.getInt(off + 4)
@@ -155,8 +155,8 @@ class ArscPackageGrafter {
                     if (eo + 8 > off + size) break
                     val flags = buf.getShort(eo + 2).toInt() and 0xFFFF
                     if (flags and 0x0001 != 0) {
-                        
-                        
+                        // ResTable_map_entry: parent(4) + count(4) then
+                        // ResTable_map{ name(4), value(8) } pairs.
                         val count = buf.getInt(eo + 12)
                         var mo = eo + 16
                         repeat(count) {
@@ -236,7 +236,7 @@ class ArscPackageGrafter {
 
             private fun decodeLengthPrefixed(buf: ByteBuffer, off: Int, utf8: Boolean): String {
                 if (utf8) {
-                    var o = off + utf8LenLen(buf, off) 
+                    var o = off + utf8LenLen(buf, off) // skip utf16 length
                     val n = utf8LenAt(buf, o).also { o += utf8LenSize(buf, o) }
                     val bytes = ByteArray(n)
                     buf.get(o, bytes)
@@ -291,7 +291,7 @@ class ArscPackageGrafter {
             strings.forEachIndexed { i, s ->
                 offsets[i] = blob.size()
                 val utf8 = s.toByteArray(Charsets.UTF_8)
-                val utf16Len = s.length 
+                val utf16Len = s.length // String.length is the UTF-16 code unit count
                 blob.write(encLen8(utf16Len))
                 blob.write(encLen8(utf8.size))
                 blob.write(utf8)
@@ -304,10 +304,10 @@ class ArscPackageGrafter {
             out.putShort(headerSize.toShort())
             out.putInt(total)
             out.putInt(count)
-            out.putInt(0)             
+            out.putInt(0)             // styleCount
             out.putInt(UTF8_FLAG)
-            out.putInt(offsetsPos)    
-            out.putInt(0)             
+            out.putInt(offsetsPos)    // stringsStart
+            out.putInt(0)             // stylesStart
             offsets.forEach { out.putInt(it) }
             out.put(blob.toByteArray())
             return out.array()

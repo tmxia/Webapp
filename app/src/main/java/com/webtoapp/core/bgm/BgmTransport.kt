@@ -1,9 +1,9 @@
 package com.webtoapp.core.bgm
 
-
-
-
-
+/**
+ * Latest playback actions. The media notification and the floating chip both
+ * call into this holder, which the player replaces whenever the session changes.
+ */
 internal class BgmTransport {
     var play: () -> Unit = {}
     var pause: () -> Unit = {}
@@ -14,7 +14,7 @@ internal class BgmTransport {
 
 internal enum class BgmPreviousAction { RESTART, TRACK }
 
-
+/** Past a few seconds, "previous" restarts the current track. */
 internal fun bgmPreviousAction(positionMs: Long, restartAfterMs: Long = 3_000L): BgmPreviousAction =
     if (positionMs > restartAfterMs) BgmPreviousAction.RESTART else BgmPreviousAction.TRACK
 

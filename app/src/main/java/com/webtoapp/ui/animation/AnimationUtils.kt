@@ -151,15 +151,15 @@ val CardCollapseTransition: ExitTransition = shrinkVertically(
     clip = true
 ) + fadeOut(animationSpec = WtaMotion.exitTween(WtaMotion.DurationQuick))
 
-
-
-
-
-
-
-
-
-
+/**
+ * Expand/collapse container that keeps [content] composed while collapsed.
+ *
+ * Unlike [AnimatedVisibility], collapsing never disposes the subtree, so
+ * re-opening is a pure layout animation with zero recomposition cost — and the
+ * first composition happens while the (zero-height) content is still invisible
+ * instead of inside the click frame. Prefer this for large expandable sections
+ * whose cold-open composition is expensive enough to drop frames (#1095).
+ */
 @Composable
 fun WtaPersistentExpandedContent(
     expanded: Boolean,

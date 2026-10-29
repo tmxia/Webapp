@@ -12,12 +12,12 @@ sealed class AgentEvent {
 
     data class ThinkingDelta(val segmentId: String, val delta: String, val accumulated: String) : AgentEvent()
 
-    
-
-
-
-
-
+    /**
+     * Emitted once the current turn's reasoning stream has finished and the model is
+     * about to move on to text / tool calls. Lets the UI freeze that turn's thinking
+     * block so the next turn can open a fresh live one, instead of every turn piling
+     * into a single buffer with one shared timestamp.
+     */
     object ThinkingTurnEnded : AgentEvent()
 
     data class ToolCallStarted(val toolCallId: String, val name: String) : AgentEvent()
@@ -43,10 +43,10 @@ sealed class AgentEvent {
 
     data class FileChanged(val change: FileChange) : AgentEvent()
 
-    
+    /** An app was created or updated by a tool; surfaced as a review card below the chat. */
     data class AppChanged(val change: AppChange) : AgentEvent()
 
-    
+    /** An APK was built by a tool; surfaced as a virtual file in the Files sidebar. */
     data class ApkBuilt(val info: BuiltApkInfo) : AgentEvent()
 
     data class PermissionDenied(val toolCallId: String, val name: String) : AgentEvent()

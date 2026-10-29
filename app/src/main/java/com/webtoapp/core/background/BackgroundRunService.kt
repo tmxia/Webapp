@@ -110,10 +110,10 @@ class BackgroundRunService : Service() {
             }
         }
 
-        
-
-
-
+        /**
+         * 生成 APK 首次启动后台服务时请求一次电池优化豁免。
+         * 已白名单/已询问过则跳过——避免每次冷启动都弹系统框骚扰用户。
+         */
         fun maybeRequestBatteryExemption(context: Context) {
             try {
                 if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return
@@ -382,9 +382,9 @@ class BackgroundRunService : Service() {
     private fun acquireWakeLock() {
         if (wakeLock?.isHeld == true) return
 
-        
-        
-        
+        // WakeLockCompat returns null when WAKE_LOCK is missing or revoked —
+        // background run degrades to "foreground service without wake lock"
+        // instead of crashing (#1034).
         wakeLock = WakeLockCompat.acquire(
             this,
             "WebToApp:BackgroundRunWakeLock",

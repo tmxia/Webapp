@@ -419,8 +419,8 @@ class LongPressHandler(
 
         val imageBytes = Base64.decode(base64Data, Base64.DEFAULT)
 
-        
-        
+        // Write bytes directly: no decode roundtrip (lossless, faster, and immune
+        // to oversized-bitmap OOM on hostile data URLs, #779).
         return saveBytesToGallery(imageBytes, "IMG_${System.currentTimeMillis()}.$extension", mimeType)
     }
 

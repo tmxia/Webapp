@@ -41,8 +41,8 @@ class WebsiteScreenshotService(private val context: Context) {
         File(context.filesDir, SCREENSHOT_DIR).also { it.mkdirs() }
     }
 
-    
-    
+    // Captures run an offscreen WebView on the main thread and take seconds each;
+    // serialize so list auto-capture and manual taps queue instead of piling up.
     private val captureMutex = Mutex()
 
     suspend fun captureScreenshot(appId: Long, url: String): String? = captureMutex.withLock {

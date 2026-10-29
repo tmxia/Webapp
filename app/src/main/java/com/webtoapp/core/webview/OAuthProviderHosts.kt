@@ -1,15 +1,15 @@
 package com.webtoapp.core.webview
 
-
-
-
-
-
-
-
-
-
-
+/**
+ * Hosts that carry cross-site authentication / challenge flows.
+ *
+ * Sign-in must complete inside the app's own WebView: the site session lives in this
+ * WebView's cookie jar, so routing an OAuth navigation to an external browser can never
+ * hand the session back (#601 — "sign-in never completes"). Embedded provider frames
+ * additionally need third-party cookies, which Android WebView disables by default.
+ *
+ * Kept free of Android dependencies so it is unit-testable on the plain JVM.
+ */
 object OAuthProviderHosts {
 
     val HOST_SUFFIXES = setOf(

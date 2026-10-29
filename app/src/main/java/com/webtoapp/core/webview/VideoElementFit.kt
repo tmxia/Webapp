@@ -3,19 +3,19 @@ package com.webtoapp.core.webview
 import kotlin.math.min
 import kotlin.math.roundToInt
 
-
-
-
-
+/**
+ * Box to pin onto a video that System WebView laid out larger than the page's
+ * CSS cap. Null means the current layout already fits and must be left alone.
+ */
 internal data class VideoFitBox(val width: Int, val height: Int)
 
-
-
-
-
-
-
-
+/**
+ * Inputs are CSS pixels. A zero CSS length means "no independent cap"
+ * (auto, a percentage that resolved to the overflowing size, or unknown).
+ * [parentHeight] is set only when an ancestor states an explicit height.
+ * [viewportHeight] is not a cap: a tall video the page meant to scroll stays
+ * tall. [viewportWidth] is a cap so a video cannot be wider than the screen.
+ */
 internal data class VideoFitInput(
     val laidOutWidth: Int,
     val laidOutHeight: Int,
@@ -31,22 +31,22 @@ internal data class VideoFitInput(
     val fullscreen: Boolean = false,
 )
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+/**
+ * System WebView sizes a `<video>` from the media's intrinsic pixels and
+ * drops the CSS box Chrome keeps (a chat bubble's width and height, or
+ * `max-width`). Shrink only when the laid-out box is actually outside that
+ * cap. A player that already fits, including a full-width one, is unchanged.
+ * When the page caps both axes, keep that box and let the page's `object-fit`
+ * crop it. A height-only cap keeps the media aspect ratio. The viewport
+ * width clamps either result so the video cannot be wider than the screen.
+ *
+ * getComputedStyle often reports that intrinsic box, so a real `140px` cap
+ * and a cyclic `max-width: 100%` look the same. The script therefore also
+ * reads specified `px` / `rem` / `em` / `vw` / `vh` lengths from the page's
+ * rules and from ancestors. A chat bubble that grew with the video, while
+ * still fitting on screen, is pinned back to that length. A length the page
+ * did not set is not a cap.
+ */
 internal fun fittedVideoBox(input: VideoFitInput): VideoFitBox? {
     if (input.fullscreen) return null
     if (input.intrinsicWidth <= 0 || input.intrinsicHeight <= 0) return null
@@ -106,12 +106,12 @@ internal fun fittedVideoBox(input: VideoFitInput): VideoFitBox? {
     return box
 }
 
-
-
-
-
-
-
+/**
+ * Document-start script for System WebView. Gecko already honors the CSS box,
+ * so it does not receive this. The script implements [fittedVideoBox].
+ * The helper sheet only sets `min-width` and `min-height`, and it is inserted
+ * first so it cannot override a page `max-width`.
+ */
 internal object VideoElementFit {
     const val SCRIPT: String = """(function(){
 'use strict';

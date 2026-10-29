@@ -59,12 +59,12 @@ class BrowserSurface private constructor(
 
     fun dispatchKeyEvent(event: KeyEvent): Boolean = view.dispatchKeyEvent(event)
 
-    
-
-
-
-
-
+    /**
+     * Engine-agnostic find-in-page. `forward == null` starts a fresh search for [text];
+     * true/false steps to the next/previous match of the current search. [onResult] receives
+     * the 0-based active match ordinal (-1 when nothing matched) and the total match count,
+     * invoked once the engine finished counting for that step.
+     */
     fun findInPage(text: String, forward: Boolean?, onResult: (activeMatch: Int, totalMatches: Int) -> Unit) {
         val wv = webView
         if (wv != null) {
@@ -97,24 +97,24 @@ class BrowserSurface private constructor(
     fun onResume() {
         webView?.onResume()
         webView?.resumeTimers()
-        
-        
+        // Rebind a Gecko session released by onPause / onCovered, and restore
+        // a GeckoView that onCovered set to GONE (#1161, #1192).
         (engine as? GeckoViewEngine)?.setDisplayVisible(true)
     }
 
     fun onPause() {
         webView?.onPause()
-        
-        
-        
+        // Activity backgrounding. Release the display but leave the view
+        // visible — collapsing here would destroy the only surface of a
+        // single-site Gecko app on every Home press (#1192).
         (engine as? GeckoViewEngine)?.setDisplayVisible(false)
     }
 
-    
-
-
-
-
+    /**
+     * Another multi-web site is covering this one. Same session detach as
+     * [onPause], and the GeckoView is set to GONE so its SurfaceView cannot
+     * stay composited above the selected site (#1192).
+     */
     fun onCovered() {
         webView?.onPause()
         (engine as? GeckoViewEngine)?.setDisplayVisible(false, collapseSurface = true)

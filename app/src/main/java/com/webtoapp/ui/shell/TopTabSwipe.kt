@@ -11,12 +11,12 @@ import kotlinx.coroutines.Job
 
 internal enum class TopTabMove { IGNORE, CLAIM, DRAG }
 
-
-
-
-
-
-
+/**
+ * Bridge from the WebView / GeckoView touch listener to the top-tab pager.
+ * The listener returns false until a horizontal gesture is claimed, so a
+ * vertical read still scrolls the page. Null while bottom tabs, cards, or a
+ * single site are showing.
+ */
 internal object SiteTabSwipe {
     var handler: TopTabSwipeHandler? = null
 }
@@ -28,19 +28,19 @@ internal interface TopTabSwipeHandler {
     fun onCancel()
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+/**
+ * Finger position for [TabsMode] when the bar is on top.
+ *
+ * Not a [androidx.compose.foundation.pager.HorizontalPager]: paging items
+ * would dispose the WebView once it left the viewport, and a GeckoView
+ * SurfaceView only follows a real layout position (graphics-layer translation
+ * leaves the surface behind). Visited sites stay composed; this object only
+ * moves the ones currently on screen.
+ *
+ * Coordinates are raw screen pixels. The page is translating under the finger,
+ * so the view-local x would change even when the finger is still and the page
+ * would run away from the hand.
+ */
 internal class TopTabPagerController(firstPosition: Float) : TopTabSwipeHandler {
     var position by mutableFloatStateOf(firstPosition)
     var pageCount: Int = 1

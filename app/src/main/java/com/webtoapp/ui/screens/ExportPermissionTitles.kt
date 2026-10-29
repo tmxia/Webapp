@@ -257,7 +257,7 @@ fun exportPermSearchEmpty(): String = t(
     "일치하는 권한 없음"
 )
 
-
+/** Manifest name, API, and kind. This is the row's identity and stays visible. */
 fun exportPermissionIdentity(perm: ExportPerm): String = buildString {
     append(perm.manifest)
     append(" · ")

@@ -113,13 +113,13 @@ fun EditState.withRuntimePermissionsSyncedFromFeatures(): EditState {
 }
 
 
-
-
-
-
-
-
-
+/**
+ * Applies the "browser toolbar" master toggle to a [WebViewConfig] (#654 redesign).
+ *
+ * Turning the toolbar on flips every item flag on — the user then trims individual
+ * buttons from the all-on slate. Turning it off flips them all off: "off" means no
+ * toolbar at all, so a re-enable must not resurrect stale per-item choices.
+ */
 fun WebViewConfig.withBrowserToolbarEnabled(enabled: Boolean): WebViewConfig = copy(
     browserToolbarEnabled = enabled,
     toolbarShowTitle = enabled,

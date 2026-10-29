@@ -52,9 +52,9 @@ fun GalleryPlayerScreen(
     config: GalleryConfig,
     startIndex: Int,
     onBack: () -> Unit,
-    
+    // Persistence key for rememberPosition (e.g. per-app id). Null disables saving.
     positionKey: String? = null,
-    
+    // Overview (grid/list/timeline) is the entry unless resuming into the pager.
     startInOverview: Boolean = true
 ) {
     val context = LocalContext.current
@@ -72,7 +72,7 @@ fun GalleryPlayerScreen(
             else -> config.getSortedItems()
         }
     }
-    
+    // Mutable playback order: shuffle-on-loop reshuffles in place on every wrap.
     var items by remember(config) { mutableStateOf(initialOrder) }
 
     val pagerState = rememberPagerState(
@@ -83,7 +83,7 @@ fun GalleryPlayerScreen(
     val currentIndex by remember { derivedStateOf { pagerState.settledPage } }
     val currentItem = items.getOrNull(currentIndex)
 
-    
+    // rememberPosition: persist the settled page so reopening continues here.
     LaunchedEffect(currentIndex) {
         val key = positionKey
         if (key != null && currentIndex in items.indices) {
@@ -92,8 +92,8 @@ fun GalleryPlayerScreen(
     }
 
     var showGrid by remember { mutableStateOf(startInOverview) }
-    
-    
+    // Pager back returns to the overview only when the session started there;
+    // a resume-to-pager session exits directly.
     val canReturnToGrid = startInOverview
     androidx.activity.compose.BackHandler(enabled = !showGrid && canReturnToGrid) {
         showGrid = true
@@ -465,8 +465,8 @@ fun GalleryImageViewer(
         contentAlignment = Alignment.Center
     ) {
         val density = LocalDensity.current
-        
-        
+        // Same pinch/pan/double-tap behavior as the exported shell viewer (#801): fresh
+        // zoom state per item, content size from the loaded painter.
         val zoom = remember(item.path) { ZoomableState() }
         var intrinsicSizePx by remember(item.path) { mutableStateOf<Size?>(null) }
         val viewportPx = with(density) { Size(maxWidth.toPx(), maxHeight.toPx()) }
@@ -487,7 +487,7 @@ fun GalleryImageViewer(
                 val painterSize = (state as? coil.compose.AsyncImagePainter.State.Success)
                     ?.painter?.intrinsicSize
                 if (painterSize != null && painterSize.width > 0f && painterSize.height > 0f) {
-                    
+                    // intrinsicSize is already in pixels — no density conversion.
                     intrinsicSizePx = painterSize
                 }
             },
@@ -858,7 +858,7 @@ private fun formatTime(ms: Long): String {
     }
 }
 
-
+/** SharedPreferences file for gallery resume positions, keyed per gallery. */
 internal const val GALLERY_POSITION_PREFS = "gallery_positions"
 
 internal fun galleryPositionKey(galleryId: Long): String = "pos_$galleryId"

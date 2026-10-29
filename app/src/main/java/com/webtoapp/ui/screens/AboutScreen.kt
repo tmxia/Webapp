@@ -399,14 +399,14 @@ private fun AuthorHeroCard(
         )
     }
 
-    
+    // Version history state
     var showHistorySheet by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     var historyLoading by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     var historyError by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<String?>(null) }
     var historyReleases by androidx.compose.runtime.remember {
         androidx.compose.runtime.mutableStateOf<List<com.webtoapp.core.update.UpdateChecker.ReleaseSummary>>(emptyList())
     }
-    
+    // Per-release download state keyed by tag, so each version downloads independently.
     val historyDownloadStates = androidx.compose.runtime.remember {
         androidx.compose.runtime.mutableStateMapOf<String, com.webtoapp.core.update.UpdateDownloadState>()
     }
@@ -775,7 +775,7 @@ private sealed interface ContactAction {
 @Composable
 private fun GitHubRepoCard(onClick: () -> Unit) {
     val isDark = LocalIsDarkTheme.current
-    
+    // GitHub brand mark: keep it recognizable in both themes by inverting the badge.
     val badgeColor = if (isDark) Color(0xFFE6EDF3) else Color(0xFF24292F)
     val markColor = if (isDark) Color(0xFF24292F) else Color.White
 
@@ -955,15 +955,15 @@ private fun UpdateCheckDialog(
     val available = result as? com.webtoapp.core.update.UpdateChecker.Result.UpdateAvailable
     val downloading = downloadState is com.webtoapp.core.update.UpdateDownloadState.Downloading ||
         downloadState is com.webtoapp.core.update.UpdateDownloadState.Verifying
-    
-    
-    
+    // True when the confirmButton shows a real action (Download/Install/Retry/Cancel). When false
+    // (UpToDate / Failed), confirmButton itself is "Close" — the dismissButton must stay empty in
+    // that case or the dialog shows two identical Close buttons.
     val hasActionButton = available != null ||
         downloadState is com.webtoapp.core.update.UpdateDownloadState.Done
 
     androidx.compose.material3.AlertDialog(
         onDismissRequest = {
-            
+            // Block dismiss via outside touch while a download is in flight.
             if (!downloading) onDismiss()
         },
         icon = {
@@ -1015,7 +1015,7 @@ private fun UpdateCheckDialog(
         },
         confirmButton = {
             when {
-                
+                // Download finished: show Install.
                 downloadState is com.webtoapp.core.update.UpdateDownloadState.Done -> {
                     androidx.compose.material3.TextButton(onClick = {
                         onInstall(downloadState.file)
@@ -1023,19 +1023,19 @@ private fun UpdateCheckDialog(
                         Text(Strings.install)
                     }
                 }
-                
+                // Download failed: Retry.
                 downloadState is com.webtoapp.core.update.UpdateDownloadState.Failed && available != null -> {
                     androidx.compose.material3.TextButton(onClick = { onDownload(available.info) }) {
                         Text(Strings.updateRetry)
                     }
                 }
-                
+                // Downloading / verifying: Cancel.
                 downloading -> {
                     androidx.compose.material3.TextButton(onClick = onCancelDownload) {
                         Text(Strings.updateCancelDownload)
                     }
                 }
-                
+                // Update available, idle: Download.
                 available != null -> {
                     androidx.compose.material3.TextButton(onClick = { onDownload(available.info) }) {
                         Text(Strings.updateDownloadButton)
@@ -1334,7 +1334,7 @@ private fun VersionHistoryItem(
         AnimatedVisibility(visible = expanded) {
             Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
                 if (hasNotes) {
-                    
+                    // Thin divider line above notes.
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -1362,7 +1362,7 @@ private fun VersionHistoryItem(
                 Spacer(Modifier.height(12.dp))
             }
         }
-        
+        // Divider between items.
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1454,7 +1454,7 @@ private fun VersionHistoryDownloadRow(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             } else if (isCurrent) {
-                
+                // Already installed — no download button.
             } else {
                 TextButton(onClick = onDownload) {
                     Icon(
@@ -1470,14 +1470,14 @@ private fun VersionHistoryDownloadRow(
     }
 }
 
-
-
-
-
-
-
-
-
+/**
+ * Lightweight Markdown renderer for GitHub release notes, tuned for the
+ * "## Added / ## Improved / ## Fixed" + "- item" changelog format.
+ *
+ * It only handles what release notes actually contain — second-level headings
+ * (`##`), unordered list items (`-`/`*`), and plain paragraphs — so it stays
+ * dependency-free. Anything else is shown as plain text.
+ */
 @Composable
 private fun ReleaseNotesMarkdown(text: String) {
     val titleColor = MaterialTheme.colorScheme.primary
@@ -1490,7 +1490,7 @@ private fun ReleaseNotesMarkdown(text: String) {
         lines.forEachIndexed { index, rawLine ->
             val line = rawLine.trimEnd()
             when {
-                
+                // Second-level heading: the Added / Improved / Fixed sections.
                 line.startsWith("## ") -> {
                     if (inList) Spacer(Modifier.height(4.dp))
                     inList = false
@@ -1501,7 +1501,7 @@ private fun ReleaseNotesMarkdown(text: String) {
                         color = titleColor
                     )
                 }
-                
+                // Unordered list item.
                 line.startsWith("- ") || line.startsWith("* ") -> {
                     if (!inList && index > 0) Spacer(Modifier.height(2.dp))
                     inList = true
@@ -1519,11 +1519,11 @@ private fun ReleaseNotesMarkdown(text: String) {
                         )
                     }
                 }
-                
+                // Blank line: just spacing, closes any open list.
                 line.isBlank() -> {
                     inList = false
                 }
-                
+                // Fallback: plain paragraph text.
                 else -> {
                     if (inList) Spacer(Modifier.height(4.dp))
                     inList = false
@@ -1543,7 +1543,7 @@ private fun DownloadProgressRow(downloaded: Long, total: Long, speed: Long) {
     val percent = if (total > 0) {
         (downloaded.toFloat() / total.toFloat()).coerceIn(0f, 1f)
     } else {
-        
+        // indeterminate when Content-Length unknown
         -1f
     }
     Text(Strings.updateDownloading, style = MaterialTheme.typography.labelMedium)
@@ -1750,12 +1750,12 @@ private enum class RepoSortMode { STARS, RECENT }
 
 private const val COLLAPSED_REPO_COUNT = 5
 
-
-
-
-
-
-
+/**
+ * "More projects" section: lists the author's public GitHub repos (forks and
+ * this app filtered out). Cached JSON renders instantly on revisit while a
+ * silent refresh swaps in fresh data. Default order is by stars; a header
+ * segmented toggle switches to most-recently-pushed, client-side.
+ */
 @Composable
 private fun OtherProjectsSection() {
     val context = LocalContext.current
@@ -1918,10 +1918,10 @@ private fun OtherProjectsSection() {
     }
 }
 
-
-
-
-
+/**
+ * Compact two-option segmented pill for the section header — smaller and
+ * cleaner than two FilterChips next to the title.
+ */
 @Composable
 private fun RepoSortToggle(
     sortMode: RepoSortMode,
@@ -2175,10 +2175,10 @@ private fun RepoLoadErrorCard(message: String?, onRetry: () -> Unit) {
     }
 }
 
-
-
-
-
+/**
+ * Approximate GitHub linguist colors for the language dot — the same visual
+ * cue GitHub repo lists use.
+ */
 private fun languageColor(name: String): Color = when (name) {
     "Kotlin" -> Color(0xFFA97BFF)
     "Java" -> Color(0xFFB07219)

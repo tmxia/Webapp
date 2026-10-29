@@ -44,8 +44,8 @@ class IsolationManager(private val context: Context) {
             generateNewFingerprint(java.util.UUID.randomUUID().toString())
         } else {
 
-            
-            
+            // A fingerprint saved before the catalog was phones still carries a
+            // Windows/macOS UA. Reuse would keep sending the desktop identity.
             val saved = loadFingerprint()
             if (saved != null && saved.identifiesAsPhone()) {
                 saved
@@ -98,7 +98,7 @@ class IsolationManager(private val context: Context) {
 
     fun getFingerprint(): GeneratedFingerprint? = currentFingerprint
 
-    
+    /** 独立环境指纹的 UA —— WebViewManager 用它覆盖真实请求的 User-Agent。 */
     fun getUserAgent(): String? {
         val config = currentConfig ?: return null
         if (!config.enabled) return null

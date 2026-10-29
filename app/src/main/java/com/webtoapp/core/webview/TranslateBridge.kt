@@ -71,10 +71,10 @@ class TranslateBridge(
                 }
                 val results = translateBatchWithFallback(pending, targetLang)
 
-                
-                
-                
-                
+                // JSONArray.toString() is a valid JS array literal — pass it unquoted so no
+                // hand-rolled string escaping is involved. callbackId comes from page JS:
+                // quote it, or a crafted id ('x');payload();//) executes in whatever page is
+                // loaded by the time the async translation call completes.
                 val resultsJson = JSONArray(results).toString()
                 val quotedCallbackId = com.webtoapp.util.JsStrings.quote(callbackId)
 
@@ -200,8 +200,8 @@ class TranslateBridge(
 
     private fun translateViaGoogle(payload: String, targetLang: String): String {
         val encoded = URLEncoder.encode(payload, "UTF-8")
-        
-        
+        // targetLang comes from the page: encode it so it cannot inject
+        // query/path structure into the fixed API endpoint.
         val lang = URLEncoder.encode(targetLang, "UTF-8")
         val url = URL("$GOOGLE_API?client=gtx&sl=auto&tl=$lang&dt=t&q=$encoded")
         val conn = TranslateProxyRoute.open(url)

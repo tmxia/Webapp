@@ -288,7 +288,7 @@ fun AiSettingsScreen(
                 TextButton(
                     onClick = {
                         scope.launch {
-                            
+                            // A saved model without its key is dead weight — cascade.
                             linkedModels.forEach { configManager.deleteSavedModel(it.id) }
                             configManager.deleteApiKey(key.id)
                             deletingApiKey = null
@@ -386,8 +386,8 @@ private fun AiEmptyCard(icon: ImageVector, text: String) {
     }
 }
 
-
-
+// The "[OK] "/"[FAIL] " tags baked into the shared result strings are handy in
+// logs; on screen the color already carries the meaning.
 private fun String.stripResultTag(): String =
     removePrefix("[OK] ").removePrefix("[FAIL] ")
 
@@ -830,8 +830,8 @@ private fun AddApiKeyDialog(
     var customModelsEndpoint by remember { mutableStateOf(initialConfig?.customModelsEndpoint ?: "") }
     var customChatEndpoint by remember { mutableStateOf(initialConfig?.customChatEndpoint ?: "") }
     var selectedApiFormat by remember { mutableStateOf(initialConfig?.apiFormat ?: ApiFormat.OPENAI_COMPATIBLE) }
-    
-    
+    // Default chat endpoint for CUSTOM endpoints follows the selected wire format and
+    // mirrors ApiKeyConfig.getEffectiveChatEndpoint()'s CUSTOM branch.
     val customDefaultChatEndpoint = when (selectedApiFormat) {
         ApiFormat.ANTHROPIC -> "/v1/messages"
         ApiFormat.OPENAI_RESPONSES -> "/v1/responses"
@@ -1008,8 +1008,8 @@ private fun AddApiKeyDialog(
                             expanded = formatExpanded,
                             onDismissRequest = { formatExpanded = false }
                         ) {
-                            
-                            
+                            // CUSTOM endpoints support the three wire formats; the Gemini
+                            // format is internal to the GOOGLE provider entry.
                             listOf(ApiFormat.OPENAI_COMPATIBLE, ApiFormat.ANTHROPIC, ApiFormat.OPENAI_RESPONSES)
                                 .forEach { format ->
                                     DropdownMenuItem(

@@ -7,22 +7,22 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import com.webtoapp.ui.theme.AppColors
 
-
-
-
-
-
-
-
-
-
-
+/**
+ * Lightweight regex-based syntax highlighting for fenced code blocks in the
+ * agent timeline. Produces an [AnnotatedString] of per-line colored spans
+ * (keyword / string / comment / number / function) mapped onto the existing
+ * [AppColors] editor palette. Unknown or unlabeled languages return null and
+ * the caller falls back to plain monochrome text.
+ *
+ * This is intentionally NOT a real lexer: no new dependencies (per project
+ * policy), streaming-friendly (per-line, O(n)), and safe on malformed input.
+ */
 object SyntaxHighlight {
 
-    
+    /** Highlighting is skipped above this size to keep streaming smooth. */
     const val MAX_HIGHLIGHT_CHARS = 20_000
 
-    
+    /** Returns a highlighted string, or null when the language is unsupported. */
     fun highlight(code: String, language: String?): AnnotatedString? {
         if (code.length > MAX_HIGHLIGHT_CHARS) return null
         val rules = rulesFor(language) ?: return null
@@ -34,7 +34,7 @@ object SyntaxHighlight {
         }
     }
 
-    
+    /** True when [language] has a rule set (used to decide plain vs highlighted). */
     fun supports(language: String?): Boolean = rulesFor(language) != null
 
     private fun AnnotatedString.Builder.highlightLine(line: String, rules: LanguageRules) {

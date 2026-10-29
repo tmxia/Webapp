@@ -105,7 +105,7 @@ object IsolationScriptInjector {
         """.trimIndent()
     }
 
-    
+    /** 解析 (primaryTag, languages[]) —— 语言伪装开启时优先用户选定标签，否则取随机指纹值。 */
     private fun resolveLanguages(config: IsolationConfig, fp: GeneratedFingerprint): Pair<String, List<String>> {
         val custom = config.customLanguage
         if (config.spoofLanguage && !custom.isNullOrBlank()) {
@@ -117,7 +117,7 @@ object IsolationScriptInjector {
         return primary to arr
     }
 
-    
+    /** 仅输出 JS 字符串字面量安全的字符，防止配置值破坏注入脚本。 */
     private fun jsStr(raw: String): String =
         raw.replace("\\", "\\\\").replace("'", "\\'").replace("\n", " ").replace("\r", " ")
 
@@ -129,8 +129,8 @@ object IsolationScriptInjector {
         val deviceMemory = config.fingerprintConfig.deviceMemory ?: fp.deviceMemory
         val (primaryLang, langArray) = resolveLanguages(config, fp)
 
-        
-        
+        // Follow the fingerprint. A hardcoded false made every profile look
+        // like a desktop browser, so sites rendered the desktop page.
         val clientHintsMobile = fp.chUaMobile.contains('1')
         val clientHintsJs = if (fp.chUa.isNotEmpty()) {
             """
@@ -623,7 +623,7 @@ object IsolationScriptInjector {
         """.trimIndent()
     }
 
-    
+    /** 语言伪装（navigator.language/languages 独立块，指纹随机化关闭时也可用）。 */
     private fun generateLanguageSpoofScript(langs: Pair<String, List<String>>): String {
         val (primary, arr) = langs
         return """
@@ -633,12 +633,12 @@ object IsolationScriptInjector {
         """.trimIndent()
     }
 
-    
-
-
-
-
-
+    /**
+     * 环境伪装核心块：Intl 语言环境注入 + 完整时区伪装。
+     * 时区通过 Intl.formatToParts 按时刻动态求偏移（自动处理夏令时），
+     * 并补齐 Date 本地时间 getter / toString 家族 / 构造函数参数解释，
+     * 使 new Date().toString() 与 getHours() 等全部落在目标时区。
+     */
     private fun generateEnvSpoofScript(localeTag: String?, timezone: String?): String {
         val localeLine = localeTag?.let { "var __wta_locale__ = '${jsStr(it)}';" } ?: "var __wta_locale__ = null;"
         val tzLine = timezone?.let { "var __wta_tz__ = '${jsStr(it)}';" } ?: "var __wta_tz__ = null;"

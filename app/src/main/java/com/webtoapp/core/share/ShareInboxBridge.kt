@@ -11,30 +11,30 @@ import kotlinx.coroutines.launch
 import org.json.JSONArray
 import java.io.File
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+/**
+ * The JS→native leg of the inbound share channel (issue #1038 / #1296).
+ *
+ * The `WTAShareInbox` bootstrap calls [consume] when the page takes items or explicitly
+ * acknowledges them; the ids are then marked consumed in the inbox index so a later
+ * document load or app relaunch no longer re-announces content the page already handled.
+ *
+ * [payloadSize] / [payloadMime] / [readChunk] let the page pull bytes for items that
+ * were too large to inline as a `data:` URL (over [ShareReceiveContract.INLINE_MAX_BYTES]).
+ * `file://` paths in the push payload are not readable from an http(s) page origin.
+ *
+ * Registered under [ShareReceiveContract.JS_BRIDGE_NAME] only while the share-receive
+ * feature is on. Item ids are unguessable random tokens, so a page can only ever read
+ * or consume what it was actually given.
+ */
 class ShareInboxBridge(private val context: Context) {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    
-
-
-
-
+    /**
+     * @param idsJson a JSON array of item ids. Runs on the WebView's JavaBridge thread —
+     *   the actual index rewrite is handed to [scope] (IO); a failure must never
+     *   propagate back into the page.
+     */
     @JavascriptInterface
     fun consume(idsJson: String?) {
         val ids = try {
@@ -56,10 +56,10 @@ class ShareInboxBridge(private val context: Context) {
         }
     }
 
-    
-
-
-
+    /**
+     * Byte length of a file item, or `-1` when the id is unknown / text / missing.
+     * Called synchronously from JS.
+     */
     @JavascriptInterface
     fun payloadSize(id: String?): Long {
         return try {
@@ -74,7 +74,7 @@ class ShareInboxBridge(private val context: Context) {
         }
     }
 
-    
+    /** MIME type of a file item, or empty when unknown. */
     @JavascriptInterface
     fun payloadMime(id: String?): String {
         return try {
@@ -85,11 +85,11 @@ class ShareInboxBridge(private val context: Context) {
         }
     }
 
-    
-
-
-
-
+    /**
+     * Base64 of one slice of a file item. Empty string means EOF or unknown id —
+     * JS treats both as "stop reading". Length is clamped to
+     * [ShareReceiveContract.READ_CHUNK_MAX_BYTES].
+     */
     @JavascriptInterface
     fun readChunk(id: String?, offset: Int, length: Int): String {
         return try {

@@ -18,18 +18,18 @@ import com.webtoapp.core.i18n.Strings
 import com.webtoapp.core.logging.AppLogger
 import com.webtoapp.util.SafeNotificationChannels
 
-
-
-
-
-
-
-
-
-
-
-
-
+/**
+ * Foreground keep-alive for APK builds.
+ *
+ * `ApkBuilder.buildApk` runs on `Dispatchers.IO`, so a long export survives configuration
+ * changes but not process death: once the user backgrounds the app, Android is free to
+ * reclaim the process mid-build and the half-written APK is discarded. Promoting a
+ * dataSync foreground service plus a partial wake lock for the duration of the build
+ * keeps both the process and the CPU alive — the same contract the agent turn loop
+ * (`AgentService`) already relies on.
+ *
+ * Every entry point is best-effort: a service that fails to start must not fail the build.
+ */
 class ApkBuildService : Service() {
 
     private var wakeLock: PowerManager.WakeLock? = null
@@ -79,8 +79,8 @@ class ApkBuildService : Service() {
             }
             inForeground = true
         } catch (e: Exception) {
-            
-            
+            // FGS promotion can be rejected on some OEM builds; a failed notification must
+            // never take the build down with it.
             AppLogger.w(TAG, "startForeground failed: ${e.message}")
         }
     }
@@ -129,8 +129,8 @@ class ApkBuildService : Service() {
         private const val ACTION_STOP = "com.webtoapp.action.APK_BUILD_STOP"
         private const val EXTRA_APP_NAME = "app_name"
 
-        
-        
+        // Builds of large runtime apps legitimately run for tens of minutes; the timeout is
+        // only a safety net against a leaked lock if the process outlives the coroutine.
         private const val WAKE_LOCK_TIMEOUT_MS = 6L * 60 * 60 * 1000
         private const val PROGRESS_THROTTLE_MS = 250L
 
@@ -153,11 +153,11 @@ class ApkBuildService : Service() {
             }
         }
 
-        
-
-
-
-
+        /**
+         * Refresh the progress line on the ongoing notification. Called from the build
+         * pipeline on every `onProgress` tick; throttled so a chatty stage cannot spam
+         * NotificationManager.
+         */
         fun updateProgress(context: Context, percent: Int, text: String) {
             val now = System.currentTimeMillis()
             if (percent == lastNotifyPercent && now - lastNotifyAt < PROGRESS_THROTTLE_MS) return
@@ -182,8 +182,8 @@ class ApkBuildService : Service() {
 
         fun stop(context: Context) {
             lastNotifyPercent = -1
-            
-            
+            // stopService on our own component is exempt from background-start limits —
+            // a startService(ACTION_STOP) from a backgrounded build would be rejected.
             try {
                 context.stopService(Intent(context, ApkBuildService::class.java))
             } catch (e: Exception) {

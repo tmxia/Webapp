@@ -10,11 +10,11 @@ import kotlinx.coroutines.withTimeoutOrNull
 
 class PermissionPrompter {
 
-    
-    
-    
-    
-    
+    // Requests/choices are delivered to the UI through Channels (exposed as flows via
+    // receiveAsFlow) rather than replay-0 SharedFlows. A Channel guarantees each emitted
+    // request is received by the UI collector (buffered until consumed), so a request can
+    // never be lost to a subscribe/emit race — which previously left request()/askChoice()
+    // suspended forever on the response channel, freezing the agent loop after a prompt.
     private val requestChannel = Channel<PermissionRequest>(Channel.UNLIMITED)
     val requests: Flow<PermissionRequest> = requestChannel.receiveAsFlow()
 
@@ -29,9 +29,9 @@ class PermissionPrompter {
     suspend fun request(req: PermissionRequest): PermissionResponse = singleFlight.withLock {
         requestChannel.send(req)
 
-        
-        
-        
+        // Guard against the UI never responding (e.g. it was destroyed mid-prompt and the
+        // pending request was lost). Without this the engine would hang forever waiting on
+        // the response channel. On timeout we deny the tool so the turn can continue/end.
         val resp = withTimeoutOrNull(PROMPT_TIMEOUT_MS) {
             while (true) {
                 val (id, r) = responseChannel.receive()
@@ -51,8 +51,8 @@ class PermissionPrompter {
 
     suspend fun askChoice(req: ChoiceRequest): ChoiceResponse = singleFlight.withLock {
         choiceChannel.send(req)
-        
-        
+        // Same rationale as request(): if the choice sheet is never shown or answered,
+        // cancel after a grace period so the agent loop doesn't hang indefinitely.
         val resp = withTimeoutOrNull(PROMPT_TIMEOUT_MS) {
             while (true) {
                 val (id, r) = choiceResponseChannel.receive()
@@ -72,8 +72,8 @@ class PermissionPrompter {
 
     companion object {
         private const val TAG = "PermissionPrompter"
-        
-        
+        // 10 minutes — generous enough for a user who steps away, but finite so a lost
+        // UI prompt can never wedge the agent loop forever.
         private const val PROMPT_TIMEOUT_MS = 10L * 60 * 1000
     }
 }

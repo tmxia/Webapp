@@ -6,10 +6,10 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 
-
-
-
-
+/**
+ * Paints the fullscreen margin bands. Placed outside the content padding so
+ * the gap at the screen edge takes the page color instead of the theme surface.
+ */
 fun parseBandColor(hex: String?): Color? {
     if (hex.isNullOrBlank()) return null
     return runCatching { Color(android.graphics.Color.parseColor(hex)) }.getOrNull()

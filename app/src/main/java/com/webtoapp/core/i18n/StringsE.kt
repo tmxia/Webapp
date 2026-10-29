@@ -14428,7 +14428,7 @@ object StringsE {
         AppLanguage.KOREAN -> "APK 준비됨 (%s)"
     }
 
-    
+    // Agent UI rework: tool viewer, copy header, session/file actions
 
     val agentToolViewFull: String get() = when (Strings.lang) {
         AppLanguage.CHINESE -> "查看完整内容"
@@ -14560,7 +14560,7 @@ object StringsE {
         AppLanguage.KOREAN -> "파일 %s이(가) 영구적으로 삭제되며 되돌릴 수 없습니다."
     }
 
-    
+    // ---- Misc UI leaks fixed in #945 ----
 
     val aiIconFallbackName: String get() = when (Strings.lang) {
         AppLanguage.CHINESE -> "AI图标"
@@ -14746,7 +14746,7 @@ object StringsE {
     }
 
 
-    
+    // ---- AI API error messages (#945) ----
 
     fun aiErrBadRequest(detail: String): String = when (Strings.lang) {
         AppLanguage.CHINESE -> "请求参数错误: $detail"
@@ -15008,7 +15008,7 @@ object StringsE {
         AppLanguage.KOREAN -> "개발자 도구"
     }
 
-    
+    // ---- Runtime error messages (#945) ----
 
     val runtimeNotReadyDownloadDeps: String get() = when (Strings.lang) {
         AppLanguage.CHINESE -> "运行时未就绪，请先下载依赖"
@@ -15453,7 +15453,7 @@ object StringsE {
         AppLanguage.KOREAN -> "package.json을 찾을 수 없습니다"
     }
 
-    
+    // ── Outbound Web Share ──────────────────────────────────────────────────────
 
     val outboundShareTitle: String get() = when (Strings.lang) {
         AppLanguage.CHINESE -> "网页分享"
@@ -15481,7 +15481,7 @@ object StringsE {
         AppLanguage.KOREAN -> "페이지가 글과 파일을 시스템 공유 시트로 넘깁니다. WhatsApp, Telegram 또는 다른 앱을 고르면 됩니다"
     }
 
-    
+    // ── Inbound share sheet (issue #943) ────────────────────────────────────────
 
     val receiveShare: String get() = when (Strings.lang) {
         AppLanguage.CHINESE -> "接收分享内容"
@@ -15886,9 +15886,9 @@ object StringsE {
         AppLanguage.KOREAN -> "패키지 이름별 전용 인증서; 업데이트 간 서명 ID가 유지됩니다"
     }
 
-    
-    
-    
+    // ------------------------------------------------------------------
+    // Plugins (HCJ / userscript / Chrome extension unified surface)
+    // ------------------------------------------------------------------
 
     val pluginsTitle: String get() = when (Strings.lang) {
         AppLanguage.CHINESE -> "插件"
@@ -15903,7 +15903,7 @@ object StringsE {
         AppLanguage.KOREAN -> "플러그인"
     }
 
-    
+    /** ⋮ menu + PluginManagerScreen title. Distinct from [pluginsTitle] on the editor card. */
     val pluginsManageTitle: String get() = when (Strings.lang) {
         AppLanguage.CHINESE -> "管理插件"
         AppLanguage.ENGLISH -> "Manage Plugins"

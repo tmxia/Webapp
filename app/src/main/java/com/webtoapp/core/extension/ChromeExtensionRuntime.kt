@@ -31,7 +31,7 @@ class ChromeExtensionRuntime(
     @Volatile
     private var popupPathOverride: String? = null
 
-    
+    /** Host URL patterns this extension declared in its manifest (host_permissions et al). */
     private val hostPatterns: List<String> by lazy {
         ChromeHostPermissions.declaredPatterns(manifestJson)
     }
@@ -277,7 +277,7 @@ $polyfill
             CookieManager.getInstance().flush()
         }
 
-        
+        /** The background page may only touch origins the manifest declared. */
         private fun hostAllows(url: String): Boolean =
             hostPatterns.any { ChromeHostPermissions.matches(it, url) }
 
@@ -485,11 +485,11 @@ class ContentExtensionBridge(
         runtimes[extId]?.deliverToBackground(msgJson)
     }
 
-    
-
-
-
-
+    /**
+     * Page-visible entry points. Every frame can call these, and JavascriptInterface
+     * does not identify the caller, so they refuse. Content scripts use
+     * [ChromeExtensionAuthChannel] instead.
+     */
     @JavascriptInterface
     fun nativeFetch(url: String, method: String, headersJson: String, body: String): String {
         return hostDenied(url, "nativeFetch")
@@ -729,12 +729,12 @@ class ContentExtensionBridge(
         DeclarativeNetRequestEngine.updateDynamicRules(extId, addRulesJson, removeRuleIdsJson)
     }
 
-    
-
-
-
-
-
+    /**
+     * Guard for the extId-bearing entry points: only installed extensions may be
+     * addressed. Any frame can reach this bridge object, so without this check a
+     * foreign page could read/write another extension's storage or register web
+     * request filters in its name.
+     */
     private fun isKnownExtension(extId: String): Boolean = runtimes.containsKey(extId)
 
     @JavascriptInterface

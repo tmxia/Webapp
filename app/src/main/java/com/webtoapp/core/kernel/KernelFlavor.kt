@@ -18,7 +18,7 @@ enum class KernelFlavor(
     GECKO_FIREFOX_DESKTOP("Firefox Desktop (Gecko)", "Gecko"),
     WEBKIT_SAFARI_DESKTOP("Safari Desktop (WebKit)", "WebKit");
 
-    
+    /** Desktop variants present themselves as a desktop browser instead of a mobile one. */
     val isDesktop: Boolean
         get() = this in DESKTOP_FLAVORS
 
@@ -66,13 +66,13 @@ data class KernelFlavorProfile(
     val isNoOp: Boolean
         get() = flavor == KernelFlavor.SYSTEM_DEFAULT
 
-    
-
-
-
-
-
-
+    /**
+     * JS the page (and its iframes) must see before their own scripts run.
+     *
+     * Derived identities from device disguise keep [flavor] = [KernelFlavor.SYSTEM_DEFAULT]
+     * but still carry a Chrome UA. Those used to emit nothing, so a challenge iframe saw a
+     * Chrome User-Agent with a WebView `window.chrome` / `navigator.webdriver`.
+     */
     fun buildFlavorJs(): String {
         if (isNoOp && userAgent.isNullOrBlank()) return ""
 

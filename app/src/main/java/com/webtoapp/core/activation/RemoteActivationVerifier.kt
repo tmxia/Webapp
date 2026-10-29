@@ -32,7 +32,7 @@ class RemoteActivationVerifier(private val context: Context) {
         private const val NONCE_BYTES = 24
         private const val CACHE_GRACE_MS = 0L
 
-        
+        // AES-256-GCM wire format: Base64(IV[12] || ciphertext || tag[16])
         private const val AES_GCM_IV_BYTES = 12
         private const val AES_GCM_TAG_BYTES = 16
         private const val AES_KEY_BYTES = 32
@@ -48,10 +48,10 @@ class RemoteActivationVerifier(private val context: Context) {
         val deliverUrl: Boolean = false,
         val encryptUrl: Boolean = false,
         val aesKeyBase64: String = "",
-        
-        
-        
-        
+        // True when the entered code is a DEVICE_BOUND code: tells the verifier
+        // endpoint this activation must be enforced per deviceId (the server
+        // rejects the same code from any other device). Pure-local mode cannot
+        // enforce cross-device binding because there is no shared state.
         val deviceBound: Boolean = false
     )
 
@@ -96,8 +96,8 @@ class RemoteActivationVerifier(private val context: Context) {
         val parsed = parseResponse(response)
             ?: return ActivationResult.Invalid(remoteRejectedMessage())
 
-        
-        
+        // When deliverUrl is enabled, the url field is part of the signed payload
+        // (whether it is plaintext or AES-encrypted). verifySignature checks it accordingly.
         if (!verifySignature(publicKey, parsed, nonce, request.deliverUrl)) {
             AppLogger.w(TAG, "Remote verification signature mismatch: app=$appId")
             return ActivationResult.Invalid(remoteSignatureFailedMessage())
@@ -113,8 +113,8 @@ class RemoteActivationVerifier(private val context: Context) {
             return ActivationResult.Expired
         }
 
-        
-        
+        // Decrypt the URL if encryption is enabled. The decrypted plaintext is cached and
+        // returned, so the cache layer never stores ciphertext.
         val plaintextUrl = if (request.deliverUrl && request.encryptUrl) {
             val decrypted = decryptUrl(parsed.url ?: "", request.aesKeyBase64)
             if (decrypted == null) {
@@ -128,7 +128,7 @@ class RemoteActivationVerifier(private val context: Context) {
             null
         }
 
-        
+        // saveCache stores the plaintext URL regardless of whether it arrived encrypted.
         saveCache(appId, request, parsed, plaintextUrl)
         AppLogger.i(TAG, "Remote verification success: app=$appId")
         return ActivationResult.Success(plaintextUrl)
@@ -273,21 +273,21 @@ class RemoteActivationVerifier(private val context: Context) {
         obj.addProperty("expiresAt", response.expiresAt ?: 0L)
         obj.addProperty("remainingUses", response.remainingUses ?: -1)
         obj.addProperty("nonce", response.nonce)
-        
-        
-        
+        // When deliverUrl is enabled the delivered URL is part of the signed payload, so a MITM
+        // cannot swap it while keeping a valid signature. Servers that don't deliver a URL sign
+        // the legacy payload (without url), which stays backward compatible.
         if (includeUrl) {
             obj.addProperty("url", response.url ?: "")
         }
         return obj.toString()
     }
 
-    
-
-
-
-
-
+    /**
+     * Decrypts an AES-256-GCM encrypted URL.
+     *
+     * Wire format: Base64(IV[12 bytes] || ciphertext || GCM tag[16 bytes]).
+     * Returns the plaintext URL or null on any decryption failure.
+     */
     internal fun decryptUrl(encryptedBase64: String, aesKeyBase64: String): String? {
         if (encryptedBase64.isBlank() || aesKeyBase64.isBlank()) return null
         return try {
@@ -300,7 +300,7 @@ class RemoteActivationVerifier(private val context: Context) {
             val tag = combined.copyOfRange(combined.size - AES_GCM_TAG_BYTES, combined.size)
             val ciphertext = combined.copyOfRange(AES_GCM_IV_BYTES, combined.size - AES_GCM_TAG_BYTES)
 
-            
+            // Concatenate ciphertext + tag for javax.crypto GCM decryption
             val ciphertextWithTag = ciphertext + tag
 
             val keySpec = SecretKeySpec(keyBytes, "AES")
@@ -334,9 +334,9 @@ class RemoteActivationVerifier(private val context: Context) {
     private suspend fun readValidCache(appId: Long, request: RemoteRequest): Long? {
         val prefs = context.activationDataStore.data.first()
         val cachedCode = prefs[stringPreferencesKey("remote_code_$appId")] ?: return null
-        
-        
-        
+        // Startup probes are built with an empty code (no user input yet); any cached
+        // code is theirs. Comparing literally against "" invalidated the cache on every
+        // launch, forcing re-verification even with "verify every launch" off.
         if (request.code.isNotBlank() && normalize(cachedCode) != normalize(request.code)) return null
         val expiresAt = prefs[longPreferencesKey("remote_expires_$appId")] ?: return null
         if (expiresAt != 0L && System.currentTimeMillis() > expiresAt + CACHE_GRACE_MS) return null
@@ -359,14 +359,14 @@ class RemoteActivationVerifier(private val context: Context) {
         return url?.takeIf { it.isNotBlank() }
     }
 
-    
-
-
-
-
-
-
-
+    /**
+     * The server rejected or expired [rejectedCode]. Drop the cached remote
+     * result — but only when the rejected code is the one the cache is for, so
+     * a mistyped different code can't destroy a still-valid cached grant. When
+     * the rejected code DID back the grant, the local activated flag goes too:
+     * leaving it behind showed a stale "已激活" while the launch gate demanded
+     * a code, and let a revoked grant masquerade as valid.
+     */
     private suspend fun clearRejectedGrant(appId: Long, rejectedCode: String) {
         context.activationDataStore.edit { prefs ->
             val cachedCode = prefs[stringPreferencesKey("remote_code_$appId")]

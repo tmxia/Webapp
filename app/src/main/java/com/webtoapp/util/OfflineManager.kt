@@ -107,7 +107,7 @@ class OfflineManager(private val context: Context) {
                 markOffline()
             }
         } catch (e: SecurityException) {
-            
+            // File-scheme HTML exports omit ACCESS_NETWORK_STATE (#1254 / #1294).
             markOffline()
         } catch (e: Exception) {
             AppLogger.w(TAG, "Failed to read network state: ${e.message}")

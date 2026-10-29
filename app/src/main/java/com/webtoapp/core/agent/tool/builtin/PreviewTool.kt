@@ -11,11 +11,11 @@ import com.webtoapp.ui.webview.PreviewSessions
 import com.webtoapp.ui.webview.WebViewActivity
 import kotlinx.coroutines.delay
 
-
-
-
-
-
+/**
+ * One tool for the live preview. Opens its own recents task and, in a single
+ * call, can run a page script and return a short snapshot of the controls.
+ * The page is the session; this call does not keep JavaScript bindings.
+ */
 class PreviewTool : Tool {
     override val name = "preview"
 

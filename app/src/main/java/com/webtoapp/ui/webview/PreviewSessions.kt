@@ -13,17 +13,17 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.util.concurrent.ConcurrentHashMap
 
-
-
-
-
-
+/**
+ * Agent-owned preview tasks. The preview tool opens a [WebViewDocumentActivity]
+ * itself, whether or not the About-screen separate-tasks switch is on, and
+ * later calls find that same task by its document URI.
+ */
 object PreviewSessions {
     private const val TAG = "PreviewSessions"
     private const val OPEN_TIMEOUT_MS = 8_000L
     private const val SURFACE_TIMEOUT_MS = 8_000L
 
-    
+    /** Stable identity for a preview task. The document URI can be re-encoded in transit. */
     const val EXTRA_SESSION_KEY = "wta_preview_session"
 
     fun sessionKey(intent: Intent): String? {
@@ -60,11 +60,11 @@ object PreviewSessions {
         return activity
     }
 
-    
-
-
-
-
+    /**
+     * Opens [intent] as its own recents task, or returns the task already
+     * showing that document. Fails when the host is in the background and no
+     * task exists yet: Android will not start an activity from there.
+     */
     suspend fun open(context: Context, intent: Intent): Result<WebViewDocumentActivity> {
         val key = sessionKey(intent)
             ?: return Result.failure(IllegalStateException("preview intent has no document uri"))

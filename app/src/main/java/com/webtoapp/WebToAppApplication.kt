@@ -56,10 +56,10 @@ class WebToAppApplication : Application(), ImageLoaderFactory {
 
     override fun attachBaseContext(base: Context) {
         super.attachBaseContext(base)
-        
-        
-        
-        
+        // Gecko child processes (:tab*/:gpu/...) get a fresh PathClassLoader and
+        // their service onCreate loads mozglue before any of our code could run
+        // later — the native lib graft has to happen here, in every process.
+        // Gecko children additionally need the dep .so files resident up front.
         val provisioner = com.webtoapp.core.engine.GeckoRuntimeProvisioner
         provisioner.ensureNativeLibsVisible(base)
         if (provisioner.isGeckoChildProcess()) {
@@ -88,8 +88,8 @@ class WebToAppApplication : Application(), ImageLoaderFactory {
             return
         }
 
-        
-        
+        // Before any activity. Shortcut cold starts never compose the main
+        // screen, which is the only other place that publishes Strings.lang.
         com.webtoapp.core.i18n.HostLanguage.applyBlocking(this)
 
         if (GlobalContext.getOrNull() == null) {

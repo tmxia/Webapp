@@ -13,18 +13,18 @@ internal enum class PluginHandleClick {
     FAN_OUT
 }
 
-
+/** One plugin opens directly; many fan out in place; none still opens the sheet. */
 internal fun pluginHandleClickAction(entryCount: Int): PluginHandleClick = when {
     entryCount <= 0 -> PluginHandleClick.OPEN_SHEET
     entryCount == 1 -> PluginHandleClick.ACTIVATE_ONLY
     else -> PluginHandleClick.FAN_OUT
 }
 
-
-
-
-
-
+/**
+ * PUBG-style radial offsets from the hub. Y grows downward.
+ * [fanRight] is true when the hub sits on the left half of the screen, so
+ * the arc opens up and toward the free space.
+ */
 internal fun pluginFanOffsets(
     count: Int,
     radiusPx: Float,

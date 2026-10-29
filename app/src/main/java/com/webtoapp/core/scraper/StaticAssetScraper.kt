@@ -17,21 +17,21 @@ import okhttp3.Dispatcher
 import okhttp3.OkHttpClient
 import okhttp3.Request
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+/**
+ * Build-time scraper for the Static Asset Pack feature.
+ *
+ * Unlike [WebsiteScraper] (which produces a full offline mirror with rewritten relative
+ * URLs for an HTML-type app), this scraper only collects *static frontend assets*
+ * (CSS/JS/fonts/icons, optionally images) referenced by a live site, leaves the site's
+ * HTML untouched, and emits a [StaticAssetPack.Manifest] mapping each asset's normalized
+ * URL to its packaged path. The generated APK then loads the live URL at runtime and
+ * serves only the matched static assets locally (see WebViewManager). This keeps dynamic
+ * content (HTML/API/images/video/user data) on the network, which is exactly what large
+ * sites (YouTube/GitHub/Steam) need — a UI-shell cache, not a whole-site mirror.
+ *
+ * Host-only: scraping happens at export time inside the builder, so this class is not
+ * synced into the shell module.
+ */
 class StaticAssetScraper {
 
     companion object {
@@ -63,11 +63,11 @@ class StaticAssetScraper {
             Pattern.CASE_INSENSITIVE
         )
 
-        
-
-
-
-
+        /**
+         * Stable on-disk relative path for a URL. Same-host assets keep their URL path;
+         * cross-host (CDN) assets are namespaced under `_cdn/<host>/` to avoid collisions.
+         * Mirrors WebsiteScraper's layout convention.
+         */
         fun relativePathFor(url: String, baseHost: String): String {
             return try {
                 val u = URL(url)
@@ -144,7 +144,7 @@ class StaticAssetScraper {
             if (config.outputDir.exists()) config.outputDir.deleteRecursively()
             config.outputDir.mkdirs()
 
-            val downloaded = ConcurrentHashMap<String, String>() 
+            val downloaded = ConcurrentHashMap<String, String>() // manifestKey -> relative path
             val visitedCss = ConcurrentHashMap<String, Unit>()
             val failed = ConcurrentHashMap<String, String>()
             val fileCount = AtomicInteger(0)
@@ -260,7 +260,7 @@ class StaticAssetScraper {
                 return result
             }
 
-            
+            // 1) Fetch the entry HTML purely for discovery — it is never packaged.
             val entryBody = fetchText(config.url)
                 ?: return@withContext Result.Error("Failed to download entry page: ${config.url}")
 
@@ -275,7 +275,7 @@ class StaticAssetScraper {
                 }
             }
 
-            
+            // 2) Walk the CSS chain (CSS -> fonts/images/nested CSS) up to maxDepth.
             var depth = 0
             while (cssQueue.isNotEmpty() && depth < config.maxDepth) {
                 val nextRound = ArrayDeque<String>()
@@ -308,8 +308,8 @@ class StaticAssetScraper {
                 baseUrl = StaticAssetPack.normalizeUrl(config.url),
                 entries = downloaded.toMap()
             )
-            
-            
+            // Write the manifest into the output dir so the embedder packages it alongside
+            // the assets; the runtime reads it back through the same asset loader.
             val manifestJson = com.webtoapp.util.GsonProvider.gson.toJson(manifest)
             File(config.outputDir, StaticAssetPack.MANIFEST_FILE_NAME)
                 .writeText(manifestJson, Charsets.UTF_8)

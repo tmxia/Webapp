@@ -65,22 +65,22 @@ fun featureRequiredRuntimePermissions(
         required = required.copy(
             notifications = true,
             foregroundService = true,
-            
-            
+            // Polling/WebSocket notification services hold partial wake locks
+            // while fetching pushes.
             wakeLock = true
         )
     }
     if (autoStartConfig?.bootStartEnabled == true) {
-        
+        // BootReceiver holds a wake lock while scheduling the launch.
         required = required.copy(bootCompleted = true, wakeLock = true)
     }
     if (autoStartConfig?.scheduledStartEnabled == true) {
         required = required.copy(wakeLock = true)
     }
     if (webView.floatingWindowConfig.enabled) {
-        
-        
-        
+        // FloatingWindowService is a specialUse foreground service: without FOREGROUND_SERVICE
+        // (plus FOREGROUND_SERVICE_SPECIAL_USE, bundled in ApkBuilder) startForeground throws
+        // SecurityException and the exported app crashes on launch.
         required = required.copy(
             systemAlertWindow = true,
             foregroundService = true
@@ -96,14 +96,14 @@ fun featureRequiredRuntimePermissions(
         required = required.copy(location = true)
     }
     if (bgmEnabled) {
-        
-        
+        // BGM posts a media notification from the player. It does not start a
+        // foreground service, so it must not latch FOREGROUND_SERVICE_* (#1313).
         required = required.copy(notifications = true)
     }
     if (webView.enableMediaSession || webView.backgroundMediaPlayback) {
-        
-        
-        
+        // WebMediaPlaybackService runs as a mediaPlayback foreground service and
+        // acquires a partial wake lock whenever the page reports playback — a
+        // missing WAKE_LOCK crashed generated APKs with SecurityException (#1034).
         required = required.copy(
             foregroundService = true,
             wakeLock = true
@@ -132,15 +132,15 @@ fun WebApp.featureRequiredRuntimePermissions(): ApkRuntimePermissions =
 fun WebApp.withRuntimePermissionsSyncedFromFeatures(): WebApp {
     val required = featureRequiredRuntimePermissions()
     val currentExport = apkExportConfig ?: ApkExportConfig()
-    
-    
-    
-    
+    // Preserve permissions the user added manually (beyond what features auto-enabled last
+    // time) while recomputing feature-required permissions. This lets turning a feature OFF
+    // clear the permission it had auto-enabled, instead of the old one-way OR latch that kept
+    // it forever (issue #356).
     val manual = currentExport.runtimePermissions.manualBeyond(currentExport.autoEnabledPermissions)
     val merged = manual.enableFrom(required)
-    
-    
-    
+    // Location coherence (issue #292): granting the location permission implies the
+    // WebView geolocation API should be enabled. The reverse direction (geolocationEnabled
+    // -> location permission) is already handled by featureRequiredRuntimePermissions above.
     val effectiveGeolocation = webViewConfig.geolocationEnabled || merged.location
     val permissionsChanged = merged != currentExport.runtimePermissions ||
         required != currentExport.autoEnabledPermissions || apkExportConfig == null

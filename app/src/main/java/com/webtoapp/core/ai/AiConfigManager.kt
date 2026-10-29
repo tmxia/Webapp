@@ -278,9 +278,9 @@ class AiConfigManager(private val context: Context) {
         val encrypted = try {
             encrypt(plainJson)
         } catch (e: Exception) {
-            
-            
-            
+            // FAIL-CLOSED: never persist plaintext API keys. Throwing aborts
+            // the DataStore edit atomically; the public save wrappers convert
+            // this to a failed save instead of a silent plaintext write.
             AppLogger.e(TAG, "API key encryption failed, aborting write", e)
             throw IllegalStateException("API key encryption failed, refusing plaintext fallback", e)
         }
@@ -318,8 +318,8 @@ class AiConfigManager(private val context: Context) {
             if (legacyName != null) {
                 AppLogger.i(TAG, "Migrating removed provider '$legacyName' to CUSTOM")
             }
-            
-            
+            // Rebuild via the constructor: Gson leaves absent fields null and the data
+            // class copy()/constructor reject nulls on non-null params.
             ApiKeyConfig(
                 id = config.id,
                 provider = config.provider ?: AiProvider.CUSTOM,

@@ -106,8 +106,8 @@ object WtaAppPortDiscovery {
     }
 
     suspend fun queryApp(context: Context, app: WtaAppInfo): WtaAppPortReport = withContext(Dispatchers.IO) {
-        
-        
+        // sendPortQuery returns null both on send failure and on timeout; the
+        // original behavior folded both into "no response" as well.
         val pair = sendPortQuery(context, app.packageName)
             ?: return@withContext WtaAppPortReport(
                 app = app,
@@ -129,12 +129,12 @@ object WtaAppPortDiscovery {
         }
     }
 
-    
-
-
-
-
-
+    /**
+     * Fire the ordered PORT_QUERY at [packageName] and await the result.
+     * `null` on timeout, or on a send failure that already logged. Shared by
+     * [queryApp] and the release handshake (which needs the token the query
+     * receiver mints into its result extras).
+     */
     private suspend fun sendPortQuery(context: Context, packageName: String): Pair<Int, Bundle?>? =
         withContext(Dispatchers.IO) {
             val deferred = CompletableDeferred<Pair<Int, Bundle?>>()
@@ -170,7 +170,7 @@ object WtaAppPortDiscovery {
             }
         }
 
-    
+    /** True when [packageName] resolves to a WTA-marked app (generated APK or host). */
     fun isWtaApp(context: Context, packageName: String): Boolean {
         return try {
             val appInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -188,12 +188,12 @@ object WtaAppPortDiscovery {
         }
     }
 
-    
-
-
-
-
-
+    /**
+     * Release [port] on the remote WTA app. The release receiver requires a
+     * single-use session token minted by its query receiver, so this performs
+     * the query → token → release handshake transparently; the caller-facing
+     * signature is unchanged.
+     */
     suspend fun releaseRemotePort(
         context: Context,
         packageName: String,

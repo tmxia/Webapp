@@ -9,13 +9,13 @@ import java.util.Locale
 import java.util.TimeZone
 import java.util.concurrent.ConcurrentHashMap
 
-
-
-
-
+/**
+ * How widely a 429 applies.
+ * [MODEL] leaves the key usable for other models. [KEY] benches the whole key.
+ */
 enum class LimitScope { MODEL, KEY }
 
-
+/** Classified HTTP failure from a provider call. */
 data class RatedFailure(
     val message: String,
     val recoverable: Boolean,
@@ -24,31 +24,31 @@ data class RatedFailure(
     val limitScope: LimitScope?
 )
 
-
-
-
-
-
-
-
-
+/**
+ * In-memory pool of sibling API keys (same provider and base URL).
+ *
+ * A rate-limited secret is benched until the cooldown from the response
+ * elapses, then becomes eligible again. Cooldowns are keyed by the secret
+ * itself, so editing the saved key starts fresh and two rows that share a
+ * secret share one quota. State lives for the process; a restart clears it.
+ */
 class ApiKeyRotation {
 
     private val modelUntil = ConcurrentHashMap<String, Long>()
     private val keyUntil = ConcurrentHashMap<String, Long>()
     private val dead = ConcurrentHashMap.newKeySet<String>()
 
-    
+    /** What the caller should do after one failed attempt. */
     sealed class KeyDecision {
         data class Switch(val key: ApiKeyConfig, val masked: String) : KeyDecision()
         data class Backoff(val waitMs: Long, val sameKeyRetries: Int) : KeyDecision()
         data object Fail : KeyDecision()
     }
 
-    
-
-
-
+    /**
+     * First secret that can serve [modelId] now. [bound] wins when it is free,
+     * so a healthy session stays on the key the model was saved with.
+     */
     fun select(
         bound: ApiKeyConfig,
         pool: List<ApiKeyConfig>,
@@ -61,7 +61,7 @@ class ApiKeyRotation {
             .firstOrNull { available(it, modelId, now) }
     }
 
-    
+    /** Millis until the soonest benched (not rejected) peer is free. */
     fun soonestWaitMs(
         bound: ApiKeyConfig,
         pool: List<ApiKeyConfig>,
@@ -165,7 +165,7 @@ class ApiKeyRotation {
         const val DEFAULT_COOLDOWN_MS = 60_000L
         const val MIN_COOLDOWN_MS = 1_000L
 
-        
+        /** A daily quota with no usable delay. Long enough that we do not hop back. */
         const val DAILY_COOLDOWN_MS = 6L * 60L * 60L * 1000L
         const val FORBIDDEN_COOLDOWN_MS = 10L * 60L * 1000L
 
@@ -179,10 +179,10 @@ class ApiKeyRotation {
         )
         private val DURATION = Regex("""^(\d+(?:\.\d+)?)(ms|s|m|h)$""", RegexOption.IGNORE_CASE)
 
-        
-
-
-
+        /**
+         * Keys that can stand in for [bound]: same provider, same base URL,
+         * and (for a custom endpoint) the same wire format. [bound] stays first.
+         */
         fun poolFor(bound: ApiKeyConfig, all: List<ApiKeyConfig>): List<ApiKeyConfig> {
             val peers = all.filter { other ->
                 other.id != bound.id && samePool(bound, other) && usable(other)
@@ -300,10 +300,10 @@ class ApiKeyRotation {
                 "daily" in lower || "rpd" in lower
         }
 
-        
-
-
-
+        /**
+         * Per-model quota stays on that model. A project-wide quota (no model
+         * dimension) benches every model on the key.
+         */
         fun limitScopeOf(body: String): LimitScope {
             val lower = body.lowercase()
             val perModel = "permodel" in lower || "per_model" in lower || "per-model" in lower ||

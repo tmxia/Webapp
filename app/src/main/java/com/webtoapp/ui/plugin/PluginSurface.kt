@@ -88,9 +88,9 @@ import com.webtoapp.core.plugin.PluginPanelStyle
 import com.webtoapp.core.plugin.PluginSession
 import kotlin.math.roundToInt
 
-
-
-
+// ---------------------------------------------------------------------------
+// Strings (10 languages, no else)
+// ---------------------------------------------------------------------------
 
 private val pluginsTitle: String
     @Composable get() = when (Strings.lang) {
@@ -197,15 +197,15 @@ internal fun pluginIcon(icon: String): ImageVector = when (icon) {
     else -> Icons.Filled.Extension
 }
 
+// ---------------------------------------------------------------------------
+// Toolbar slot
+// ---------------------------------------------------------------------------
 
-
-
-
-
-
-
-
-
+/**
+ * Toolbar plugin entries. Each plugin that picked [PluginEntryStyle.TOOLBAR]
+ * gets its own icon; plugins living in the menu or on the floating handle are
+ * reachable through the puzzle button, which opens the plugin sheet.
+ */
 @Composable
 fun PluginToolbarEntries(
     onOpenSheet: () -> Unit,
@@ -239,7 +239,7 @@ fun PluginToolbarEntries(
             }
         }
         if (hiddenEntries.isNotEmpty() || toolbarEntries.isEmpty()) {
-            
+            // Plugin-authored badge only — never an auto "N active" count.
             val explicitBadge = hiddenEntries.firstOrNull { it.badge.isNotBlank() }?.badge
             BadgedBox(
                 badge = {
@@ -258,14 +258,14 @@ fun PluginToolbarEntries(
     }
 }
 
+// ---------------------------------------------------------------------------
+// Floating handle (entry style for toolbar-less apps)
+// ---------------------------------------------------------------------------
 
-
-
-
-
-
-
-
+/**
+ * Shared overlay handle. Lives in the Compose layer — page CSS can never
+ * move or hide it. Set [draggable] false when a parent owns the drag.
+ */
 @Composable
 fun DraggableFloatingHandle(
     onClick: () -> Unit,
@@ -318,9 +318,9 @@ fun DraggableFloatingHandle(
     }
 }
 
-
-
-
+/**
+ * Plugin entry on [DraggableFloatingHandle]. Badge comes from plugin state.
+ */
 @Composable
 fun PluginFloatingHandle(
     onClick: () -> Unit,
@@ -338,9 +338,9 @@ fun PluginFloatingHandle(
     )
 }
 
-
-
-
+// ---------------------------------------------------------------------------
+// Plugin sheet — the unified list of plugins relevant to the current page
+// ---------------------------------------------------------------------------
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -386,8 +386,8 @@ fun PluginSheet(
                                 }
                             )
                         }
-                        
-                        
+                        // Userscript menu commands surface as indented sub-rows —
+                        // the unified place GM_registerMenuCommand lives now.
                         entry.menuCommands.forEach { cmd ->
                             item(key = entry.pluginId + ":menu:" + cmd) {
                                 PluginMenuCommandRow(
@@ -479,7 +479,7 @@ private fun PluginSheetRow(
     }
 }
 
-
+/** An indented menu-command row under a userscript entry. */
 @Composable
 private fun PluginMenuCommandRow(
     name: String,
@@ -508,11 +508,11 @@ private fun PluginMenuCommandRow(
     }
 }
 
+// ---------------------------------------------------------------------------
+// Panel host — bottom sheet / floating window / fullscreen for panel.html
+// ---------------------------------------------------------------------------
 
-
-
-
-
+/** Mount the whole runtime plugin surface: sheet + panel host + (optionally) the handle. */
 @Composable
 fun PluginSurfaceHost(
     entryStyle: PluginEntryStyle,
@@ -543,19 +543,19 @@ fun PluginSurfaceHost(
         )
     }
 
-    
-    
+    // TOOLBAR/MENU entries live in the app bar; a plugin that picked the
+    // floating handle (or a hidden toolbar) renders the draggable launcher.
     val wantsHandle = entries.any { it.entryStyle == PluginEntryStyle.FLOATING_HANDLE }
     if (entryStyle == PluginEntryStyle.FLOATING_HANDLE || wantsHandle || !toolbarVisible) {
         PluginHandleCluster(modifier = floatingHandleModifier)
     }
 }
 
-
-
-
-
-
+/**
+ * Floating hub: one plugin opens directly, many fan out in place (PUBG-style),
+ * none still opens the sheet. Satellites are siblings of the hub so they stay
+ * hittable outside the hub's measured box.
+ */
 @Composable
 private fun PluginHandleCluster(modifier: Modifier = Modifier) {
     val entries by PluginHostState.entries.collectAsStateWithLifecycle()
@@ -786,19 +786,19 @@ private fun PluginPanelTitle(
     HorizontalDivider()
 }
 
-
-
-
-
+/**
+ * The WebView that renders `panel.html`: native panel bridge attached, panel
+ * bootstrap injected into the authored HTML before its own scripts run.
+ */
 @Composable
 private fun PluginPanelWebView(
     request: PluginHostState.PanelRequest,
     modifier: Modifier = Modifier
 ) {
     val session = PluginHostState.session
-    
-    
-    
+    // Feed the app's real palette into the panel document: authored panels
+    // style themselves with var(--wta-*) tokens and fall back to light greys
+    // when the host does not define them.
     val scheme = MaterialTheme.colorScheme
     val panelThemeHead = remember(scheme) {
         fun hex(c: Color): String = "#%06X".format(c.toArgb() and 0xFFFFFF)
@@ -817,9 +817,9 @@ private fun PluginPanelWebView(
     AndroidView(
         modifier = modifier,
         factory = { ctx ->
-            
-            
-            
+            // Chrome-extension popups need their own fully-configured WebView
+            // (resource interception + chrome.* polyfill); the runtime factory
+            // supplies it. HCJ/userscript panels get the hcjPanel bridge.
             val chromeWv = if (request.kind == PluginKind.CHROME_EXTENSION) {
                 session?.popupWebViewFactory?.invoke(request.url)
             } else null
@@ -846,15 +846,15 @@ private fun PluginPanelWebView(
         },
         onRelease = { wv ->
             session?.panelEvaluator = null
-            
-            
-            
+            // Chrome popup WebViews are owned by their ExtensionPopupManager —
+            // the session's onPanelClosed hook destroys them; only destroy the
+            // plain panel WebViews we created here.
             if (request.kind != PluginKind.CHROME_EXTENSION) wv.destroy()
         }
     )
 }
 
-
+/** Inject the hcjPanel bootstrap + theme vars into authored panel HTML ahead of its scripts. */
 private fun injectPanelBootstrap(html: String, bootstrap: String, themeHead: String): String {
     val tag = "<script>$bootstrap</script>$themeHead"
     Regex("<head[^>]*>", RegexOption.IGNORE_CASE).find(html)?.let {

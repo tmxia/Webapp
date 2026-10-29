@@ -27,11 +27,11 @@ object WtaMotion {
 
     const val DurationDeliberate: Int = 400
 
-    
-
-
-
-
+    /**
+     * Global motion tuning, written from WebToAppTheme's composition.
+     * Spec factories below read these at call time, so a settings change
+     * applies to every animation started afterwards.
+     */
     @Volatile
     var durationScale: Float = 1f
 

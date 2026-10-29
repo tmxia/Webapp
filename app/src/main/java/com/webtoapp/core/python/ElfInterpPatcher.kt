@@ -5,32 +5,32 @@ import java.io.File
 import java.io.RandomAccessFile
 import java.nio.charset.StandardCharsets
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+/**
+ * Rewrites the PT_INTERP (ELF program interpreter) of executables so direct
+ * kernel execs resolve the on-device musl dynamic linker.
+ *
+ * The python-build-standalone musl builds ship with an absolute interpreter
+ * path such as `/lib/ld-musl-aarch64.so.1`, which does not exist on Android.
+ * Launching through the explicit loader (`ld-musl-* --library-path ... python3`)
+ * works, but **any subprocess spawned by Python itself** (pip's PEP 517
+ * build-isolation venv pythons) is exec'd directly by the kernel, which
+ * resolves PT_INTERP verbatim and fails with `ENOENT`.
+ *
+ * The interpreter is therefore patched to the **absolute path of the bundled
+ * loader on this device** (`<pythonHome>/lib/ld-musl-<arch>.so.1`). An
+ * absolute path is required rather than an `$ORIGIN`-relative one because:
+ *
+ *  - the kernel does not expand `$ORIGIN` in PT_INTERP (it would be resolved
+ *    as a literal relative path against the process CWD), and
+ *  - `packaging`'s musl version probe reads PT_INTERP of `sys.executable` and
+ *    executes that string verbatim (`subprocess.run([ld])`) to compute the
+ *    `musllinux_*` platform tags — an absolute, existing path makes the probe
+ *    succeed so compiled wheels match without any source build.
+ *
+ * The baked path lives under the app's `filesDir`, which is stable across app
+ * updates (unlike `nativeLibraryDir`, which is randomized per install and
+ * must never be embedded).
+ */
 object ElfInterpPatcher {
 
     private const val TAG = "ElfInterpPatcher"
@@ -56,13 +56,13 @@ object ElfInterpPatcher {
 
     private const val ORIGIN_PREFIX = "\$ORIGIN/"
 
-    
-
-
-
-
-
-
+    /**
+     * True when [interp] points at a musl dynamic loader that this device
+     * cannot resolve verbatim: the stock absolute `/lib/ld-musl-<arch>.so.1`,
+     * the `$ORIGIN`-relative form written by the 2.4.5 patcher (the kernel
+     * does not expand `$ORIGIN` in PT_INTERP), or a stale absolute path baked
+     * by an earlier heal after the runtime moved.
+     */
     fun isUnresolvedMuslInterp(interp: String, resolvedInterp: String): Boolean {
         if (interp == resolvedInterp) return false
         if (!interp.startsWith("/") && !interp.startsWith(ORIGIN_PREFIX)) return false
@@ -70,10 +70,10 @@ object ElfInterpPatcher {
         return base.startsWith("ld-musl-") && base.endsWith(".so.1")
     }
 
-    
-
-
-
+    /**
+     * Reads the current PT_INTERP of [file], or null when the file is not a
+     * supported little-endian ELF with an interpreter.
+     */
     fun currentInterp(file: File): String? {
         if (!file.isFile || file.length() < SIZEOF_EHDR64) return null
         return try {
@@ -103,10 +103,10 @@ object ElfInterpPatcher {
                     val pOffset = if (is64) readU64(ph, 8) else readU32(ph, 4).toLong()
                     val pFilesz = if (is64) readU64(ph, 32) else readU32(ph, 16).toLong()
                     if (pFilesz <= 0 || pFilesz > 4096) return null
-                    
-                    
-                    
-                    
+                    // Some builds truncate p_filesz before the NUL terminator
+                    // (e.g. 26 bytes for a 27-char path). Peek past the segment
+                    // so we detect the real interpreter; the region is file-only
+                    // padding, never mapped.
                     val readLen = minOf(pFilesz + 64, file.length() - pOffset).toInt()
                     if (readLen <= 0) return null
                     raf.seek(pOffset)
@@ -123,14 +123,14 @@ object ElfInterpPatcher {
         }
     }
 
-    
-
-
-
-
-
-
-
+    /**
+     * Rewrites the PT_INTERP of [file] to [newInterp]. Grows the segment in
+     * place when the new path does not fit, which is safe because the kernel
+     * only reads the interpreter string from the segment and it lives inside
+     * the ELF header page (load segments start at the next page boundary).
+     *
+     * @return true when the file was modified.
+     */
     fun rewriteInterp(file: File, newInterp: String): Boolean {
         val newBytes = newInterp.toByteArray(StandardCharsets.UTF_8) + 0
         return try {
@@ -170,10 +170,10 @@ object ElfInterpPatcher {
                         return true
                     }
 
-                    
-                    
-                    
-                    
+                    // Grow in place. The interpreter lives in the first page with
+                    // the ELF header; the next load segment starts at the next
+                    // page boundary, so there is slack as long as the new path
+                    // stays within this page.
                     val pageStart = pOffset - (pOffset % 4096)
                     if (pOffset + newBytes.size > pageStart + 4096) {
                         AppLogger.w(TAG, "New interpreter does not fit in header page of ${file.name}; skipping")
@@ -198,26 +198,26 @@ object ElfInterpPatcher {
         }
     }
 
-    
-
-
-
-
-
-
-
+    /**
+     * Patches [file] when its interpreter is a musl loader path this device
+     * cannot resolve verbatim.
+     *
+     * @param resolvedInterp absolute on-device loader path to bake in (see
+     * [PythonDependencyManager.resolvedMuslInterpPath]).
+     * @return true when the file was modified.
+     */
     fun patchMuslInterp(file: File, resolvedInterp: String): Boolean {
         val current = currentInterp(file) ?: return false
         if (!isUnresolvedMuslInterp(current, resolvedInterp)) return false
         return rewriteInterp(file, resolvedInterp)
     }
 
-    
-
-
-
-
-
+    /**
+     * Patches every ELF executable under `<pythonHome>/bin/` whose musl
+     * interpreter cannot be resolved on this device.
+     *
+     * @return number of binaries patched.
+     */
     fun patchPythonBinaries(pythonHome: File, resolvedInterp: String): Int {
         val binDir = File(pythonHome, "bin")
         if (!binDir.isDirectory) return 0

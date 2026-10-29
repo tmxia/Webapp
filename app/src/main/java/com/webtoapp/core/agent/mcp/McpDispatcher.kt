@@ -13,13 +13,13 @@ import com.webtoapp.core.agent.tool.ToolResult
 import java.io.StringReader
 import java.math.BigDecimal
 
-
-
-
-
-
-
-
+/**
+ * MCP on the loopback port. Speaks the current stateless revision
+ * (2026-07-28: `server/discover`, per-request version) and the legacy
+ * handshake (`initialize`) so both generations of desktop agents can connect.
+ * One JSON object in, one JSON object out. Notifications return
+ * [DispatchResult.Notification] so HTTP can answer 202 with an empty body.
+ */
 class McpDispatcher(
     private val tools: () -> List<Tool>,
     private val callTool: suspend (name: String, args: JsonObject) -> ToolResult
@@ -73,10 +73,10 @@ class McpDispatcher(
         }
     }
 
-    
-
-
-
+    /**
+     * Gson parses leniently, so `not-json` would become a string and look like
+     * an invalid request. JSON-RPC wants a parse error for text that is not JSON.
+     */
     private fun parseStrict(body: String): JsonElement {
         val reader = JsonReader(StringReader(body))
         reader.isLenient = false
@@ -150,7 +150,7 @@ class McpDispatcher(
                 return Version.Mismatch
             }
         }
-        
+        // A missing header is the pre-2025-06-18 client. Treat it as the legacy revision.
         val requested = headerVersion ?: bodyVersion ?: return Version.Ok(LEGACY_PROTOCOL)
         if (requested !in SUPPORTED) return Version.Unsupported(requested)
         return Version.Ok(requested)
@@ -273,7 +273,7 @@ class McpDispatcher(
     }
 
     companion object {
-        
+        /** Legacy handshake revision advertised when the client does not name one. */
         const val PROTOCOL = "2025-03-26"
         private const val LEGACY_PROTOCOL = PROTOCOL
         private const val MODERN_PROTOCOL = "2026-07-28"

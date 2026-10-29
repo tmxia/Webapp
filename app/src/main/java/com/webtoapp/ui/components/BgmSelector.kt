@@ -84,9 +84,9 @@ fun BgmSelectorDialog(
 
     val snackbarHostState = remember { SnackbarHostState() }
 
-    
-    
-    
+    // Rescan the library after uploads/downloads and reconcile the selected playlist.
+    // Config-only fields (lyrics/tags saved before a sidecar existed) win over the fresh
+    // scan, so a refresh can never wipe data the library file does not carry yet.
     val refreshLibrary: () -> Unit = {
         scope.launch {
             val scanned = withContext(Dispatchers.IO) {

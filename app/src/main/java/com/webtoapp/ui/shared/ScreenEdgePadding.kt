@@ -18,25 +18,25 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import kotlin.math.max
 
-
-
-
-
+/**
+ * Fullscreen content padding is a gap at the physical screen edge (#1172).
+ * The keyboard covers that edge, so the gap must not be added again above it.
+ */
 object ScreenEdgePadding {
     fun effectiveBottomPx(configuredPx: Int, imeOcclusionPx: Int): Int {
         if (configuredPx <= 0) return 0
         return (configuredPx - imeOcclusionPx.coerceAtLeast(0)).coerceAtLeast(0)
     }
 
-    
-
-
-
-
-
-
-
-
+    /**
+     * How many pixels of the screen bottom the keyboard covers.
+     *
+     * Edge-to-edge windows report this as the IME inset. A decor gap below the
+     * window (split-screen, a nav bar) is not the keyboard there. The classic
+     * resize path often reports a zero IME inset, so the gap under the decor
+     * is used instead, minus the navigation bar that is already present while
+     * the keyboard is closed.
+     */
     fun imeOcclusionPx(
         imeInsetBottomPx: Int,
         belowDecorPx: Int,
@@ -70,11 +70,11 @@ object ScreenEdgePadding {
     }
 }
 
-
-
-
-
-
+/**
+ * [configured] is the fullscreen bottom padding. While the keyboard covers
+ * that band, the returned padding shrinks so the page sits on the keyboard
+ * instead of leaving the band above it.
+ */
 @Composable
 fun effectiveBottomContentPadding(configured: Dp): Dp {
     val occlusionPx = rememberImeScreenOcclusionPx()

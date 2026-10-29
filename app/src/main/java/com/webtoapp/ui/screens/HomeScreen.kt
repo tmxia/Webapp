@@ -547,8 +547,8 @@ fun HomeScreen(
 
                     val screenshotVersions = remember { mutableStateMapOf<Long, Int>() }
                     val screenshotLoadingStates = remember { mutableStateMapOf<Long, Boolean>() }
-                    
-                    
+                    // Apps already offered a capture this session; auto-capture never retries
+                    // (manual tap still re-captures). Reset when HomeScreen state resets.
                     val autoCaptureAttempted = remember { mutableSetOf<Long>() }
 
                     val runCapture: (WebAppSummary, AppPreviewSpec) -> Unit = { cardApp, spec ->
@@ -704,9 +704,9 @@ fun HomeScreen(
                         val scope = sharedScope
                         val previewSpec = previewSpecs[app.id] ?: AppPreviewSpec()
 
-                        
-                        
-                        
+                        // Auto-capture the card thumbnail once per session when the card
+                        // is composed and no cached screenshot exists yet; tapping the
+                        // thumbnail still forces a recapture.
                         LaunchedEffect(app.id, previewSpec.captureUrl) {
                             if (previewSpec.captureUrl == null || app.id in autoCaptureAttempted) {
                                 return@LaunchedEffect

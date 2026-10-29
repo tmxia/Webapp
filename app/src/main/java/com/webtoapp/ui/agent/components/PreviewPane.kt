@@ -108,7 +108,7 @@ fun PreviewPane(
         if (sessionId == null || resolvedPath == null) {
             EmptyPreview()
         } else if (resolvedPath.startsWith("apk:")) {
-            
+            // Virtual APK artifact — render an info card instead of a WebView.
             val apkName = resolvedPath.removePrefix("apk:")
             val apkInfo = state.builtApks.firstOrNull { it.apkName == apkName }
             if (apkInfo != null) {
@@ -369,8 +369,8 @@ private fun PreviewWebView(
                     allowFileAccess = true
                     setSupportZoom(true)
                     builtInZoomControls = false
-                    
-                    
+                    // Local file preview: allow gesture-free media playback (parity
+                    // with WebViewActivity's HTML-app preview and generated shells).
                     mediaPlaybackRequiresUserGesture = false
                 }
                 webViewClient = WebViewClient()
@@ -436,7 +436,7 @@ private fun ApkInfoCard(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Spacer(Modifier.height(WtaSpacing.ExtraLarge))
-        
+        // APK icon
         Box(
             modifier = Modifier
                 .size(72.dp)
@@ -462,7 +462,7 @@ private fun ApkInfoCard(
         )
         Spacer(Modifier.height(WtaSpacing.ExtraLarge))
 
-        
+        // Info rows
         ApkInfoRow(label = Strings.agentApkSize, value = info.formatSize())
         info.packageName?.let { ApkInfoRow(label = Strings.agentApkPackage, value = it) }
         ApkInfoRow(label = Strings.agentApkVersion, value = info.versionName ?: "-")
@@ -470,7 +470,7 @@ private fun ApkInfoCard(
 
         Spacer(Modifier.height(WtaSpacing.ExtraLarge))
 
-        
+        // Install button
         androidx.compose.material3.Button(
             onClick = {
                 val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
@@ -499,7 +499,7 @@ private fun ApkInfoCard(
             }
         )
         Spacer(Modifier.height(WtaSpacing.Small))
-        
+        // Share button
         androidx.compose.material3.OutlinedButton(
             onClick = {
                 val uri = androidx.core.content.FileProvider.getUriForFile(

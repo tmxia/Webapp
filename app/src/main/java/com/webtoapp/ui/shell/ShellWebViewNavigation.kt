@@ -8,12 +8,12 @@ object ShellWebViewNavigation {
 
     private const val EXIT_CONFIRM_WINDOW_MS = 2500L
 
-    
-
-
-
-
-
+    /**
+     * A second back callback this soon after a real history step is the same
+     * physical press dispatched twice, not a new request to leave. Long enough
+     * for a same-gesture duplicate, short enough that a deliberate press on the
+     * page just landed on still exits.
+     */
     internal const val HISTORY_STEP_GUARD_MS = 400L
 
     @Volatile
@@ -22,15 +22,15 @@ object ShellWebViewNavigation {
     @Volatile
     private var lastHistoryStepAtMs = 0L
 
-    
-
-
-
-
-
-
-
-
+    /**
+     * Double-back-to-exit when [confirm] is true: the first FINISH only shows a
+     * prompt; a second back press inside the window really leaves.
+     *
+     * When [confirm] is false ([com.webtoapp.data.model.WebViewConfig.BACK_GO_BACK_EXIT]),
+     * FINISH leaves immediately. A callback that arrives inside
+     * [HISTORY_STEP_GUARD_MS] of a history step is ignored, so one press on a
+     * sub-page cannot both go back and exit.
+     */
     private fun confirmExitThenFinish(activity: AppCompatActivity, confirm: Boolean) {
         val now = android.os.SystemClock.uptimeMillis()
         if (!confirm) {
@@ -56,11 +56,11 @@ object ShellWebViewNavigation {
         lastHistoryStepAtMs = android.os.SystemClock.uptimeMillis()
     }
 
-    
-
-
-
-
+    /**
+     * True when an immediate-exit mode should leave. A non-positive
+     * [lastHistoryStepAtMs] means this session has not stepped back yet, so the
+     * press is already on the first page.
+     */
     internal fun shouldFinishImmediately(
         nowMs: Long,
         lastHistoryStepAtMs: Long,
@@ -92,13 +92,13 @@ object ShellWebViewNavigation {
         goBackNative(activity, wv, confirmExit)
     }
 
-    
-
-
-
-
-
-
+    /**
+     * Surface-aware back navigation. On the System WebView kernel this delegates to the
+     * WebView resolver above (history heuristics + optional JS history.back). On GeckoView
+     * there is no WebView handle and no JS-result channel (Gecko's evaluateJavascript cannot
+     * return values), so back walks the engine's own history — previously this path fell
+     * through to finish(), making the back button always exit generated Gecko apps.
+     */
     fun goBackOrFinish(
         activity: AppCompatActivity,
         surface: BrowserSurface?,
@@ -123,13 +123,13 @@ object ShellWebViewNavigation {
         webView: WebView,
         confirmExit: Boolean,
     ) {
-        
-        
-        
-        
-        
-        
-        
+        // Decide with the native back-forward list and pick the transport
+        // afterwards. history.back() and WebView.goBack() walk the SAME joint
+        // session history, so the native list is authoritative for whether a
+        // previous entry exists — while JS-side history.length also counts
+        // forward entries and cannot tell. GO_BACK goes through history.back()
+        // so the page's own popstate/pageshow handlers run and bfcache can
+        // restore the previous DOM instead of doing a fresh load.
         dispatchBackAction(activity, webView, resolveBackActionFor(webView), useJsHistory = true, confirmExit = confirmExit)
     }
 
@@ -221,10 +221,10 @@ object ShellWebViewNavigation {
             }
         }
 
-        
-        
-        
-        
+        // A generated artifact (blank bootstrap / inline error page) sitting in the
+        // middle of history must be stepped over, not treated as "nothing to go
+        // back to": [realA, artifact, realB] should land on realA. Finishing here
+        // reads as "one back press exited two layers" — the reported bug.
         if (previousHasBlank || previousHasError) {
             return if (beforePreviousHasRealPage && currentIndex > 1) {
                 BackAction.SKIP_PREVIOUS

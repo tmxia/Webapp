@@ -8,15 +8,15 @@ import java.security.SecureRandom
 import javax.crypto.Mac
 import javax.crypto.spec.SecretKeySpec
 
-
-
-
-
-
-
-
-
-
+/**
+ * Integrity tag for intent payloads that must cross an exported boundary.
+ *
+ * `SplashLauncherActivity` is exported because pinned home-screen shortcuts are
+ * replayed by the launcher app — the intent (and its extras) is effectively
+ * caller-controlled input. Since the payload is authored by [AppCloner] and
+ * consumed by the activity inside the same app, a keyed HMAC authenticates it:
+ * the key is generated once into private storage and never leaves the device.
+ */
 object PayloadIntegrity {
 
     private const val TAG = "PayloadIntegrity"

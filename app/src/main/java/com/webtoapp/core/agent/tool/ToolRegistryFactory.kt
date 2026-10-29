@@ -76,7 +76,7 @@ class ToolRegistryFactory(
         return ToolRegistry(all)
     }
 
-    
+    /** In-app tools minus plan mode and image tools. Served by the local MCP. */
     fun buildForExternalHost(): ToolRegistry = ToolRegistry(baseTools())
 
     private fun baseTools(): List<Tool> = listOf(
@@ -95,14 +95,14 @@ class ToolRegistryFactory(
         GetAppTool(),
         CreateAppTool(),
         UpdateAppTool(),
-        
+        // Common-config templates
         ListConfigTemplatesTool(),
         SaveConfigTemplateTool(),
         ApplyConfigTemplateTool(),
         ExportConfigTemplateTool(),
         ImportConfigTemplateTool(),
         DeleteConfigTemplateTool(),
-        
+        // App lifecycle
         BuildApkTool(),
         ShareApkTool(),
         ExportAppTool(),
@@ -112,31 +112,31 @@ class ToolRegistryFactory(
         DeleteAppTool(),
         DuplicateAppTool(),
         ExportAabTool(),
-        
+        // Ports & engine
         ScanPortsTool(),
         KillPortTool(),
         KillAllPortsTool(),
         GetEngineStatusTool(),
         SelectEngineTool(),
         DeleteEngineTool(),
-        
+        // Hosts ad-block & runtime management
         GetAdBlockStatusTool(),
         ManageHostsRulesTool(),
         GetRuntimeStatusTool(),
         InstallRuntimeTool(),
         ClearRuntimeCacheTool(),
-        
+        // Stats, modifier & import
         GetUsageStatsTool(),
         CheckAppHealthTool(),
         ListInstalledAppsTool(),
         CloneAppTool(),
         BatchImportAppsTool(),
         ExportAppTemplateTool(),
-        
+        // Build env & Play policy
         GetBuildEnvStatusTool(),
         InitializeBuildEnvTool(),
         CheckPlayPolicyTool(),
-        
+        // Modules
         ListModulesTool(),
         GetModuleTool(),
         CreateModuleTool(),

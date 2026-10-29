@@ -80,19 +80,19 @@ private val DarkColorScheme = darkColorScheme(
 
 val LocalIsDarkTheme = staticCompositionLocalOf { false }
 
-
-
-
-
-
-
+/**
+ * Whether descriptive subtitles (the small hint text under feature titles) are
+ * shown. Provided by [WebToAppTheme] from the user's display preference —
+ * defaults to `true` so contexts that do not provide it (shell UI, previews)
+ * keep rendering as before.
+ */
 val LocalShowDescriptions = compositionLocalOf { true }
 
-
-
-
-
-
+/**
+ * Opt-in gate for secondary/descriptive text: returns this string only when
+ * [LocalShowDescriptions] is on, otherwise null. Call sites opt in per row so
+ * genuinely important status text is never hidden.
+ */
 @Composable
 fun String?.ifDescriptionsShown(): String? =
     if (LocalShowDescriptions.current) this else null
@@ -192,10 +192,10 @@ fun WebToAppTheme(
             if (settingsLoaded) {
                 content(useDarkTheme)
             } else {
-                
-                
-                
-                
+                // Hold a themed blank surface until the first preference
+                // emission lands; composing with defaults and re-laying-out on
+                // real values produces a visible startup jump (and again on
+                // the post-backup-restart cold start).
                 Surface(modifier = Modifier.fillMaxSize()) {}
             }
         }

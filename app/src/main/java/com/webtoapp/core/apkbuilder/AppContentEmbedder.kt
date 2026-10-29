@@ -32,9 +32,9 @@ class EmbedContext(
     val fnAddPythonAppFiles: (ZipOutputStream, File) -> Unit,
     val fnAddGoAppFiles: (ZipOutputStream, File) -> Unit,
     val multiWebSiteSourceDirs: Map<String, File> = emptyMap(),
-    
+    /** Multi-web GALLERY site id -> source host-path items (embedded under the site prefix). */
     val multiWebSiteGalleryItems: Map<String, List<com.webtoapp.data.model.GalleryItem>> = emptyMap(),
-    
+    /** Multi-web IMAGE/VIDEO site id -> source host media path. */
     val multiWebSiteMediaPaths: Map<String, String> = emptyMap()
 )
 

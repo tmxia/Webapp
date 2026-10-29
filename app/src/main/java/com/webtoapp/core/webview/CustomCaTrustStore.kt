@@ -8,26 +8,26 @@ import java.security.cert.X509Certificate
 import javax.net.ssl.TrustManagerFactory
 import javax.net.ssl.X509TrustManager
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+/**
+ * Trust anchors the user imported via the editor's "Network trust → Import custom CA" panel.
+ *
+ * At export time [com.webtoapp.core.apkbuilder.ApkBuilder] writes each imported certificate's
+ * canonical DER bytes under `assets/wta_custom_ca/` inside the generated APK. At runtime this
+ * store scans that directory once, loads every certificate into a KeyStore, and exposes
+ * [isServerCertTrusted] for the WebView SSL error handler.
+ *
+ * The built template APK otherwise pins a `network_security_config.xml` that trusts only the
+ * system store (editing the compiled binary resource table per-app is fragile and high blast
+ * radius). This store is the additive, safe channel that lets a generated app honor the user's
+ * imported CAs without touching the template's resource table: an empty asset directory means
+ * no anchors, and [isServerCertTrusted] returns false with zero behavior change.
+ *
+ * Limitation: WebView's [android.net.http.SslError] exposes only the server leaf, not the chain,
+ * so we validate the leaf directly against the imported anchors (the common case: the imported
+ * CA is the direct issuer of the server's certificate). Full PKIX path building across an
+ * intermediate the server did not send is not possible from this hook; source-project export
+ * remains the path for that.
+ */
 object CustomCaTrustStore {
     private const val TAG = "CustomCaTrustStore"
     private const val ASSET_DIR = "wta_custom_ca"
@@ -46,7 +46,7 @@ object CustomCaTrustStore {
         }
     }
 
-    
+    /** Test/host entry point: build directly from in-memory DER blobs, bypassing the asset scan. */
     @Synchronized
     fun initFromDer(certBytes: List<ByteArray>) {
         val factory = CertificateFactory.getInstance("X.509")
@@ -68,10 +68,10 @@ object CustomCaTrustStore {
 
     fun hasAnchors(): Boolean = validator?.hasAnchors() == true
 
-    
+    /** The imported anchor certificates (e.g. for the TLS-fingerprint bridge's upstream trust). */
     fun getAnchorCertificates(): List<X509Certificate> = validator?.getAnchorCertificates() ?: emptyList()
 
-    
+    /** True iff [leaf] cryptographically validates against an imported anchor. Fail-closed. */
     fun isServerCertTrusted(leaf: X509Certificate): Boolean =
         validator?.isServerCertTrusted(leaf) == true
 
@@ -95,11 +95,11 @@ object CustomCaTrustStore {
     }
 }
 
-
-
-
-
-
+/**
+ * Pure-JVM (unit-testable) validator backed by a PKIX [X509TrustManager] seeded with the imported
+ * anchors. Every public method is fail-closed: any unexpected exception yields `false`, never a
+ * crash — this object sits on the WebView SSL error hot path.
+ */
 class CustomCaValidator(private val anchors: List<X509Certificate>) {
     private val trustManager: X509TrustManager? = buildTrustManager()
 
@@ -110,8 +110,8 @@ class CustomCaValidator(private val anchors: List<X509Certificate>) {
     fun isServerCertTrusted(leaf: X509Certificate): Boolean {
         if (anchors.isEmpty()) return false
 
-        
-        
+        // 1. Real PKIX path validation with the imported anchors as trust roots. Handles the case
+        //    where the imported CA is the direct issuer of the server leaf.
         val tm = trustManager
         if (tm != null) {
             runCatching {
@@ -120,9 +120,9 @@ class CustomCaValidator(private val anchors: List<X509Certificate>) {
             }
         }
 
-        
-        
-        
+        // 2. Signature fallback for cases where PKIX is picky (e.g. the anchor lacks basicConstraints
+        //    CA:true, or a critical extension Android dislikes): accept the leaf if its issuer DN
+        //    matches an anchor and the leaf's signature actually verifies against that anchor's key.
         val issuer = leaf.issuerX500Principal
         return anchors.any { anchor ->
             anchor.subjectX500Principal == issuer &&

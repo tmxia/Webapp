@@ -574,7 +574,7 @@ private fun WebViewProviderCard(
         ) {
 
                 val iconBitmap = remember(browser.icon) {
-                    
+                    // Third-party app icons can be arbitrarily large; raster bounded (#779).
                     try {
                         browser.icon?.toBoundedBitmap()?.asImageBitmap()
                     } catch (t: Throwable) {
@@ -722,7 +722,7 @@ private fun getDefaultWebViewInfo(): WebViewInfo {
     )
 }
 
-
+// AOSP default for config_webViewPackages; OEMs may override or extend it.
 private val DEFAULT_WEBVIEW_PROVIDER_PACKAGES = setOf(
     "com.google.android.webview",
     "com.android.webview",
@@ -732,8 +732,8 @@ private val DEFAULT_WEBVIEW_PROVIDER_PACKAGES = setOf(
     "com.chrome.canary"
 )
 
-
-
+// Only packages in the framework's WebView whitelist can actually act as
+// providers — being a browser does not qualify an app.
 private fun getWebViewProviderWhitelist(): Set<String> {
     return runCatching {
         val res = android.content.res.Resources.getSystem()

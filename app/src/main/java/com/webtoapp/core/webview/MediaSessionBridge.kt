@@ -12,23 +12,23 @@ import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import org.json.JSONObject
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+/**
+ * Bridges the web [Media Session API](https://developer.mozilla.org/en-US/docs/Web/API/Media_Session_API)
+ * (`navigator.mediaSession`) of an Android [WebView] to a native media
+ * session owned by [MediaSessionCore].
+ *
+ * Audio is NOT transferred — it keeps playing inside the WebView. This bridge
+ * only carries metadata, position and control commands between the page and
+ * the system media controls (notification, lock screen, Bluetooth, Android
+ * Auto), backed by [WebMediaPlaybackService] for background playback and
+ * wake lock.
+ *
+ * The bridge constructor already registers the `WtaMediaSession` JavaScript
+ * interface; callers only need to install [INJECTION_SCRIPT] at document start
+ * (plus [injectNow] from `onPageFinished` as a fallback). Frame arbitration
+ * (#566) lives here; the native session state machine (position interpolation,
+ * teardown, notification) lives in the engine-agnostic core (#593).
+ */
 class MediaSessionBridge(
     activity: Activity,
     private val webView: WebView
@@ -41,14 +41,14 @@ class MediaSessionBridge(
         ::dispatchCommand
     )
 
-    
-
-
-
-
-
-
-
+    /**
+     * Identity of the frame that currently owns the session. The injected script
+     * runs once per frame (document-start, wildcard origin), so every frame would
+     * otherwise write metadata/state/position into this single bridge and the last
+     * writer would win — a muted ad iframe could clobber the real player (#566).
+     * Only a frame reporting `playing`/`buffering` claims ownership; its updates
+     * stay authoritative while fresh, others are dropped.
+     */
     private var activeFrameId: String? = null
     private var activeFrameLastSeenMs = 0L
 
@@ -59,27 +59,27 @@ class MediaSessionBridge(
         )
     }
 
-    
+    /** Handle of the document-start script registration, for removal in [release]. */
     private var documentStartScriptHandler: ScriptHandler? = null
 
-    
-
-
-
-
+    /**
+     * True when [INJECTION_SCRIPT] could not be registered at document start.
+     * An evaluateJavascript install is wiped by every navigation on such
+     * WebViews, so [onPageFinishedFallback] must re-run it per page load.
+     */
     private var needsPageFinishedInjection = false
 
-    
-
-
-
-
-
-
-
-
-
-
+    /**
+     * Install [INJECTION_SCRIPT] at document start via
+     * [WebViewCompat.addDocumentStartJavaScript], plus one immediate
+     * [injectNow] covering a page that was already loaded before registration
+     * (idempotent, harmless when the early install also landed).
+     *
+     * Returns false on WebViews without [WebViewFeature.DOCUMENT_START_SCRIPT]
+     * support — the caller must then let [onPageFinishedFallback] re-inject
+     * the script after every finished navigation, or `navigator.mediaSession`
+     * stays undefined because the injected polyfill never survives a load.
+     */
     fun install(): Boolean {
         val installed = try {
             if (!WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) {
@@ -99,18 +99,18 @@ class MediaSessionBridge(
         return installed
     }
 
-    
-
-
-
+    /**
+     * `onPageFinished` hook: re-injects the polyfill when document-start
+     * registration was unavailable ([install] returned false). No-op otherwise.
+     */
     fun onPageFinishedFallback() {
         if (needsPageFinishedInjection) injectNow()
     }
 
-    
-
-
-
+    /**
+     * Directly evaluates [INJECTION_SCRIPT] into the current main frame. The
+     * script is idempotent (`__wtaMediaBridgeInstalled` guard).
+     */
     fun injectNow() {
         webView.post {
             webView.evaluateJavascript(INJECTION_SCRIPT, null)
@@ -149,13 +149,13 @@ class MediaSessionBridge(
                 else -> PlaybackState.STATE_PAUSED
             }
 
-            
-
-
-
-
-
-
+            /*
+             * Only an audible, actively playing frame claims session ownership.
+             * A muted autoplaying clip (ad/preview) may still report state while
+             * no fresh owner exists, but never steals the session from the real
+             * player (#566). Frames without an element (WebAudio players with
+             * an explicit playbackState) report as audible.
+             */
             if (resolved == PlaybackState.STATE_PLAYING ||
                 resolved == PlaybackState.STATE_BUFFERING
             ) {
@@ -199,20 +199,20 @@ class MediaSessionBridge(
         core.setActionSupported(action, supported)
     }
 
-    
+    // ---- Frame arbitration ----
 
-    
-
-
-
-
+    /**
+     * A frame owns its updates while it is the active frame and has reported
+     * within [FRAME_TAKEOVER_MS]. Frames that never played only get through
+     * while no fresh owner exists.
+     */
     private fun isAuthoritative(frameId: String?): Boolean {
         val current = activeFrameId ?: return true
         if (frameId == null || frameId == current) return true
         return SystemClock.elapsedRealtime() - activeFrameLastSeenMs > FRAME_TAKEOVER_MS
     }
 
-    
+    // ---- Android → JS commands ----
 
     private fun dispatchCommand(
         command: String,
@@ -245,7 +245,7 @@ class MediaSessionBridge(
                 JAVASCRIPT_INTERFACE_NAME
             )
         } catch (_: Exception) {
-            
+            // WebView may already be destroyed.
         }
     }
 
@@ -253,13 +253,13 @@ class MediaSessionBridge(
         const val JAVASCRIPT_INTERFACE_NAME =
             "WtaMediaSession"
 
-        
-
-
-
+        /**
+         * How long the active frame's reports stay authoritative after the
+         * last one.
+         */
         private const val FRAME_TAKEOVER_MS = 3_000L
 
-        
+        /** The document-start JS polyfill that hooks navigator.mediaSession. */
         fun getInjectionScript(): String = INJECTION_SCRIPT
 
         val INJECTION_SCRIPT = """

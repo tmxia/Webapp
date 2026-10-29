@@ -5,13 +5,13 @@ import com.webtoapp.core.logging.AppLogger
 import org.json.JSONObject
 import java.io.File
 
-
-
-
-
-
-
-
+/**
+ * A single recorded build output: the APK on disk plus its `<name>.build.json`
+ * release-metadata sidecar written by [BuildMetadataWriter].
+ *
+ * [apkExists] is false when the APK was pruned/removed while its metadata record
+ * survived — the row still documents what was built, only install/share are gone.
+ */
 data class BuildHistoryEntry(
     val apkFileName: String,
     val apkPath: String?,
@@ -28,20 +28,20 @@ data class BuildHistoryEntry(
     val apkExists: Boolean
 )
 
-
-
-
-
-
+/**
+ * Reads the built-apk output directory into per-app history rows. Pure reader for the
+ * `.build.json` sidecars — nothing is written here; deletion goes through
+ * [ApkBuilder.deleteApk] / [deleteRecord] so file and record stay in sync.
+ */
 class BuildHistoryReader(private val context: Context) {
 
     private val outputDir: File get() = resolveOutputDir(context)
 
-    
-
-
-
-
+    /**
+     * Entries belonging to [packageName]. Sidecarless APKs (built before the sidecar
+     * existed) can only be attributed by file name, so [appNameForFallback] supplies the
+     * `<sanitizedName>_v…` prefix the builder uses for output names.
+     */
     fun listFor(packageName: String, appNameForFallback: String): List<BuildHistoryEntry> {
         val dir = outputDir
         val files = dir.listFiles() ?: return emptyList()
@@ -113,7 +113,7 @@ class BuildHistoryReader(private val context: Context) {
         }
     }
 
-    
+    /** Drop a leftover metadata record whose APK is already gone. */
     fun deleteRecord(entry: BuildHistoryEntry) {
         entry.metadataPath?.let { File(it).delete() }
     }

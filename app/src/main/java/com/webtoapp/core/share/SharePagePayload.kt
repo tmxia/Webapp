@@ -8,35 +8,35 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+/**
+ * Serialisation of inbox items into the shape the page sees (issue #943).
+ *
+ * Two artifacts:
+ *
+ * * [SHARE_INBOX_BOOTSTRAP_JS] — installed once, at document-start, so a page that wants the
+ *   share content can start listening before its own scripts run. Listener registration is the
+ *   only thing the page has to do; nothing fires unless a share actually arrives.
+ * * [buildShareBatch] — the per-delivery `__WTA_SHARE_PUSH__(…)` call, built when native has
+ *   items and the page is ready.
+ *
+ * Payloads that fit [ShareReceiveContract.INLINE_MAX_BYTES] carry a base64 `dataUrl` so the
+ * page can use the bytes with no further round-trip. Larger ones are persisted and offered to
+ * the file chooser; the push payload is metadata only (`inline: false`) plus `fileUrl`.
+ * Pages that cannot open `file://` (typical for HTML apps on a local http origin) call
+ * `WTAShareInbox.readBlob(id)` / `item.readBlob()`, which pull the bytes in
+ * [ShareReceiveContract.READ_CHUNK_MAX_BYTES] slices through the JS bridge.
+ */
 private const val TAG = "SharePagePayload"
 
-
-
-
-
-
-
-
-
-
+/**
+ * Document-start bootstrap for the page-facing share API.
+ *
+ * Native re-announces the queue on every document load (so a reload or an in-page navigation
+ * does not lose a share that has not been used yet), which means the same payload can be
+ * pushed more than once into the *same* document — e.g. a share that lands while the page is
+ * still loading, then again on `onPageFinished`. `seen` makes that idempotent: an id is
+ * delivered to a document exactly once, and a fresh document starts with an empty `seen`.
+ */
 val SHARE_INBOX_BOOTSTRAP_JS: String = """
     (function() {
         'use strict';
@@ -218,7 +218,7 @@ val SHARE_INBOX_BOOTSTRAP_JS: String = """
     })();
 """.trimIndent()
 
-
+/** JSON is a subset of JS literals, except the two Unicode line terminators. */
 private fun jsSafe(json: String): String =
     json.replace("\u2028", "\\u2028").replace("\u2029", "\\u2029")
 
@@ -230,10 +230,10 @@ private fun coarseTypeOf(mimeType: String): String = when {
     else -> "file"
 }
 
-
-
-
-
+/**
+ * Build the `__WTA_SHARE_PUSH__(…)` argument for [items]: a JSON array of page-facing items,
+ * escaped for direct interpolation into a JS expression.
+ */
 suspend fun buildShareBatch(items: List<SharedItem>): String =
     withContext(Dispatchers.IO) {
         val array = JSONArray()
@@ -250,8 +250,8 @@ suspend fun buildShareBatch(items: List<SharedItem>): String =
             }
 
             if (item.isText) {
-                
-                
+                // Text has no byte payload to inline — the string itself is the content. A
+                // `data:` URL would need percent-encoding to stay valid and buys nothing.
                 json.put("inline", true)
                 json.put("text", item.text.orEmpty())
                 array.put(json)

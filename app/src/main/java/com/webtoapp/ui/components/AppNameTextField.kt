@@ -15,10 +15,10 @@ import androidx.compose.ui.text.input.ImeAction
 import com.webtoapp.core.i18n.RandomAppNameGenerator
 import com.webtoapp.core.i18n.Strings
 
-
-
-
-
+/**
+ * App-name input styled as an outlined field so it matches the website-URL field
+ * on the same screen (floating label on the stroke, same corner radius).
+ */
 @Composable
 fun AppNameTextField(
     value: String,

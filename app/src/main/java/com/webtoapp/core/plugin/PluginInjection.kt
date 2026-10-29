@@ -3,19 +3,19 @@ package com.webtoapp.core.plugin
 import com.webtoapp.util.GsonProvider
 import java.security.SecureRandom
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+/**
+ * Builds the JavaScript injected into a page for HCJ / userscript plugins.
+ *
+ * Layout per page:
+ *  1. [BOOTSTRAP_JS] once per document (document-start) — defines
+ *     `window.__hcj`, the runtime that manufactures a scoped `hcj` API object
+ *     per plugin and dispatches host -> page events.
+ *  2. One wrapped IIFE per plugin carrying a capability token. The token is
+ *     issued by [PluginBridge] per WebView, so a script cannot impersonate
+ *     another plugin's permissions by guessing its id.
+ *  3. `style.css` content is injected as a `<style id="hcj-css-<id>">` element
+ *     at document-start so visual plugins apply before first paint.
+ */
 object PluginInjection {
 
     private val random = SecureRandom()
@@ -23,11 +23,11 @@ object PluginInjection {
     fun newToken(): String =
         random.nextLong().toString(16) + random.nextLong().toString(16)
 
-    
-
-
-
-
+    /**
+     * Page-side runtime. Exposed as `window.__hcj` (factory + event bus); the
+     * per-plugin API object handed to plugin code is the `hcj` const created by
+     * [wrapPluginCode].
+     */
     const val BOOTSTRAP_JS = """
 (function(){
   if (window.__hcj) return;
@@ -120,11 +120,11 @@ object PluginInjection {
 })();
 """
 
-    
-
-
-
-
+    /**
+     * Panel-side runtime injected into the panel WebView before `panel.html`
+     * scripts run: `window.hcjPanel` mirrors the page API minus page-only
+     * members, plus send/onMessage/close for the page <-> panel channel.
+     */
     const val PANEL_BOOTSTRAP_PREFIX = """
 (function(){
   var B = window.__hcjPanelBridge;
@@ -169,10 +169,10 @@ object PluginInjection {
     fun panelBootstrap(pluginId: String): String =
         PANEL_BOOTSTRAP_PREFIX + "'" + pluginId.escapeForJsSingleQuote() + "'" + PANEL_BOOTSTRAP_SUFFIX
 
-    
-
-
-
+    /**
+     * Wrap plugin `main.js` in an IIFE with a scoped `hcj` object bound to the
+     * issued capability token.
+     */
     fun wrapPluginCode(
         plugin: Plugin,
         code: String,
@@ -200,9 +200,9 @@ object PluginInjection {
             append(appLang.escapeForJsSingleQuote())
             append("');\n")
             if (plugin.legacyCompat) {
-                
-                
-                
+                // Retired-module globals mapped onto hcj.* so converted
+                // packages keep working. The old panel/DSL runtime is gone;
+                // register() degrades to wiring the action click only.
                 append("var getConfig = function(k,d){ return hcj.config.get(k,d); };\n")
                 append("var __MODULE_INFO__ = hcj.manifest || {};\n")
                 append("var __MODULE_UI_CONFIG__ = {};\n")
@@ -218,7 +218,7 @@ object PluginInjection {
         }
     }
 
-    
+    /** CSS injected as a style element; idempotent per plugin per document. */
     fun wrapCss(pluginId: String, css: String): String = buildString {
         append("(function(){var id='hcj-css-")
         append(pluginId.escapeForJsSingleQuote())
@@ -228,13 +228,13 @@ object PluginInjection {
         append("`;(document.head||document.documentElement).appendChild(s);})();")
     }
 
-    
+    /** Dispatch a host event (`action`, `panel`) into the page runtime. */
     fun emitEvent(pluginId: String, event: String, jsonPayload: String): String =
         "window.__hcj && window.__hcj._emit('" + pluginId.escapeForJsSingleQuote() +
             "','" + event.escapeForJsSingleQuote() + "'," +
             "'" + jsonPayload.escapeForJsSingleQuote() + "');"
 
-    
+    /** Resolve a pending `hcj.fetch` promise. */
     fun resolveFetch(cbId: String, ok: Boolean, jsonPayload: String): String =
         "window.__hcj && window.__hcj._resolve('" + cbId.escapeForJsSingleQuote() +
             "'," + ok + ",'" + jsonPayload.escapeForJsSingleQuote() + "');"

@@ -4,17 +4,17 @@ import com.webtoapp.core.logging.AppLogger
 import java.io.File
 import java.io.RandomAccessFile
 
-
-
-
-
-
-
-
-
-
-
-
+/**
+ * Minimal Go-archive (.a) writer: appends object files to the archive produced
+ * by `compile -pack`, byte-for-byte compatible with what `go tool pack r`
+ * used to do (Go 1.26 ships no `pack` tool binary anymore; the go command
+ * folds objects in internally).
+ *
+ * Layout (verified against real toolchain output): magic `!<arch>\n`, 60-byte
+ * member headers, bare space-padded names truncated to 16 bytes (e.g. the
+ * 18-char `indexbyte_arm64.o/` lands as `indexbyte_arm64.`), zero
+ * mtime/uid/gid, mode 644, backtick-LF magic, LF pad to even sizes.
+ */
 object GoArchive {
 
     private const val TAG = "GoArchive"
@@ -49,7 +49,7 @@ object GoArchive {
     private fun appendOne(raf: RandomAccessFile, obj: File): Boolean {
         return try {
             val rawName = obj.name.take(16).padEnd(16, ' ')
-            
+            // %-16s %-12d %-6d %-6d %-8o %-10d + backtick-LF, exactly 60 bytes.
             val header = "%-16s%-12d%-6d%-6d%-8o%-10d`\n".format(
                 rawName, 0, 0, 0, 420, obj.length()
             )
