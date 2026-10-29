@@ -4,41 +4,40 @@ import com.google.common.truth.Truth.assertThat
 import org.junit.Test
 
 /**
- * The WebView is never resized for the keyboard. Opening clips to the inset
- * and scrolls the document; the end frame keeps that clip and does not change
- * the layout height, so the focused field is not painted twice (#1398).
+ * The page height changes at most once per keyboard animation (#1342).
+ * Opening must not pan the WebView: a translation moves fixed elements
+ * behind the status bar and then snaps back (#1398).
  */
 class ImeAnimationFollowTest {
 
     @Test
-    fun `opening clips and scrolls and the end frame does not resize`() {
+    fun `opening does not pan or resize until the animation ends`() {
         val follow = ImeAnimationFollow()
         follow.onPrepare()
         follow.onTarget(200)
 
-        assertThat(follow.onFrame(0)).isEqualTo(ImeFrame(0f, null, scrollDocument = true, clipBottom = 0))
-        assertThat(follow.onFrame(100)).isEqualTo(ImeFrame(0f, null, scrollDocument = true, clipBottom = 100))
-        assertThat(follow.onFrame(200)).isEqualTo(ImeFrame(0f, null, scrollDocument = true, clipBottom = 200))
-        assertThat(follow.onEnd(200)).isEqualTo(ImeFrame(0f, null, scrollDocument = false, clipBottom = 200))
-        assertThat(follow.settledBottom).isEqualTo(200)
+        assertThat(follow.onFrame(0)).isEqualTo(ImeFrame(0f, null, scrollDocument = true))
+        assertThat(follow.onFrame(100)).isEqualTo(ImeFrame(0f, null, scrollDocument = true))
+        assertThat(follow.onFrame(200)).isEqualTo(ImeFrame(0f, null, scrollDocument = true))
+        assertThat(follow.onEnd(200)).isEqualTo(ImeFrame(0f, 200))
+        assertThat(follow.laidOutBottom).isEqualTo(200)
     }
 
     @Test
-    fun `closing follows the keyboard with the clip and never resizes`() {
+    fun `closing expands once then uncovers without further resizes`() {
         val follow = ImeAnimationFollow()
-        assertThat(follow.jumpTo(200).clipBottom).isEqualTo(200)
+        assertThat(follow.jumpTo(200).layoutBottom).isEqualTo(200)
 
         follow.onPrepare()
         follow.onTarget(0)
-        assertThat(follow.onFrame(200)).isEqualTo(ImeFrame(0f, null, scrollDocument = false, clipBottom = 200))
-        assertThat(follow.onFrame(150)).isEqualTo(ImeFrame(0f, null, scrollDocument = false, clipBottom = 150))
-        assertThat(follow.onFrame(40)).isEqualTo(ImeFrame(0f, null, scrollDocument = false, clipBottom = 40))
-        assertThat(follow.onEnd(0)).isEqualTo(ImeFrame(0f, null, scrollDocument = false, clipBottom = 0))
-        assertThat(follow.settledBottom).isEqualTo(0)
+        assertThat(follow.onFrame(200)).isEqualTo(ImeFrame(0f, null))
+        assertThat(follow.onFrame(150)).isEqualTo(ImeFrame(0f, 0))
+        assertThat(follow.onFrame(40)).isEqualTo(ImeFrame(0f, null))
+        assertThat(follow.onEnd(0)).isEqualTo(ImeFrame(0f, 0))
     }
 
     @Test
-    fun `a taller keyboard keeps scrolling and settles on the new clip`() {
+    fun `a taller keyboard does not pan and settles once`() {
         val follow = ImeAnimationFollow()
         follow.jumpTo(200)
         follow.onPrepare()
@@ -48,7 +47,6 @@ class ImeAnimationFollowTest {
         assertThat(frame.translationY).isEqualTo(0f)
         assertThat(frame.layoutBottom).isNull()
         assertThat(frame.scrollDocument).isTrue()
-        assertThat(frame.clipBottom).isEqualTo(240)
-        assertThat(follow.onEnd(280)).isEqualTo(ImeFrame(0f, null, scrollDocument = false, clipBottom = 280))
+        assertThat(follow.onEnd(280)).isEqualTo(ImeFrame(0f, 280))
     }
 }
