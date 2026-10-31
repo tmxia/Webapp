@@ -120,13 +120,13 @@ object GoDependencyManager {
         }
     }
 
-    /**
-     * W^X escape hatch for host previews: `go build` for android (CGO_ENABLED=0,
-     * internal linking) emits PIE ELFs with PT_DYNAMIC and no DT_NEEDED, which the
-     * patched musl linker can load in program mode — exec-mapped segments of the
-     * app_data binary are bridged through executable memfds. argv is
-     * [linker, target, *args]; the target sees itself as argv[0].
-     */
+    
+
+
+
+
+
+
     internal fun buildMuslBridgeCommand(
         context: Context,
         executablePath: String,

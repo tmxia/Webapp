@@ -59,8 +59,8 @@ fun ModelPickerDialog(
     var query by remember { mutableStateOf("") }
     val currentGroup = groups.firstOrNull { it.apiKeyId == selectedProviderKeyId } ?: groups.firstOrNull()
 
-    // Flat matches across every provider when searching — drilling the two-pane
-    // layout provider-by-provider is the slow path when you know the model name.
+    
+    
     val searchResults = remember(groups, query) {
         if (query.isBlank()) emptyList()
         else groups.flatMap { g ->

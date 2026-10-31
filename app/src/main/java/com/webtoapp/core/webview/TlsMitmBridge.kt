@@ -28,7 +28,7 @@ object TlsMitmBridge {
     private const val MAX_HEADER_BYTES = 64 * 1024
     private const val CLIENT_READ_TIMEOUT_MS = 60_000
 
-    /** h3 forwarding buffers full request bodies; huge uploads exceed that contract. */
+    
     private const val MAX_H3_BODY_BYTES = 32 * 1024 * 1024
 
     data class Config(
@@ -36,16 +36,16 @@ object TlsMitmBridge {
         val customCipherSuites: List<String> = emptyList(),
         val upstreamSocks: LocalHttpToSocksBridge.Upstream? = null,
         val forceHttp3: Boolean = false,
-        /** ECH on the system engine: the upstream leg is Cronet, whose Chromium stack
-         *  fetches HTTPS records and encrypts the ClientHello SNI natively (issue #721). */
+        
+
         val echUpstream: Boolean = false
     ) {
-        /**
-         * Both forced HTTP/3 and ECH ride the same MITM bridge as fingerprint spoofing,
-         * but their upstream leg is Cronet — which cannot chain through a SOCKS proxy.
-         * When the user configures a SOCKS upstream the bridge stays on the classic
-         * relay and both toggles are inert.
-         */
+        
+
+
+
+
+
         val cronetActive: Boolean get() = (forceHttp3 || echUpstream) && upstreamSocks == null
     }
 
@@ -58,22 +58,22 @@ object TlsMitmBridge {
     @Volatile private var caDir: File? = null
     @Volatile private var appContext: android.content.Context? = null
 
-    /** User-imported CA anchors additionally trusted when verifying upstream certificates. */
+    
     @Volatile private var customCaAnchors: List<java.security.cert.X509Certificate> = emptyList()
 
-    /**
-     * Android loopback is shared by every app on the device, so the proxy must not be an
-     * open relay: only hosts the WebView actually navigated/requested may be tunneled, and
-     * leaf certificates are only minted for tunnelable hosts. WebViewManager feeds this
-     * set from onPageStarted / shouldInterceptRequest.
-     */
+    
+
+
+
+
+
     private val allowedHosts: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
 
-    /**
-     * Host-allowlist enforcement. Always on for the WebView engine (whose requests are
-     * observable via shouldInterceptRequest); disabled by the Gecko engine, which has no
-     * per-request callback to feed the set with.
-     */
+    
+
+
+
+
     @Volatile private var hostAllowlistEnforcement: Boolean = true
 
     fun setHostAllowlistEnforcement(enabled: Boolean) {
@@ -258,9 +258,9 @@ object TlsMitmBridge {
         val port = hostPort.substring(sep + 1).toIntOrNull() ?: 443
 
         if (!isHostAllowed(host)) {
-            // Another app on the device probing the shared loopback interface: without
-            // this check the bridge relays for anyone and mints locally-trusted leaf
-            // certificates for arbitrary domains.
+            
+            
+            
             AppLogger.w(TAG, "CONNECT rejected (host not requested by the WebView): $host")
             sendStatus(clientOut, 403, "Forbidden")
             safeClose(client); return
@@ -272,19 +272,19 @@ object TlsMitmBridge {
             safeClose(client); return
         }
 
-        // Missing Cronet (not yet downloaded / not embedded) degrades to the classic
-        // relay instead of failing every request with 502.
+        
+        
         val cronetCtx = appContext
         if (config.cronetActive && cronetCtx != null && CronetForwarder.isReady(cronetCtx)) {
             handleConnectCronet(client, clientOut, host, port, config)
             return
         }
 
-        // Handshake with the WebView FIRST and remember which ALPN protocol it picked,
-        // so the upstream connection can be restricted to the same protocol. The bridge
-        // relays raw bytes — if the two sides negotiated independently, a WebView on h2
-        // facing an http/1.1-only origin would stream HTTP/2 frames into an HTTP/1.1
-        // server and every request to that host would fail.
+        
+        
+        
+        
+        
         val mitmSocket = try {
             performTlsHandshake(client, host)
         } catch (e: Exception) {
@@ -319,11 +319,11 @@ object TlsMitmBridge {
             safeClose(client); return
         }
 
-        // Tunnel mode (SSE/WebSocket/long-poll) can stay idle for minutes. The 60s
-        // handshake-phase SO_TIMEOUT would kill any such connection mid-session
-        // (copyStream swallows the SocketTimeoutException, so the teardown looks like a
-        // silent drop) — clear it once the tunnel is established, mirroring
-        // Socks5Connector's reset to 0 after the SOCKS handshake.
+        
+        
+        
+        
+        
         try { mitmSocket.soTimeout = 0 } catch (_: Exception) {}
         try { upstreamSocket.soTimeout = 0 } catch (_: Exception) {}
 
@@ -358,14 +358,14 @@ object TlsMitmBridge {
         return sslSocket
     }
 
-    /**
-     * Cronet upstream path (forced HTTP/3 and/or ECH): the bridge terminates TLS with
-     * the WebView speaking plain HTTP/1.1 only, then re-issues every request through
-     * Cronet — Chromium's own stack, QUIC-first when h3 forcing is on, ECH when the
-     * target publishes an HTTPS record. WebSocket upgrades and other non-plain-HTTP
-     * tunnels fall back to the classic raw relay. Cronet is a request/response engine,
-     * not a byte pump — this is the only part of the bridge that speaks HTTP.
-     */
+    
+
+
+
+
+
+
+
     private fun handleConnectCronet(
         client: Socket,
         clientOut: OutputStream,
@@ -377,10 +377,10 @@ object TlsMitmBridge {
 
         AppLogger.d(TAG, "h3 CONNECT tunnel: $host:$port")
 
-        // Answer the CONNECT before handshaking: clients that wait for the 200
-        // before starting TLS (no ClientHello pipelining) would otherwise deadlock
-        // the tunnel until their connect timeout fires. A pipelining client simply
-        // leaves its buffered ClientHello in the socket until we read it.
+        
+        
+        
+        
         try {
             clientOut.write("HTTP/1.1 200 Connection Established\r\n\r\n".toByteArray(StandardCharsets.US_ASCII))
             clientOut.flush()
@@ -396,8 +396,8 @@ object TlsMitmBridge {
             safeClose(client); return
         }
 
-        // Keep-alive connections idle between requests; Chromium closes its side when
-        // its pool retires the socket, and loopback always delivers the FIN.
+        
+        
         try { mitmSocket.soTimeout = 0 } catch (_: Exception) {}
 
         val input = BufferedInputStream(mitmSocket.getInputStream())
@@ -430,8 +430,8 @@ object TlsMitmBridge {
                     }
                 }
 
-                // Upgrades (WebSocket, h2c, ...) cannot ride a request/response engine;
-                // hand the connection to the classic raw TLS relay instead.
+                
+                
                 val wantsUpgrade = headerLines.any { it.startsWith("upgrade:", ignoreCase = true) }
                 if (wantsUpgrade) {
                     fallbackToRawRelay(mitmSocket, input, host, port, config, firstLine, headerLines)
@@ -491,7 +491,7 @@ object TlsMitmBridge {
                         portForHint = port
                     )
                 } catch (e: java.io.IOException) {
-                    // Client broke mid-response; nothing left to salvage.
+                    
                     AppLogger.d(TAG, "h3 forward client I/O error for $host: ${e.message}")
                     return
                 }
@@ -509,11 +509,11 @@ object TlsMitmBridge {
         }
     }
 
-    /**
-     * WebSocket / upgrade fallback: replay the already-parsed request head into a
-     * classic upstream TLS connection, flush anything the buffered stream pre-read,
-     * then raw-relay the rest of the session.
-     */
+    
+
+
+
+
     private fun fallbackToRawRelay(
         mitmSocket: SSLSocket,
         bufferedInput: BufferedInputStream,
@@ -548,7 +548,7 @@ object TlsMitmBridge {
             upstreamOut.write(sb.toString().toByteArray(StandardCharsets.ISO_8859_1))
             upstreamOut.flush()
 
-            // The buffered stream may hold pipelined bytes past the request head.
+            
             val preRead = ByteArray(IO_BUFFER)
             while (bufferedInput.available() > 0) {
                 val n = bufferedInput.read(preRead)
@@ -568,7 +568,7 @@ object TlsMitmBridge {
         bridge(mitmSocket, upstreamSocket)
     }
 
-    /** Reads a request body bounded by Content-Length or chunked framing. */
+    
     private fun readRequestBody(input: InputStream, headerLines: List<String>): ByteArray? {
         val transferEncoding = headerLines.firstOrNull { it.startsWith("transfer-encoding:", ignoreCase = true) }
             ?.substringAfter(':')
@@ -607,7 +607,7 @@ object TlsMitmBridge {
             val size = sizeLine.substringBefore(';').trim().toIntOrNull(16)
                 ?: throw java.io.IOException("Bad chunk size: $sizeLine")
             if (size == 0) {
-                // Consume trailers until the empty line.
+                
                 while (true) {
                     val trailer = readHttpLine(input) ?: break
                     if (trailer.isEmpty()) break
@@ -618,7 +618,7 @@ object TlsMitmBridge {
                 throw java.io.IOException("Chunked request body too large")
             }
             readBoundedInto(input, out, size)
-            // Trailing CRLF after each chunk.
+            
             readHttpLine(input)
         }
         return out.toByteArray()

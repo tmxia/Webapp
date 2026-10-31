@@ -1,12 +1,12 @@
 package com.webtoapp.core.webview
 
-/**
- * Document-start replacement for `navigator.share` / `canShare`.
- *
- * File shares always go through [ShareBridge], including on ordinary https
- * pages. Text-only shares stay on the engine when it already has `navigator.share`.
- * [NativeShareBridge] methods may return a Promise (Gecko) or a plain value (WebView).
- */
+
+
+
+
+
+
+
 object ShareBridgeScript {
     const val INSTALL = """
         (function() {

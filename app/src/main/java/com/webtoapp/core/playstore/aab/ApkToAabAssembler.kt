@@ -18,16 +18,16 @@ class ApkToAabAssembler {
     companion object {
         private const val TAG = "ApkToAabAssembler"
 
-        /**
-         * Binary AXML starts with the chunk header magic `03 00` (type RES_XML_TYPE = 0x0003,
-         * little-endian). Plain-text XML — notably the AGP resource-shrinker's `tools:keep` /
-         * `tools:discard` marker, which is left uncompiled under `res/` — starts with `<?xml`
-         * (`3c 3f 78 6d`). Returns true for the latter so the caller can skip it instead of
-         * handing it to the binary AXML parser. See issue #272.
-         */
+        
+
+
+
+
+
+
         internal fun isPlaintextXml(data: ByteArray): Boolean {
             if (data.size < 2) return false
-            // 0x3c = '<'. Binary AXML's first byte is 0x03, so this cleanly separates the two.
+            
             return data[0] == 0x3c.toByte()
         }
     }

@@ -72,9 +72,9 @@ class GalleryPlayerActivity : ComponentActivity() {
             return
         }
 
-        // rememberPosition: resume where the user left off (keyed per gallery).
-        // A restored non-zero position opens the pager directly; otherwise the
-        // overview (grid/list/timeline per defaultView) is the entry.
+        
+        
+        
         val galleryId = intent.getLongExtra(EXTRA_GALLERY_ID, 0L)
         if (galleryConfig.rememberPosition && galleryId > 0) {
             val key = galleryPositionKey(galleryId)

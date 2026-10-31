@@ -115,11 +115,11 @@ internal data class MergedSitePlugins(
     val embeddedPlugins: List<EmbeddedShellPlugin>,
 )
 
-/**
- * Parent plugins apply to every site. A site's own baked plugins merge
- * underneath only when [sitesUseOwnConfig] is true, and the site wins an id
- * collision. With the flag off, site plugins are discarded.
- */
+
+
+
+
+
 internal fun mergeSitePlugins(
     sitesUseOwnConfig: Boolean,
     parentEnabled: Boolean,
@@ -154,16 +154,16 @@ private fun SiteContent(
     onBrowserSurfaceCreated: (com.webtoapp.core.engine.BrowserSurface) -> Unit = {}
 ) {
     val siteCfg = site.siteShellConfig
-    // App-level inject scripts apply to every site; a site's own script wins on
-    // a name collision so a more specific override is possible per site.
+    
+    
     val parentScripts = config.webViewConfig.injectScripts
     val siteScripts = siteCfg?.webViewConfig?.injectScripts.orEmpty()
     val mergedScripts = siteScripts +
         parentScripts.filter { parent -> siteScripts.none { it.name == parent.name } }
-    // Plugins are an app-level selection the same way: the multi-web editor's
-    // picks live on the parent config's embeddedPlugins/pluginIds, and without
-    // inheriting them every site session starts empty — the floating handle
-    // renders (gated on the parent) but the sheet reports "no enabled plugins".
+    
+    
+    
+    
     val sitesUseOwn = config.multiWebConfig?.sitesUseOwnConfig == true
     val merged = mergeSitePlugins(
         sitesUseOwnConfig = sitesUseOwn,
@@ -174,10 +174,10 @@ private fun SiteContent(
         siteIds = siteCfg?.pluginIds.orEmpty(),
         sitePlugins = siteCfg?.embeddedPlugins.orEmpty(),
     )
-    // Sites contribute content (URL, HTML project, media, module assets), not
-    // settings: by default the parent's WebView config governs every site, so
-    // app-level fields baked into siteShellConfig can't fight the parent.
-    // `sitesUseOwnConfig` opts back into each site keeping its baked config.
+    
+    
+    
+    
     val baseWvConfig = if (sitesUseOwn) {
         siteCfg?.webViewConfig
     } else {
@@ -205,8 +205,8 @@ private fun SiteContent(
         embeddedPlugins = merged.embeddedPlugins,
         pluginEntryStyle = config.pluginEntryStyle,
         pluginPanelStyle = config.pluginPanelStyle,
-        // A site without baked config (custom URL site, deleted source) still
-        // inherits the parent WebView config — same rule as sitesUseOwnConfig.
+        
+        
         webViewConfig = config.webViewConfig.copy(
             injectScripts = mergedScripts
         )
@@ -224,25 +224,25 @@ private fun SiteContent(
         isRefreshing = isRefreshing,
         onRefresh = onRefresh,
         onWebViewCreated = { wv ->
-            // Stamp the site so the activity's WebView-state bundle only lands
-            // on the surface it was saved from (#1036).
+            
+            
             (wv as? com.webtoapp.core.webview.WtaWebView)?.siteId = site.id
             onWebViewCreated(wv)
         },
         onWebViewRefUpdated = { },
         onActivityFinish = { },
-        // Without this the activity never sees per-site surfaces: on a Gecko site the
-        // media-session adapter is never attached and back/forward/find stay dead (#593
-        // parity for MULTI_WEB).
+        
+        
+        
         onBrowserSurfaceCreated = onBrowserSurfaceCreated
     )
 }
 
-/**
- * Tracks each site's live WebView / engine surface. Creation callbacks only fire
- * once per site, so switching back to a visited tab must re-push the handle to
- * the activity — otherwise the back button and toolbar act on the WRONG site.
- */
+
+
+
+
+
 private class SiteRuntimeRegistry {
     val webViews = mutableMapOf<String, WebView>()
     val surfaces = mutableMapOf<String, com.webtoapp.core.engine.BrowserSurface>()
@@ -257,12 +257,12 @@ private class SiteRuntimeRegistry {
     }
 }
 
-/**
- * Shared selected-site store for the three display modes. Keyed by the app's
- * package/name pair — the record is only a site id, and callers always
- * validate it against the current site list, so a stale entry from a renamed
- * or re-edited app simply falls back to the default selection (#1036).
- */
+
+
+
+
+
+
 @Composable
 private fun rememberResumeStore(
     config: ShellConfig
@@ -295,9 +295,9 @@ private fun TabsMode(
     onTopTabColor: (String?) -> Unit = {}
 ) {
     val (resumeStore, resumeKey) = rememberResumeStore(config)
-    // Selected site persists by id: rememberSaveable covers config-change and
-    // process-death recreation, the store covers cold relaunch — the recorded
-    // id is validated against the current site list before use (#1036).
+    
+    
+    
     var selectedTab by rememberSaveable {
         mutableIntStateOf(
             resolveMultiWebStartSiteId(
@@ -323,9 +323,9 @@ private fun TabsMode(
     val hapticView = LocalView.current
     val hapticsEnabled = LocalAnimationSettings.current.hapticsEnabled
     val maxPage = (sites.size - 1).coerceAtLeast(0)
-    // Fractional position only invalidates when the on-screen page set, or the
-    // tab the bar should highlight, actually changes. The pixel offset is read
-    // later, from placement.
+    
+    
+    
     val visibleRange by remember(paging, maxPage) {
         derivedStateOf {
             if (!paging) selectedTab..selectedTab
@@ -340,8 +340,8 @@ private fun TabsMode(
     }
     var sampledTop by remember { mutableStateOf<String?>(null) }
     var sampleGeneration by remember { mutableIntStateOf(0) }
-    // The highlighted page's tracker. Page-commit and page-finish bump a
-    // settled resample; the slot is read at callback time, not at remember.
+    
+    
     val tabColorTracker = remember {
         object {
             var current: com.webtoapp.core.webview.StatusBarPageColorTracker? = null
@@ -416,8 +416,8 @@ private fun TabsMode(
                         WtaMotion.settleSpring(),
                         initialVelocity = velocityPages.coerceIn(-12f, 12f)
                     ) {
-                        // A new finger owns the position. Keep running only
-                        // until the job is cancelled; don't write over the drag.
+                        
+                        
                         if (ticket == pager.epoch && !pager.holding) {
                             pager.position = value
                         }
@@ -431,7 +431,7 @@ private fun TabsMode(
                         if (selectedTab != page) selectedTab = page
                     }
                 } catch (_: CancellationException) {
-                    // A newer drag or tap took the animatable's mutex.
+                    
                 }
             }
         }
@@ -457,14 +457,14 @@ private fun TabsMode(
                 add(site.id)
                 visibleRange.forEach { index -> sites.getOrNull(index)?.id?.let(::add) }
             }
-            // Visited tabs stay composed for session restore, but a hidden
-            // WebView has no reason to keep running layout/JS/media at full
-            // speed — per-view onPause keeps the page, sheds the work (#1033).
-            // Cover anything that just left before showing anything new. A
-            // Gecko SurfaceView ignores Compose alpha, so it must be GONE while
-            // off-screen (#1161, #1192). Resume waits one frame so the offset
-            // layout lands first — showing it in the same turn would flash the
-            // neighbor at the old, stacked position.
+            
+            
+            
+            
+            
+            
+            
+            
             registry.webViews.forEach { (id, wv) ->
                 if (id !in alive) runCatching { wv.onPause() }
             }
@@ -480,13 +480,13 @@ private fun TabsMode(
             }
             registry.pushCurrent(site.id, onWebViewCreated, onBrowserSurfaceCreated)
             webViewCallbacks.onTitleChanged(site.name.ifBlank { extractDomain(site.url) })
-            // onUrlChanged (not onPageStarted): the tab's page is already loaded;
-            // onPageStarted would leave isLoading stuck on a phantom navigation.
+            
+            
             webViewCallbacks.onUrlChanged(registry.webViews[site.id], registry.webViews[site.id]?.url ?: site.url)
         }
     }
 
-    // 选中项变化时把它滚动到可见区域，避免被挤出屏幕（站点多时可横向滚动）。
+    
     LaunchedEffect(highlight) {
         if (sites.size > 1) {
             tabsListState.animateScrollToItem(highlight)
@@ -498,8 +498,8 @@ private fun TabsMode(
     val tabMode = if (tabDark) webViewConfig.statusBarColorModeDark else webViewConfig.statusBarColorMode
     val tabOverlaysStatus = tabBgType == com.webtoapp.data.model.StatusBarBackgroundType.IMAGE ||
         tabMode == com.webtoapp.data.model.StatusBarColorMode.TRANSPARENT
-    // The parent scaffold already reserves a solid status bar. A transparent
-    // bar (or a hidden one) lets this strip draw behind the status icons.
+    
+    
     val drawUnderStatusBar = adaptive && webViewConfig.hideToolbar &&
         !(webViewConfig.showStatusBarInFullscreen && !tabOverlaysStatus)
 
@@ -524,17 +524,17 @@ private fun TabsMode(
                 Surface(
                     tonalElevation = 2.dp,
                     color = MaterialTheme.colorScheme.surface,
-                    // contentWindowInsets(0) leaves the bar under the gesture
-                    // nav strip — lift it so the last row stays tappable.
-                    // #1075: but not while the IME is open — the window-level
-                    // IME padding already sits the bar above the keyboard, and
-                    // a second nav-bar inset would leave a dead band in between.
+                    
+                    
+                    
+                    
+                    
                     modifier = Modifier
                         .fillMaxWidth()
                         .windowInsetsPadding(WindowInsets.navigationBars.exclude(WindowInsets.ime))
                 ) {
-                    // 站点少时每个 tab 平分整条底栏（对称布局，回归 #597 报告的行为）；
-                    // 平分后不足 72dp（站点多）则保持 #283 的最小宽度 + 横向滚动。
+                    
+                    
                     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
                         val evenWidth =
                             (maxWidth - 16.dp - 4.dp * (sites.size - 1)) / sites.size
@@ -602,10 +602,10 @@ private fun TabsMode(
             }
         }
     ) { padding ->
-        // Fullscreen content padding is already applied by the parent scaffold
-        // (ShellScaffoldLayout, and the same box in the host preview). TabsMode
-        // sits inside that box, so padding again here doubles every edge —
-        // a bottom value of 48 becomes 96 under the page (#1220).
+        
+        
+        
+        
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -624,9 +624,9 @@ private fun TabsMode(
             visitedTabs[selectedTab] = true
             visibleRange.forEach { visitedTabs[it] = true }
 
-            // Under kill-list pressure (TRIM_MEMORY_COMPLETE) drop every hidden
-            // tab's composable — AndroidView.onRelease destroys each surface,
-            // and the tab simply reloads from its site URL on next select (#1033).
+            
+            
+            
             val trimContext = androidx.compose.ui.platform.LocalContext.current
             DisposableEffect(Unit) {
                 val componentCallbacks = object : android.content.ComponentCallbacks2 {
@@ -811,8 +811,8 @@ private fun CardsMode(
     onBrowserSurfaceCreated: (com.webtoapp.core.engine.BrowserSurface) -> Unit = {}
 ) {
     val (resumeStore, resumeKey) = rememberResumeStore(config)
-    // Persist the open site by id; null = the user is on the card grid and a
-    // cold start must reopen the grid, not a site they already left (#1036).
+    
+    
     var openSiteId by rememberSaveable {
         mutableStateOf(
             resolveMultiWebStartSiteId(
@@ -834,8 +834,8 @@ private fun CardsMode(
         webViewCallbacks.onTitleChanged(config.appName)
     }
 
-    // Drill-in back semantics: walk the site's own history first, then return to
-    // the card grid. Without this the activity's finish() path exits the app.
+    
+    
     BackHandler(enabled = openSite != null) {
         val site = openSite
         val wv = site?.let { registry.webViews[it.id] }
@@ -1108,9 +1108,9 @@ private fun FeedMode(
     val scope = rememberCoroutineScope()
     var feedItems by remember { mutableStateOf<List<FeedItem>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
-    // Article overlay state is saveable so config-change/process-death
-    // recreation reopens the article instead of dropping to the feed (#1036).
-    // The feed list itself is refetched anyway, so it stays plain remember.
+    
+    
+    
     var openUrl by rememberSaveable { mutableStateOf<String?>(null) }
     var openTitle by rememberSaveable { mutableStateOf("") }
     var articleWebView by remember { mutableStateOf<WebView?>(null) }
@@ -1125,8 +1125,8 @@ private fun FeedMode(
         isLoading = true
         refreshFeed()
         isLoading = false
-        // refreshInterval (minutes, editor default 30) drives a silent periodic
-        // re-fetch; the visible list is only swapped when new items exist.
+        
+        
         val intervalMin = multiWebConfig.refreshInterval.coerceIn(1, 24 * 60)
         while (true) {
             kotlinx.coroutines.delay(intervalMin * 60_000L)
@@ -1141,7 +1141,7 @@ private fun FeedMode(
         webViewCallbacks.onTitleChanged(config.appName)
     }
 
-    // Same drill-in back rule as card mode: article history first, then the feed.
+    
     BackHandler(enabled = openUrl != null) {
         val wv = articleWebView
         val surface = articleSurface
@@ -1168,8 +1168,8 @@ private fun FeedMode(
                 appType = "WEB",
                 targetUrl = openUrl ?: "",
                 packageName = config.packageName,
-                // Honor the app's engine pick (e.g. Gecko) for opened articles
-                // instead of silently falling back to the system WebView.
+                
+                
                 engineType = config.engineType
             )
         }
@@ -1320,9 +1320,9 @@ private fun DrawerMode(
     onBrowserSurfaceCreated: (com.webtoapp.core.engine.BrowserSurface) -> Unit = {}
 ) {
     val (resumeStore, resumeKey) = rememberResumeStore(config)
-    // Selected site persists by id (same store contract as TabsMode) —
-    // falling back to the first enabled site when nothing valid was
-    // recorded (#1036).
+    
+    
+    
     var selectedSiteId by rememberSaveable {
         mutableStateOf(
             resolveMultiWebStartSiteId(
@@ -1383,8 +1383,8 @@ private fun DrawerMode(
         else if (drawerVisible && drawerState.currentValue == DrawerValue.Closed) drawerVisible = false
     }
 
-    // The browser toolbar, when visible, hosts the drawer button. A second
-    // TopAppBar here used to stack under it and re-apply the status-bar inset.
+    
+    
     val chromeHost = LocalBrowserChromeHost.current
     val showOwnSiteBar = drawerSiteBarVisible(chromeHost != null)
     val toggleDrawer = rememberUpdatedState { drawerVisible = !drawerVisible }
@@ -1400,8 +1400,8 @@ private fun DrawerMode(
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
-            // #1075: the IME padding at window level already lifts the sheet
-            // above the keyboard — keep the nav inset from double-stacking.
+            
+            
             ModalDrawerSheet(
                 modifier = Modifier.width(drawerSheetWidthDp(drawerColumns).dp),
                 windowInsets = DrawerDefaults.windowInsets.exclude(WindowInsets.ime)
@@ -1497,22 +1497,22 @@ private fun DrawerMode(
                 }
             }
         },
-        // Edge-swipe-to-open fights the WebView's own horizontal gestures (page
-        // carousels, image swipes, diagonal scrolls all intercepted as drawer
-        // opens). Open via the toolbar menu button only; once open the drawer
-        // still accepts swipe-to-close.
+        
+        
+        
+        
         gesturesEnabled = drawerState.isOpen
     ) {
         val currentSite = selectedSite ?: sites.firstOrNull()
 
-        // Sync activity state (title/url/webview handle) with the selected site,
-        // same contract TabsMode keeps.
+        
+        
         LaunchedEffect(currentSite?.id) {
             currentSite?.let { site ->
-                // Same hidden-tab handling as TabsMode: WebViews pause so they
-                // shed layout/JS work (#1033). Covered GeckoViews are set to
-                // GONE — releaseSession alone leaves the SurfaceView, and its
-                // last frame, composited above the selected site (#1161, #1192).
+                
+                
+                
+                
                 registry.webViews.forEach { (id, wv) ->
                     if (id != site.id) runCatching { wv.onPause() }
                 }
@@ -1546,8 +1546,8 @@ private fun DrawerMode(
             }
         ) { padding ->
             Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-                // Keep visited sites composed (hidden) like TabsMode — switching
-                // sites must not destroy the page and force a full reload.
+                
+                
                 val visitedSites = remember { mutableStateMapOf<String, Boolean>() }
                 currentSite?.let { visitedSites[it.id] = true }
                 var anySite = false
@@ -1747,8 +1747,8 @@ private fun fetchFeedItems(
     webViewConfig: WebViewConfig
 ): List<FeedItem> {
     val allItems = mutableListOf<FeedItem>()
-    // Feed fetch must honor the app's own proxy — a blocked site loads fine in
-    // the WebView (through the proxy) but its feed fetch dies on a direct route.
+    
+    
     val proxy = if (webViewConfig.proxyMode == "STATIC" &&
         webViewConfig.proxyHost.isNotBlank() &&
         webViewConfig.proxyPort in 1..65535

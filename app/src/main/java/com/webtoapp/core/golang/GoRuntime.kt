@@ -29,11 +29,11 @@ class GoRuntime(private val context: Context) {
         private const val HEALTH_CHECK_INTERVAL_MS = 500L
     }
 
-    /**
-     * Failure-note fallback for OEM-specific policies that deny even the memfd
-     * exec-map bridge; the startServer precheck handles the standard W^X case.
-     * Runtime-layer string (shell-synced); intentionally not routed through Strings i18n.
-     */
+    
+
+
+
+
     private fun channelNote(): String =
         if (!com.webtoapp.core.linux.RuntimeExecPolicy.canExecAppDataBinaries(context) &&
             !com.webtoapp.core.linux.RuntimeExecPolicy.hasStaticExecBridge(context)
@@ -98,13 +98,13 @@ class GoRuntime(private val context: Context) {
         envVars: Map<String, String> = emptyMap()
     ): Int = withContext(Dispatchers.IO) {
         try {
-            // W^X hosts (targetSdk 29+) cannot execve anything: neither the
-            // app-data binary, nor the musl bridge linker in nativeLibraryDir
-            // (entrypoint denied, verified by kernel audit), nor memfd
-            // execveat. The only working launch primitive there is the
-            // user-mode static exec loader (fork + memfd map + entry jump,
-            // zero execve), which boots static ET_EXEC as well as
-            // self-contained static-PIE (what `go build` emits for android).
+            
+            
+            
+            
+            
+            
+            
             val wxRestricted = !com.webtoapp.core.linux.RuntimeExecPolicy.canExecAppDataBinaries(context)
             if (wxRestricted && !com.webtoapp.core.linux.RuntimeExecPolicy.hasStaticExecBridge(context)) {
                 _serverState.value = ServerState.Error(
@@ -144,7 +144,7 @@ class GoRuntime(private val context: Context) {
 
             if (!wxRestricted && !GoDependencyManager.isGoExecLoaderReady(context)) {
                 val path = GoDependencyManager.getGoExecLoaderPath(context)
-                // The allocation taken two lines up must go back before bailing out.
+                
                 PortManager.release(serverPort)
                 currentPort = 0
                 _serverState.value = ServerState.Error(
@@ -155,8 +155,8 @@ class GoRuntime(private val context: Context) {
 
             val useStaticExec = wxRestricted
             val command = if (useStaticExec) {
-                // User-mode load the server binary itself (static ET_EXEC or
-                // self-contained static-PIE): no kernel exec anywhere.
+                
+                
                 listOf(binaryPath)
             } else {
                 GoDependencyManager.buildBinaryCommand(context, binaryPath, emptyList())

@@ -28,16 +28,16 @@ object NodeDependencyManager {
 
     enum class MirrorRegion { CN, GLOBAL }
 
-    // capawesome-team fork: Node 18.20.4 with 16 KB page alignment and full ICU.
-    // The earlier capawesome.1 binary was small-icu, so V8 rejected Unicode
-    // property escapes such as \p{ID_Start} (path-to-regexp / Express 5).
+    
+    
+    
     private val NODE_GITHUB_URL = "https://github.com/capawesome-team/nodejs-mobile/releases/download/v18.20.4-capawesome.3/nodejs-mobile-v18.20.4-capawesome.3-android.zip"
 
-    /**
-     * SHA-256 of nodejs-mobile-v18.20.4-capawesome.3-android.zip.
-     * Verify with `shasum -a 256 <zip>` against the GitHub release when bumping
-     * [NODE_GITHUB_URL] / NODE_VERSION — mismatches fail the download loudly.
-     */
+    
+
+
+
+
     private const val NODE_ZIP_SHA256 =
         "0a8d094d3f60bcd3b8ff0ad98e4aafeeb59c933fbf53af82eb7cdeab015c503f"
 
@@ -76,7 +76,7 @@ object NodeDependencyManager {
 
     private val downloadCancelled = AtomicBoolean(false)
 
-    /** Abort the in-flight download; the .tmp partial file is kept for a later resume. */
+    
     fun cancelDownload() {
         downloadCancelled.set(true)
         DependencyDownloadEngine.cancel()
@@ -116,30 +116,30 @@ object NodeDependencyManager {
         return File(getDepsDir(context), "node/$abi").also { it.mkdirs() }
     }
 
-    /**
-     * Every ABI directory name that can appear inside the upstream nodejs-mobile zip.
-     * Extraction routes entries by path segment, so "x86" never swallows "x86_64" paths.
-     */
+    
+
+
+
     private val NODE_KNOWN_ABIS = setOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
 
-    /**
-     * ABIs the upstream v18.20.4 nodejs-mobile zip actually ships (32-bit x86 was dropped
-     * upstream). Export requires a cached libnode.so for each selected ABI in this set;
-     * any other selected ABI (e.g. x86) is skipped with a warning instead of failing.
-     */
+    
+
+
+
+
     val NODE_EXPORT_ABIS: Set<String> = setOf("armeabi-v7a", "arm64-v8a", "x86_64")
 
-    /** The libnode.so cached for [abi], or null when the runtime zip never provided it. */
+    
     fun nodeLibForAbi(context: Context, abi: String): File? {
         if (!cachedRuntimeIsCurrent(context)) return null
         val lib = File(getNodeDir(context, abi), NODE_BINARY_NAME)
         return lib.takeIf { it.exists() && it.isFile && it.length() > 0L }
     }
 
-    /**
-     * True when the on-disk Node zip matches [NODE_ZIP_SHA256]. A cache left by
-     * an older build (small-icu 18.20.4) must not count as installed.
-     */
+    
+
+
+
     internal fun cachedRuntimeIsCurrent(context: Context): Boolean {
         val stamp = File(getDepsDir(context), RUNTIME_STAMP_NAME)
         return stamp.isFile && stamp.readText().trim() == NODE_ZIP_SHA256
@@ -149,11 +149,11 @@ object NodeDependencyManager {
         File(getDepsDir(context), RUNTIME_STAMP_NAME).writeText(NODE_ZIP_SHA256)
     }
 
-    /**
-     * Selected export ABIs that are expected to have a libnode.so but currently lack one.
-     * The device ABI is also satisfied by the host's own nativeLibraryDir (bundled builds).
-     * ABIs outside [NODE_EXPORT_ABIS] can never be satisfied upstream and are not reported.
-     */
+    
+
+
+
+
     fun missingExportAbis(context: Context, neededAbis: Collection<String>): Set<String> {
         val deviceAbi = getDeviceAbi()
         return neededAbis.filter { it in NODE_EXPORT_ABIS }
@@ -164,19 +164,19 @@ object NodeDependencyManager {
             }.toSet()
     }
 
-    /**
-     * Ensure every export-requested ABI has a cached libnode.so, re-downloading the runtime
-     * zip once when some are missing (the zip carries all ABIs; older installs only ever
-     * extracted the device ABI). Returns the ABIs still missing after the attempt.
-     */
+    
+
+
+
+
     suspend fun ensureExportAbis(context: Context, neededAbis: Collection<String>): Set<String> =
         withContext(Dispatchers.IO) {
             var missing = missingExportAbis(context, neededAbis)
             if (missing.isEmpty()) return@withContext missing
             coroutineScope {
-                // Same live engine→manager state bridge as downloadNodeRuntime:
-                // this path re-downloads the runtime zip for missing export ABIs
-                // and must not leave callers' progress UI stuck on Idle.
+                
+                
+                
                 val syncJob = launch {
                     DependencyDownloadEngine.state.collect { syncEngineState() }
                 }
@@ -275,11 +275,11 @@ object NodeDependencyManager {
         return null
     }
 
-    /**
-     * libnode.so's DT_NEEDED entry is libc++_shared.so. A dlopen from the
-     * download directory does not search the APK's lib dir unless that file
-     * is also beside libnode.so (and on LD_LIBRARY_PATH for the launcher).
-     */
+    
+
+
+
+
     fun stageCxxSharedBeside(context: Context, libnode: File) {
         val dir = libnode.parentFile ?: return
         val staged = File(dir, CXX_SHARED_NAME)
@@ -315,9 +315,9 @@ object NodeDependencyManager {
 
     suspend fun downloadNodeRuntime(context: Context): Boolean = withContext(Dispatchers.IO) {
         coroutineScope {
-            // Bridge engine progress into _downloadState for the whole call —
-            // callers' dialogs otherwise sit on Idle ("preparing") for the
-            // entire download since syncEngineState only ran once at the end.
+            
+            
+            
             val syncJob = launch {
                 DependencyDownloadEngine.state.collect { syncEngineState() }
             }
@@ -420,11 +420,11 @@ object NodeDependencyManager {
         }
     }
 
-    /**
-     * Extract the upstream zip into per-ABI dirs (`node/<abi>/libnode.so`) so multi-arch
-     * exports can embed libnode.so for ABIs other than the host device's. Returns the set
-     * of ABIs whose libnode.so was extracted; [deviceAbi] must be among them.
-     */
+    
+
+
+
+
     private fun extractNodeZip(zipFile: File, context: Context, deviceAbi: String): Set<String> {
         val zipInput = java.util.zip.ZipInputStream(zipFile.inputStream().buffered())
         val guard = com.webtoapp.util.SafeZip.EntryGuard()
@@ -463,10 +463,10 @@ object NodeDependencyManager {
         return extractedAbis
     }
 
-    /**
-     * The ABI a zip entry belongs to, matched on whole path segments so "x86" can never
-     * capture "x86_64" paths (a plain contains("x86") check would misroute them).
-     */
+    
+
+
+
     internal fun nodeAbiOfEntry(entryName: String): String? =
         entryName.split('/').firstOrNull { it in NODE_KNOWN_ABIS }
 

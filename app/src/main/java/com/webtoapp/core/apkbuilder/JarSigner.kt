@@ -48,18 +48,18 @@ class JarSigner(private val context: Context) {
         fun signatureHashOf(cert: X509Certificate): ByteArray =
             java.security.MessageDigest.getInstance("SHA-256").digest(cert.encoded)
 
-        /**
-         * Full BouncyCastle (bundled dependency), used explicitly for *reading* keystores.
-         * The platform's stripped BC provider on many Android versions cannot decrypt PKCS12
-         * files written by modern keytool / Android Studio (PBES2 with AES-256), which is exactly
-         * the `.jks`-named file most users import. We never register it globally — instance-scoped
-         * lookups keep every other crypto path untouched.
-         *
-         * Must live in the companion, not as an instance `by lazy`: the `init` block runs
-         * `initializeKey()` before properties declared later in the class body are
-         * initialized, and the startup load of an already-imported custom keystore
-         * touches this provider during construction (#531).
-         */
+        
+
+
+
+
+
+
+
+
+
+
+
         private val bcProvider: Provider? by lazy {
             runCatching { BouncyCastleProvider() }.getOrNull()
         }
@@ -82,28 +82,28 @@ class JarSigner(private val context: Context) {
         PKCS12_CUSTOM
     }
 
-    /**
-     * Structured outcome of a keystore import so the UI can tell the user *which* step failed
-     * (store password / key password / no key entry / unsupported format) instead of one generic
-     * "check your password" message.
-     */
+    
+
+
+
+
     sealed class KeystoreImportResult {
         data class Success(val alias: String, val sourceFormat: String) : KeystoreImportResult()
 
-        /** The file format was recognized, but the keystore (store) password was rejected on load. */
+        
         object StorePasswordRejected : KeystoreImportResult()
 
-        /** The store loaded, but the private key could not be recovered with the given passwords. */
+        
         data class KeyPasswordRejected(val keyPasswordFieldUsed: Boolean) : KeystoreImportResult()
 
-        /** The keystore parsed but contains no private key entry (certificate-only or empty). */
+        
         object NoKeyEntry : KeystoreImportResult()
 
-        /** No supported format (PKCS12 / JKS / JCEKS / BKS) could parse the file at all. */
+        
         object UnsupportedFormat : KeystoreImportResult()
     }
 
-    /** Keystore container format detected from the file's magic bytes, independent of any password. */
+    
     private enum class KeystoreFileFormat { PKCS12, JKS, JCEKS, UNKNOWN }
 
     data class SigningSchemeOptions(
@@ -136,11 +136,11 @@ class JarSigner(private val context: Context) {
         val sha256: String
     )
 
-    /**
-     * An externally supplied key/certificate pair (e.g. a per-package identity from
-     * [PerAppSigningIdentity]). When passed to [sign] it fully replaces the host's own
-     * signer for that invocation — the host's keystore files are neither read nor reset.
-     */
+    
+
+
+
+
     data class SigningIdentity(
         val privateKey: PrivateKey,
         val certificate: X509Certificate
@@ -478,11 +478,11 @@ class JarSigner(private val context: Context) {
         return password
     }
 
-    /**
-     * Detect the keystore container format from magic bytes. Works on fully-encrypted files
-     * because container headers are plaintext: JKS starts with 0xFEEDFEED, JCEKS with
-     * 0xCECECECE, and PKCS12 is DER ASN.1 starting with a SEQUENCE tag (0x30).
-     */
+    
+
+
+
+
     private fun detectKeystoreFormat(file: File): KeystoreFileFormat {
         return try {
             FileInputStream(file).use { fis ->
@@ -512,10 +512,10 @@ class JarSigner(private val context: Context) {
         }
     }
 
-    /**
-     * Load a keystore file, preferring the full BC provider (understands PBES2, JCEKS)
-     * and falling back to the platform provider. Returns null when neither can load it.
-     */
+    
+
+
+
     private fun openKeyStore(type: String, file: File, password: CharArray): KeyStore? {
         val providers: List<Provider?> =
             if (bcProvider != null) listOf(bcProvider, null) else listOf<Provider?>(null)

@@ -7,11 +7,11 @@ object ProjectFilesSection {
 
     private const val MAX = 30
 
-    /**
-     * [FileSummary.lines] is -1 when counting was skipped (binary file or over
-     * the line-count cap) — the row then reports size only, which is the honest
-     * signal for a giant upload.
-     */
+    
+
+
+
+
     fun build(lang: PromptLang, files: List<FileSummary>): String {
         if (files.isEmpty()) {
             return when (lang) {

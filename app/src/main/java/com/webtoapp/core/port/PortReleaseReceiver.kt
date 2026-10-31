@@ -6,25 +6,25 @@ import android.content.Intent
 import android.os.Build
 import com.webtoapp.core.logging.AppLogger
 
-/**
- * Remote port release for cooperating WTA apps (the host's Port Manager
- * screen). The receiver is exported because generated APKs are signed with
- * independent per-app keys — a signature permission would sever the feature.
- *
- * Since no pre-shared secret exists between independently built apps, two
- * layers replace it:
- *
- *  1. A single-use session token issued by [PortQueryReceiver]. A blind
- *     broadcast carries no token and is rejected — the caller must complete
- *     the query → token → release handshake first.
- *  2. On API 34+, [getSentFromUid] additionally verifies the sender package
- *     is WTA-marked (defense in depth — the marker alone is spoofable, the
- *     token alone is protocol-obscurity; together they raise the bar).
- *
- * Residual: a determined attacker can still run the handshake and spoof the
- * marker. The token must therefore be treated as a fence against casual /
- * accidental abuse, not a capability in the cryptographic sense.
- */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 class PortReleaseReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -67,10 +67,10 @@ class PortReleaseReceiver : BroadcastReceiver() {
         }
     }
 
-    /**
-     * The token is the primary gate on every API level; the WTA-marker sender
-     * check is additive hardening where the platform exposes the sender uid.
-     */
+    
+
+
+
     private fun verifyCaller(context: Context, intent: Intent): Boolean {
         if (!PortSessionAuth.consume(intent.getStringExtra(EXTRA_SESSION_TOKEN))) {
             AppLogger.w(TAG, "Rejected port release: missing/invalid session token")

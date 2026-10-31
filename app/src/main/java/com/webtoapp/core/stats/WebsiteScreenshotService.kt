@@ -44,8 +44,8 @@ class WebsiteScreenshotService(private val context: Context) {
         File(context.filesDir, SCREENSHOT_DIR).also { it.mkdirs() }
     }
 
-    // Captures run an offscreen WebView on the main thread and take seconds each;
-    // serialize so list auto-capture and manual taps queue instead of piling up.
+    
+    
     private val captureMutex = Mutex()
 
     suspend fun captureScreenshot(appId: Long, url: String, app: WebApp? = null): String? = captureMutex.withLock {
@@ -69,8 +69,8 @@ class WebsiteScreenshotService(private val context: Context) {
             return null
         }
 
-        // Rule parsing and plugin reads overlap the page load. A miss still
-        // captures the raw page; the card must not fail closed.
+        
+        
         return coroutineScope {
         val styles = app?.let {
             async(Dispatchers.IO) {

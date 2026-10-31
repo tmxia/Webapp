@@ -48,12 +48,12 @@ class ProjectFileManager(private val context: Context) {
         return describe(target, sessionId)
     }
 
-    /**
-     * Streamed copy into the sandbox — unlike [writeBytes] the source bytes never
-     * land fully in memory, so multi-hundred-MB attachments cannot OOM the app.
-     * On failure the partial target is removed and null is returned. The caller
-     * keeps ownership of [input] (wrap it in `use`).
-     */
+    
+
+
+
+
+
     fun writeStream(sessionId: String, relativePath: String, input: InputStream): FileInfo? {
         val target = resolveSafe(sessionId, relativePath) ?: return null
         snapshotBeforeWrite(sessionId, relativePath, target)
@@ -73,13 +73,13 @@ class ProjectFileManager(private val context: Context) {
         return if (target.exists() && target.isFile) target.readBytes() else null
     }
 
-    /**
-     * One bounded window into a text file — chunked scan, never a whole-file
-     * read, and never even a whole LINE: lines over [MAX_LINE_CHARS] keep only
-     * the first chars plus a marker, so a single-line multi-GB upload can't OOM
-     * the reader either. [remainingLines] counts at most [REMAINING_COUNT_CAP]
-     * lines past the window ([remainingCapped] flags the early stop).
-     */
+    
+
+
+
+
+
+
     fun readTextWindow(
         sessionId: String,
         relativePath: String,
@@ -100,11 +100,11 @@ class ProjectFileManager(private val context: Context) {
         }
     }
 
-    /**
-     * Bounded line count for the project summary — same chunked scan, zero lines
-     * collected, gives up at [maxLines]. Returns -1 for binary files or counts
-     * beyond [maxLines].
-     */
+    
+
+
+
+
     fun countLines(sessionId: String, relativePath: String, maxLines: Int = LINE_COUNT_CAP): Int {
         val target = resolveSafe(sessionId, relativePath) ?: return -1
         if (!target.exists() || !target.isFile || sniffBinary(target)) return -1
@@ -116,13 +116,13 @@ class ProjectFileManager(private val context: Context) {
         }
     }
 
-    /**
-     * Chunked line scan over [file]: collects at most [take] lines starting at
-     * [offset], then counts up to [countCap] further line terminators. Memory is
-     * bounded by [SCAN_CHUNK_CHARS] + [MAX_LINE_CHARS] regardless of file size;
-     * both \n and \r\n endings are handled (a \r split across chunk borders is
-     * carried via [pendingCR]).
-     */
+    
+
+
+
+
+
+
     private fun scanLines(file: File, offset: Int, take: Int, countCap: Int): TextWindow {
         val lines = ArrayList<String>(minOf(take, 512))
         var remaining = 0
@@ -176,14 +176,14 @@ class ProjectFileManager(private val context: Context) {
                     }
                 }
             }
-            // EOF: a trailing line without a final terminator still counts — even
-            // in pure-count mode where its chars were never collected.
+            
+            
             if (!capped && lineHasChars) flushLine()
         }
         return TextWindow(lines, remaining, capped, totalBytes = 0, binary = false)
     }
 
-    /** NUL byte in the first [BINARY_SNIFF_BYTES] → treat as binary, not text. */
+    
     private fun sniffBinary(file: File): Boolean {
         return try {
             file.inputStream().use { s ->
@@ -336,10 +336,10 @@ class ProjectFileManager(private val context: Context) {
         fun formatTime(): String = TIME_FMT.format(Date(modifiedAt))
     }
 
-    /**
-     * Result of [readTextWindow]: a bounded line window plus enough metadata for
-     * the caller to render "more lines" hints without ever holding the whole file.
-     */
+    
+
+
+
     data class TextWindow(
         val lines: List<String>,
         val remainingLines: Int,

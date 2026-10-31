@@ -63,10 +63,10 @@ class LocalHttpServer(
         fun buildLoopbackBaseUrl(port: Int): String = "http://$LOOPBACK_HOST:$port"
     }
 
-    /**
-     * Decrypted bytes for one request. The site root stays in the APK; nothing
-     * from [read] is written to disk.
-     */
+    
+
+
+
     class MemorySite(
         private val readFile: (String) -> ByteArray?,
         private val directories: Set<String>,
@@ -497,7 +497,7 @@ class LocalHttpServer(
     }
 }
 
-/** Request path relative to the site root. Null when it tries to escape. */
+
 internal fun safeSiteRelativePath(path: String): String? {
     val trimmed = path.removePrefix("/")
     if (trimmed.isEmpty()) return ""

@@ -110,12 +110,12 @@ data class MessageActions(
     val onDeleteFromHere: (AgentMessage) -> Unit
 )
 
-/**
- * Build a copy-paste-friendly plain-text rendering of an assistant message.
- * When [includeDetails] is true, thinking blocks and tool calls are interleaved
- * with the prose output (in arrival order where possible); otherwise only the
- * clean prose output is returned.
- */
+
+
+
+
+
+
 internal fun formatMessageForCopy(message: AgentMessage, includeDetails: Boolean): String {
     val cleanContent = AgentViewModel.stripInlineMarkers(message.content).trim()
     if (!includeDetails) return cleanContent
@@ -125,8 +125,8 @@ internal fun formatMessageForCopy(message: AgentMessage, includeDetails: Boolean
     if (!hasThinking && !hasTools) return cleanContent
 
     val sb = StringBuilder()
-    // Thinking blocks (in order). If there's only one, label it simply; otherwise
-    // number them so multi-turn reasoning stays readable.
+    
+    
     segments.forEachIndexed { i, seg ->
         val c = seg.content.trim()
         if (c.isBlank()) return@forEachIndexed
@@ -135,7 +135,7 @@ internal fun formatMessageForCopy(message: AgentMessage, includeDetails: Boolean
         if (segments.size > 1) sb.append(" (${i + 1})")
         sb.append("\n").append(c)
     }
-    // Tool calls with their result previews.
+    
     message.toolCalls.forEach { tc ->
         if (sb.isNotEmpty()) sb.append("\n\n")
         sb.append(tc.name)
@@ -146,7 +146,7 @@ internal fun formatMessageForCopy(message: AgentMessage, includeDetails: Boolean
             sb.append("\n→ ").append(result)
         }
     }
-    // Final prose output.
+    
     if (cleanContent.isNotEmpty()) {
         if (sb.isNotEmpty()) sb.append("\n\n")
         sb.append(cleanContent)
@@ -178,12 +178,12 @@ fun MessageBubble(
         modifier = modifier.fillMaxWidth(),
         horizontalAlignment = if (isUser) Alignment.End else Alignment.Start
     ) {
-        // For assistant messages, thinking blocks are interleaved with prose/tools via
-        // the timeline when structured segments exist; otherwise fall back to a single
-        // top-of-bubble ThinkingBlock for legacy messages (pre-structured-thinking).
-        // NOTE: thinkingSegments can be null for messages deserialised from older
-        // session JSON — Gson bypasses the constructor so the emptyList() default is
-        // lost. Treat null as empty.
+        
+        
+        
+        
+        
+        
         val segments: List<ThinkingSegmentData> = message.thinkingSegmentsSafe
         val hasStructuredThinking = !isUser && segments.isNotEmpty()
         if (!isUser && !hasStructuredThinking && !message.thinking.isNullOrBlank()) {
@@ -201,9 +201,9 @@ fun MessageBubble(
                 horizontal = WtaSpacing.Medium + 2.dp,
                 vertical = WtaSpacing.Medium - 2.dp
             ),
-            // Long-press opens the same action menu as the ⋯ button — the
-            // standard chat affordance users reach for before discovering the
-            // tiny icon. Text long-press still selects via SelectionContainer.
+            
+            
+            
             modifier = Modifier
                 .widthIn(max = 560.dp)
                 .combinedClickable(
@@ -256,7 +256,7 @@ fun MessageBubble(
         Row(
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Timestamp orients long sessions; the menu stays the action anchor.
+            
             Text(
                 text = remember(message.timestamp) {
                     MESSAGE_TIME_FORMAT.format(Date(message.timestamp))
@@ -325,17 +325,17 @@ fun ThinkingBlock(
     initiallyExpanded: Boolean = isLive,
     modifier: Modifier = Modifier
 ) {
-    // Key on composition position, not content: a live segment's content grows with
-    // every delta, so a content-derived key would reset this state per token — for
-    // `appeared` that meant the fade-in could never finish (the block stayed
-    // invisible for the whole stream), and for `expanded` it meant a manual collapse
-    // was undone by the next delta.
+    
+    
+    
+    
+    
     var expanded by remember { mutableStateOf(initiallyExpanded && isLive) }
     LaunchedEffect(isLive) {
         if (!isLive) expanded = false
         else expanded = true
     }
-    // Live thinking blocks materialize with a small fade+rise; settled ones stay static.
+    
     var appeared by remember { mutableStateOf(!isLive) }
     LaunchedEffect(Unit) { appeared = true }
     val appearAlpha by animateFloatAsState(if (appeared) 1f else 0f, tween(220), label = "appear-alpha")

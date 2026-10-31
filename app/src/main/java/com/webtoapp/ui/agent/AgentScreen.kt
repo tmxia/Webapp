@@ -171,8 +171,8 @@ fun AgentScreen(
     LaunchedEffect(state.info) { state.info?.let { snackbar.showSnackbar(it); vm.dismissBanner() } }
     LaunchedEffect(state.drawerOpen) {
         if (state.drawerOpen) {
-            // Don't let the composer IME stay up over the drawer — opening the
-            // sidebar should dismiss the keyboard, not summon it.
+            
+            
             focusManager.clearFocus()
             drawerMounted = true
             drawerState.open()
@@ -309,9 +309,9 @@ fun AgentScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    // WtaScreen's Scaffold padding already reserves the navigation
-                    // bar; pad only the IME excess so the composer lands flush on
-                    // top of the keyboard instead of floating a nav-bar above it.
+                    
+                    
+                    
                     .windowInsetsPadding(WindowInsets.ime.exclude(WindowInsets.navigationBars))
             ) {
                 if (state.planActive) {
@@ -546,8 +546,8 @@ private fun Conversation(
     modifier: Modifier = Modifier
 ) {
     val listState = rememberLazyListState()
-    // Hide the in-flight assistant draft from history while streaming: it is shown
-    // live via StreamingBubble, so including it here would render the same output twice.
+    
+    
     val messages = state.currentSession?.messages.orEmpty().filterNot {
         it.id == state.streamingDraftMessageId
     }
@@ -582,11 +582,11 @@ private fun Conversation(
         if (atBottom) followBottom = true
     }
 
-    // A fresh turn (Idle → Connecting) always re-attaches to the newest content.
-    // Without this, a followBottom left false from earlier history reading keeps
-    // the just-sent user message AND the whole streaming output off-screen —
-    // sending is an explicit action, so the view must jump to it. Manual scroll-up
-    // only detaches within a turn; the next send snaps back.
+    
+    
+    
+    
+    
     var wasWorking by remember { mutableStateOf(false) }
     LaunchedEffect(state.isWorking) {
         val working = state.isWorking
@@ -619,15 +619,15 @@ private fun Conversation(
             val viewportBottom = info.viewportEndOffset - info.afterContentPadding
             val last = info.visibleItemsInfo.lastOrNull()
             if (last != null && last.index == info.totalItemsCount - 1) {
-                // The newest item is on screen — align its bottom edge with the viewport.
+                
                 val gap = (last.offset + last.size) - viewportBottom
                 if (gap > 0) {
                     listState.scrollBy(gap.toFloat())
                 }
             } else if (info.totalItemsCount > 0) {
-                // The newest item is entirely below the fold (a burst of output
-                // outgrew the viewport between pushes) — jump straight to it so
-                // following never stalls.
+                
+                
+                
                 listState.scrollToItem(info.totalItemsCount - 1)
             }
 

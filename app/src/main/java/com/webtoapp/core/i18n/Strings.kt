@@ -5121,7 +5121,7 @@ object Strings {
     val appListSortDragHint: String get() = StringsE.appListSortDragHint
     val shareApkReadyMode: String get() = StringsE.shareApkReadyMode
 
-    // Agent UI rework additions
+    
     val agentToolViewFull: String get() = StringsE.agentToolViewFull
     val agentCopyThinkingHeader: String get() = StringsE.agentCopyThinkingHeader
     val agentSessionRename: String get() = StringsE.agentSessionRename
@@ -5133,7 +5133,7 @@ object Strings {
     val agentFileDeleteConfirmTitle: String get() = StringsE.agentFileDeleteConfirmTitle
     val agentFileDeleteConfirmMessage: String get() = StringsE.agentFileDeleteConfirmMessage
 
-    // ---- #945 surfaced-string fixes ----
+    
     val aiIconFallbackName: String get() = StringsE.aiIconFallbackName
     val lrcEmptyLine: String get() = StringsE.lrcEmptyLine
     fun videoTrimSeconds(seconds: Int, tenths: Int): String = StringsE.videoTrimSeconds(seconds, tenths)
@@ -5203,7 +5203,7 @@ object Strings {
     fun downloadFailed(label: String, detail: String): String = StringsE.downloadFailed(label, detail)
     val packageJsonMissing: String get() = StringsE.packageJsonMissing
 
-    // ── Inbound share sheet (issue #943) ────────────────────────────────────────
+    
 
     val receiveShare: String get() = StringsE.receiveShare
     val outboundShareTitle: String get() = StringsE.outboundShareTitle
@@ -5239,7 +5239,7 @@ object Strings {
     val perAppSigningTitle: String get() = StringsE.perAppSigningTitle
     val perAppSigningHint: String get() = StringsE.perAppSigningHint
 
-    // Plugins (unified HCJ / userscript / Chrome surface)
+    
     val pluginsTitle: String get() = StringsE.pluginsTitle
     val pluginsManageTitle: String get() = StringsE.pluginsManageTitle
     val searchPlugins: String get() = StringsE.searchPlugins

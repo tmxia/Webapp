@@ -72,11 +72,11 @@ object DeclarativeNetRequestEngine {
     private val dynamicRules = ConcurrentHashMap<String, MutableList<DnrRule>>()
     private val sessionRules = ConcurrentHashMap<String, MutableList<DnrRule>>()
 
-    /**
-     * Immutable candidate index over all currently active rules, keyed by
-     * hostname buckets. Rebuilt whenever any ruleset changes; read lock-free
-     * (volatile snapshot) from the WebView request thread.
-     */
+    
+
+
+
+
     private data class RuleIndex(
         val domainBuckets: Map<String, List<DnrRule>>,
         val genericRules: List<DnrRule>
@@ -107,7 +107,7 @@ object DeclarativeNetRequestEngine {
         rebuildIndex()
     }
 
-    /** Rebuilds the immutable domain candidate index from all active rules. */
+    
     private fun rebuildIndex() {
         val buckets = HashMap<String, MutableList<DnrRule>>()
         val generic = mutableListOf<DnrRule>()
@@ -135,12 +135,12 @@ object DeclarativeNetRequestEngine {
         )
     }
 
-    /**
-     * Extracts the hostname bucket keys a rule should be indexed under.
-     * `requestDomains` matches the request URL host (or subdomains), so each
-     * entry becomes a key. Otherwise a stable host is extracted from the
-     * urlFilter; rules that cannot be reliably keyed go to the generic pool.
-     */
+    
+
+
+
+
+
     private fun indexKeysFor(rule: DnrRule): Set<String> {
         if (rule.requestDomains.isNotEmpty()) {
             return rule.requestDomains
@@ -170,7 +170,7 @@ object DeclarativeNetRequestEngine {
         return cleaned
     }
 
-    /** Returns [host] and each parent domain, e.g. "a.b.example.com" → [a.b.example.com, b.example.com, example.com, com]. */
+    
     private fun parentDomains(host: String): List<String> {
         if (host.isEmpty()) return emptyList()
         val parts = host.split(".")
@@ -184,7 +184,7 @@ object DeclarativeNetRequestEngine {
         return domains.any { d -> requestHost == d || requestHost.endsWith(".$d") }
     }
 
-    /** Candidate rules for a request: generic pool + hostname-bucket hits (host + parent domains). */
+    
     private fun buildCandidates(index: RuleIndex, requestHost: String): List<DnrRule> {
         if (index.genericRules.isEmpty() && index.domainBuckets.isEmpty()) return emptyList()
         val buckets = index.domainBuckets
@@ -456,7 +456,7 @@ object DeclarativeNetRequestEngine {
             if (resType in rule.excludedResourceTypes) return false
         }
 
-        // requestDomains constrains the *request URL's* host (uBO filter lists rely on it).
+        
         if (rule.requestDomains.isNotEmpty() && !matchesRequestDomain(requestHost, rule.requestDomains)) return false
 
         if (initiatorDomain.isNotEmpty()) {
@@ -531,7 +531,7 @@ object DeclarativeNetRequestEngine {
             ?: condition?.optJSONArray("domains"))
         val excludedDomains = parseStringSet(condition?.optJSONArray("excludedInitiatorDomains")
             ?: condition?.optJSONArray("excludedDomains"))
-        // requestDomains matches the *request URL's* host (uBO filter lists rely on this).
+        
         val requestDomains = parseStringSet(condition?.optJSONArray("requestDomains"))
         val requestMethods = parseStringSet(condition?.optJSONArray("requestMethods")).map { it.uppercase() }.toSet()
         val excludedRequestMethods = parseStringSet(condition?.optJSONArray("excludedRequestMethods")).map { it.uppercase() }.toSet()

@@ -135,12 +135,12 @@ class ErrorPageManager(private val config: ErrorPageConfig) {
             return generateLegacyPage(style, strings, retryBtnText, showGame, gameType, autoRetry, failedUrl, diagnostic, report)
         }
 
-        // failedUrl is attacker-controllable (whatever URL the app failed to load).
-        // JS-encode it first — the old ' -> \' swap left backslashes alone, so `\';payload;//`
-        // escaped the JS string — then escape single quotes for the single-quoted JS string
-        // literals it is interpolated into, and neutralize "</" so the payload cannot close
-        // the host <script> block either. For the onclick= attributes use [attrSafeUrl]:
-        // the `\"` pair must become &quot; there or it closes the HTML attribute early.
+        
+        
+        
+        
+        
+        
         val safeUrl = failedUrl
             ?.let { com.webtoapp.util.JsStrings.escape(it) }
             ?.replace("</", "<\\/")
@@ -387,12 +387,12 @@ function startGame(){
         val styleBody = ErrorPageStyles.getStyleBody(style, resolvedTitle, resolvedSubtitle)
         val gameJs = if (showGame) ErrorPageGames.getGameJs(gameType) else ""
 
-        // failedUrl is attacker-controllable (whatever URL the app failed to load).
-        // JS-encode it first — the old ' -> \' swap left backslashes alone, so `\';payload;//`
-        // escaped the JS string — then escape single quotes for the single-quoted JS string
-        // literals it is interpolated into, and neutralize "</" so the payload cannot close
-        // the host <script> block either. For the onclick= attributes use [attrSafeUrl]:
-        // the `\"` pair must become &quot; there or it closes the HTML attribute early.
+        
+        
+        
+        
+        
+        
         val safeUrl = failedUrl
             ?.let { com.webtoapp.util.JsStrings.escape(it) }
             ?.replace("</", "<\\/")
@@ -533,12 +533,12 @@ function startGame(){
         val mediaPath = config.customMediaPath ?: ""
         val retryBtnText = config.retryButtonText.ifBlank { strings.retryButton }
         val isVideo = mediaPath.endsWith(".mp4") || mediaPath.endsWith(".webm")
-        // failedUrl is attacker-controllable (whatever URL the app failed to load).
-        // JS-encode it first — the old ' -> \' swap left backslashes alone, so `\';payload;//`
-        // escaped the JS string — then escape single quotes for the single-quoted JS string
-        // literals it is interpolated into, and neutralize "</" so the payload cannot close
-        // the host <script> block either. For the onclick= attributes use [attrSafeUrl]:
-        // the `\"` pair must become &quot; there or it closes the HTML attribute early.
+        
+        
+        
+        
+        
+        
         val safeUrl = failedUrl
             ?.let { com.webtoapp.util.JsStrings.escape(it) }
             ?.replace("</", "<\\/")
@@ -709,12 +709,12 @@ body{
     ): String {
         val strings = getStrings()
         val retryBtnText = config.retryButtonText.ifBlank { strings.retryButton }
-        // failedUrl is attacker-controllable (whatever URL the app failed to load).
-        // JS-encode it first — the old ' -> \' swap left backslashes alone, so `\';payload;//`
-        // escaped the JS string — then escape single quotes for the single-quoted JS string
-        // literals it is interpolated into, and neutralize "</" so the payload cannot close
-        // the host <script> block either. For the onclick= attributes use [attrSafeUrl]:
-        // the `\"` pair must become &quot; there or it closes the HTML attribute early.
+        
+        
+        
+        
+        
+        
         val safeUrl = failedUrl
             ?.let { com.webtoapp.util.JsStrings.escape(it) }
             ?.replace("</", "<\\/")

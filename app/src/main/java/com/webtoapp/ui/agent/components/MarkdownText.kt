@@ -64,7 +64,7 @@ fun MarkdownText(
     }
 }
 
-/** Streaming caret appended to the last text block; alpha drives the blink. */
+
 private fun caretAnnotated(alpha: Float?, color: Color): AnnotatedString =
     if (alpha == null) AnnotatedString("")
     else buildAnnotatedString {
@@ -167,7 +167,7 @@ private fun RenderBlock(
         }
 
         is MdBlock.Table -> {
-            // Horizontally scrollable so wide tables never squash the chat column.
+            
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -225,7 +225,7 @@ internal sealed class MdBlock {
     data class Quote(val text: String) : MdBlock()
     object Rule : MdBlock()
 
-    /** GFM pipe table: header row plus body rows; column count follows the header. */
+    
     data class Table(val header: List<String>, val rows: List<List<String>>) : MdBlock()
 }
 
@@ -234,7 +234,7 @@ private val UNORDERED_LIST = Regex("^(\\s*)[-*+]\\s+(.*)$")
 private val HEADING = Regex("^(#{1,6})\\s+(.*)$")
 private val RULE = Regex("^(-{3,}|\\*{3,}|_{3,})$")
 
-/** Table separator row like `|---|---|` or `| :--- | ---: |` (alignment colons allowed). */
+
 private val TABLE_SEPARATOR = Regex("^\\|?[\\s:|-]+\\|[\\s:|-]*$")
 
 private fun isTableRow(line: String): Boolean {
@@ -268,7 +268,7 @@ internal fun parseMarkdownBlocks(text: String): List<MdBlock> {
         when {
             line.isBlank() -> flushParagraph()
 
-            // GFM table: header row, separator row, then any number of body rows.
+            
             isTableRow(line) && i + 1 < lines.size && TABLE_SEPARATOR.matches(lines[i + 1].trimEnd().trim()) -> {
                 flushParagraph()
                 val header = splitTableRow(line)
@@ -276,7 +276,7 @@ internal fun parseMarkdownBlocks(text: String): List<MdBlock> {
                 var j = i + 2
                 while (j < lines.size && isTableRow(lines[j].trimEnd())) {
                     val cells = splitTableRow(lines[j].trimEnd())
-                    // Normalise to the header width: pad or trim.
+                    
                     rows += List(header.size) { idx -> cells.getOrElse(idx) { "" } }
                     j++
                 }
@@ -416,7 +416,7 @@ internal fun inlineAnnotated(
             }
 
             c == 'h' && (text.startsWith("https://", i) || text.startsWith("http://", i)) -> {
-                // Bare URL auto-link: consume until whitespace or a closing bracket.
+                
                 var end = i
                 while (end < n && !text[end].isWhitespace() && text[end] != ')' && text[end] != ']') end++
                 val url = text.substring(i, end).trimEnd('.', ',', ';', ':', '!', '?')

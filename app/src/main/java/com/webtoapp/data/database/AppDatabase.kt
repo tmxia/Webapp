@@ -1067,9 +1067,9 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
-        // Backfill by the previous home order (updatedAt DESC, id DESC) so
-        // switching to custom does not reshuffle. createAddColumnMigration
-        // swallows errors and cannot assign per-row indices.
+        
+        
+        
         private val MIGRATION_45_46 = object : Migration(45, 46) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.addHomeSortIndex()
@@ -1079,8 +1079,8 @@ abstract class AppDatabase : RoomDatabase() {
         private val MIGRATION_43_44 =
             createAddColumnMigration(43, 44, "appLockConfig")
 
-        // App Lock was removed; drop its column by rebuilding the table
-        // (SQLite cannot DROP COLUMN). Table shape is the same as v43.
+        
+        
         private val MIGRATION_44_45 = object : Migration(44, 45) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 AppLogger.i("AppDatabase", "Migration 44->45: rebuilding web_apps to drop appLockConfig (App Lock removed)")
@@ -1319,11 +1319,11 @@ abstract class AppDatabase : RoomDatabase() {
     }
 }
 
-/**
- * Adds [com.webtoapp.data.model.WebApp.homeSortIndex] and numbers existing rows
- * `0..n-1` in updatedAt DESC, id DESC order. New rows keep the column default
- * of 0 and sort ahead of these via the id tie-break.
- */
+
+
+
+
+
 internal fun SupportSQLiteDatabase.addHomeSortIndex() {
     execSQL("ALTER TABLE web_apps ADD COLUMN homeSortIndex INTEGER NOT NULL DEFAULT 0")
     val cursor = query("SELECT id FROM web_apps ORDER BY updatedAt DESC, id DESC")

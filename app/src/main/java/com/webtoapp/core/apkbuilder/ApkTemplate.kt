@@ -32,21 +32,21 @@ class ApkTemplate(private val context: Context) {
             "res/mipmap-xxxhdpi-v4/ic_launcher_round.png" to 192
         )
 
-        /**
-         * Picks a solid color to back an adaptive-icon foreground layer.
-         *
-         * The user image must never be reused as the background layer: launchers composite
-         * background + foreground, so an image-backed background shows the whole picture
-         * behind the safe-zone subject (issue: "transparent background icon duplicates it
-         * behind the subject"). Opaque images keep their dominant border color so the icon
-         * still reads as a full tile. Transparent images use white (#1094): a light
-         * subject used to force black, which is what NP Manager's white mipmap vs a
-         * black installed tile was showing. Authors who want a dark plate pick
-         * [com.webtoapp.data.model.ApkExportConfig.iconBackgroundColor].
-         */
+        
+
+
+
+
+
+
+
+
+
+
+
         fun deriveLauncherBackgroundColor(bitmap: Bitmap): Int {
-            // Sample a coarse grid straight from the source pixels; downscaling through
-            // createScaledBitmap is neither needed nor reliable across renderers.
+            
+            
             val cols = minOf(32, bitmap.width)
             val rows = minOf(32, bitmap.height)
             val band = maxOf(1, minOf(cols, rows) / 8)
@@ -81,11 +81,11 @@ class ApkTemplate(private val context: Context) {
             return 0xFFFFFFFF.toInt()
         }
 
-        /**
-         * Canonical value stored on [com.webtoapp.data.model.ApkExportConfig.iconBackgroundColor].
-         * Fully transparent (`#00RRGGBB`) stays `#00000000`. Other 8-digit values drop
-         * to opaque `#RRGGBB`. Blank / malformed strings mean "derive".
-         */
+        
+
+
+
+
         fun normalizeIconBackgroundColor(picked: String?): String? {
             if (picked.isNullOrBlank()) return null
             val digits = picked.trim().removePrefix("#")
@@ -97,11 +97,11 @@ class ApkTemplate(private val context: Context) {
             }
         }
 
-        /**
-         * Parses an author-picked launcher plate color (`#RRGGBB` or `#AARRGGBB`).
-         * Alpha 0 is [android.graphics.Color.TRANSPARENT]; any other alpha is
-         * forced opaque. Blank / malformed values mean "derive".
-         */
+        
+
+
+
+
         fun parseIconBackgroundColor(hex: String?): Int? {
             if (hex.isNullOrBlank()) return null
             return try {
@@ -191,7 +191,7 @@ class ApkTemplate(private val context: Context) {
 
     fun loadBitmap(iconPath: String): Bitmap? {
         return try {
-            // Downstream re-encodes at mipmap scale; cap the decode (#779).
+            
             if (iconPath.startsWith("/")) {
                 com.webtoapp.util.BoundedBitmaps.decodeBoundedBitmapFile(iconPath, 1024)
             } else if (iconPath.startsWith("content://")) {
@@ -251,8 +251,8 @@ class ApkTemplate(private val context: Context) {
         }
         canvas.drawBitmap(bitmap, null, android.graphics.RectF(left, top, left + scaledW, top + scaledH), paint)
 
-        // Mask with DST_IN over the full canvas: an SRC_IN composite against a pre-drawn
-        // circle would leave the circle visible wherever the letterboxed content didn't cover.
+        
+        
         val maskPaint = android.graphics.Paint().apply {
             isAntiAlias = true
             xfermode = android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.DST_IN)

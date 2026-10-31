@@ -15,7 +15,7 @@ object ShellServerLauncher {
 
     private const val TAG = "ShellServerLauncher"
 
-    /** Safely parse a stored port-conflict-mode string (from ShellConfig JSON) into the enum. */
+    
     private fun resolvePortConflictMode(name: String?): com.webtoapp.data.model.PortConflictMode {
         return runCatching {
             com.webtoapp.data.model.PortConflictMode.valueOf(name ?: "AUTO_KILL")
@@ -234,10 +234,10 @@ object ShellServerLauncher {
                 writeExtractionMarker(marker, token)
             }
 
-            // Note: do NOT inject PORT into envVars here. NodeService is the single source of
-            // truth for PORT — it sets process.env.PORT to the actually-allocated port AFTER
-            // PortManager may have reassigned it. Injecting the *requested* port here would be
-            // overridden anyway, and previously defeated reassignment (app bound the taken port).
+            
+            
+            
+            
             val envVars = config.nodejsConfig.envVars.toMutableMap()
 
             val runtime = com.webtoapp.core.nodejs.NodeRuntime(context)

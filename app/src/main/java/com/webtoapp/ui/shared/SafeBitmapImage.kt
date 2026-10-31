@@ -11,15 +11,15 @@ import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 
-/**
- * Draw-side backstop against oversized-bitmap crashes (#779).
- *
- * Even a correctly bounded decode can be defeated later (shared caches, future
- * code paths), and RecordingCanvas kills the process when asked to draw beyond
- * its limit. This wrapper downscales any [ImageBitmap] whose side exceeds
- * [maxDimensionPx] before handing it to [Image], so a missed decode-site can
- * only ever render soft — never crash.
- */
+
+
+
+
+
+
+
+
+
 @Composable
 fun SafeBitmapImage(
     bitmap: ImageBitmap,

@@ -24,12 +24,12 @@ import com.webtoapp.core.engine.BrowserSurface
 import com.webtoapp.core.i18n.Strings
 import com.webtoapp.core.logging.AppLogger
 
-/**
- * Native find-in-page bottom bar (issue #614). Drives the engine's native finder through
- * [BrowserSurface] — WebView findAllAsync on the system kernel, GeckoView's SessionFinder on
- * the Gecko kernel — instead of going through the JS module panel, so match counting and
- * highlighting are handled by the engine itself on both kernels.
- */
+
+
+
+
+
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FindInPageBar(
@@ -48,7 +48,7 @@ fun FindInPageBar(
         numberOfMatches = total
     }
 
-    // Drop the highlights when the bar goes away.
+    
     DisposableEffect(surface) {
         onDispose {
             try {
@@ -59,8 +59,8 @@ fun FindInPageBar(
         }
     }
 
-    // Cursor and IME ready as soon as the bar opens (#652): requestFocus alone leaves the
-    // keyboard hidden, so wait for focus to land before raising the IME.
+    
+    
     val keyboard = LocalSoftwareKeyboardController.current
     LaunchedEffect(surface) {
         if (surface != null) {
@@ -70,7 +70,7 @@ fun FindInPageBar(
         }
     }
 
-    // Live search as the query changes (debounced), like Chrome's find bar.
+    
     LaunchedEffect(query, surface) {
         val s = surface ?: return@LaunchedEffect
         if (query.isBlank()) {
@@ -82,9 +82,9 @@ fun FindInPageBar(
         kotlinx.coroutines.delay(300)
         try {
             s.findInPage(query, forward = null, onResult = ::onFindResult)
-            // On the WebView kernel findAllAsync makes the WebView steal view focus from
-            // this input, which swallowed the backspace key (type worked, delete did not).
-            // Re-claim it after each search unless the user moved focus away on purpose.
+            
+            
+            
             if (!inputFocused) inputFocusRequester.requestFocus()
         } catch (e: Exception) {
             AppLogger.w("FindInPageBar", "findInPage failed", e)

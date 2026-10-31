@@ -29,33 +29,33 @@ object UpdateChecker {
     private const val CONNECT_TIMEOUT_MS = 6000
     private const val READ_TIMEOUT_MS = 10000
 
-    /**
-     * Hard cap on one raced JSON fetch: the first valid response wins long before
-     * this, the cap only bounds the "every route hangs" case.
-     */
+    
+
+
+
     private const val RACE_TIMEOUT_MS = 12000L
 
-    /**
-     * Losing race requests are launched here rather than in the caller's scope,
-     * so the winner returns immediately instead of waiting for every candidate
-     * to finish or time out.
-     */
+    
+
+
+
+
     private val raceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    /**
-     * Invisible boundary that separates the English and Chinese halves of a GitHub release body
-     * (English first, Chinese after the marker). It renders as nothing on the releases page, so
-     * readers see English then Chinese; the app picks the half matching the current language.
-     * Releases without the marker (older notes, or a future release nobody localized yet) fall
-     * back to the whole body, which is English — never blank.
-     */
+    
+
+
+
+
+
+
     private const val ZH_MARKER = "<!-- zh-CN -->"
 
-    /**
-     * Returns the release body in the current app language: the Chinese half when the app is set
-     * to Chinese and a Chinese half exists, otherwise the English half (or the whole body when the
-     * marker is absent).
-     */
+    
+
+
+
+
     private fun localizeReleaseBody(body: String): String {
         val raw = body.trim()
         val idx = raw.indexOf(ZH_MARKER)
@@ -99,13 +99,13 @@ object UpdateChecker {
         val releaseNotes: String
     )
 
-    /**
-     * A single historical release as needed by the version history UI. Each entry keeps
-     * enough info to render, show its changelog, and offer a download without re-fetching.
-     *
-     * [downloadUrl] is the already-mirrored browser_download_url; null when the release has
-     * no APK asset (e.g. source-only / draft).
-     */
+    
+
+
+
+
+
+
     data class ReleaseSummary(
         val tag: String,
         val version: String,
@@ -150,9 +150,9 @@ object UpdateChecker {
 
             val info = ReleaseInfo(
                 version = latest.toString(),
-                // Raw asset URL: ApkUpdateInstaller expands the measured mirror
-                // candidates itself and retries, so a single stale prefix can
-                // no longer sink the download.
+                
+                
+                
                 downloadUrl = rawUrl,
                 sizeBytes = asset.optLong("size", 0L),
                 sha256 = asset.optString("digest").takeIf { it.isNotBlank() }
@@ -166,18 +166,18 @@ object UpdateChecker {
         }
     }
 
-    /**
-     * Fetches the full release history (newest first) for the version-history UI. Each entry
-     * carries its changelog body and — when available — a (mirrored) APK download URL.
-     *
-     * Releases without a parseable version tag or without an APK asset are still listed (so
-     * the user can read their notes), but [ReleaseSummary.downloadUrl] is null when there is
-     * no APK to download. Draft releases are excluded by the API.
-     */
+    
+
+
+
+
+
+
+
     suspend fun fetchAllReleases(): List<ReleaseSummary> = withContext(Dispatchers.IO) {
         try {
-            // Null means every candidate failed — surface it as an error so the
-            // history UI shows a failure state instead of an empty list.
+            
+            
             val json = fetchAllReleasesJson()
                 ?: throw IllegalStateException("Empty response from release API")
             val arr = org.json.JSONArray(json)
@@ -202,7 +202,7 @@ object UpdateChecker {
                     )
                 )
             }
-            // Sort by version descending so newest is on top; unparseable tags sink to the bottom.
+            
             out.sortedWith(compareByDescending { Version.parse(it.version) ?: Version(0, 0, 0) })
         } catch (e: Exception) {
             AppLogger.e(TAG, "Fetch all releases failed", e)
@@ -210,10 +210,10 @@ object UpdateChecker {
         }
     }
 
-    /**
-     * A public repository owned by the app author, as shown by the About page's
-     * "more projects" section. Forks and this app itself are filtered out.
-     */
+    
+
+
+
     data class RepoSummary(
         val name: String,
         val description: String,
@@ -227,20 +227,20 @@ object UpdateChecker {
     private const val AUTHOR_REPOS_API =
         "https://api.github.com/users/$OWNER/repos?per_page=100&type=owner"
 
-    /**
-     * Pre-generated repo list on the `author-repos-data` branch, refreshed by
-     * the Update Author Repos workflow. Serving it through raw.githubusercontent.com
-     * matters: the proxy pool is whitelisted for repo file paths (releases/raw),
-     * while `api.github.com` is rate-limited per egress IP and most shared
-     * proxy IPs are exhausted — the API alone leaves CN users with no route.
-     */
+    
+
+
+
+
+
+
     private const val AUTHOR_REPOS_RAW =
         "https://raw.githubusercontent.com/$OWNER/$REPO/author-repos-data/repos.json"
 
-    /**
-     * Fetches the author's public repos for the About page. Client-side sorting
-     * covers both "by stars" and "latest" so the sort toggle never refetches.
-     */
+    
+
+
+
     suspend fun fetchAuthorRepos(context: android.content.Context): List<RepoSummary> =
         withContext(Dispatchers.IO) {
             try {
@@ -254,11 +254,11 @@ object UpdateChecker {
             }
         }
 
-    /**
-     * Race candidates for the repo list: the raw data file through every proxy
-     * channel plus direct, then the REST API through the same — first response
-     * that parses as a JSON array wins.
-     */
+    
+
+
+
+
     private fun authorReposCandidates(): List<String> {
         val channels = com.webtoapp.core.network.CnMirrorProbe.peekChannels()
         return (channels.map { it.rewrite(AUTHOR_REPOS_RAW) } +
@@ -275,8 +275,8 @@ object UpdateChecker {
             if (repo.optBoolean("fork", false)) continue
             val name = repo.optString("name").trim()
             if (name.isBlank() || name.equals(REPO, ignoreCase = true)) continue
-            // optString("description") returns the literal "null" when the field
-            // is JSON null — check the raw value instead.
+            
+            
             val rawDesc = repo.opt("description")
             val rawLang = repo.opt("language")
             out.add(
@@ -313,22 +313,22 @@ object UpdateChecker {
     }
 
     private suspend fun fetchLatestReleaseJson(): String? =
-        // A proxy can answer 200 with a plain-text error ("Suspent",
-        // "404 not found") — not every mirror actually proxies
-        // api.github.com. Only a JSON object counts as a hit.
+        
+        
+        
         fetchJsonRaced(LATEST_RELEASE_API) { it.trimStart().startsWith("{") }
 
     private suspend fun fetchAllReleasesJson(): String? =
-        // The all-releases endpoint answers with an array, not an object.
+        
         fetchJsonRaced(ALL_RELEASES_API) { it.trimStart().startsWith("[") }
 
-    /**
-     * Fires one GET per mirror candidate concurrently and returns the first body
-     * accepted by [accept]. Candidate order comes from
-     * [CnMirrorProbe.peekChannels] — never blocking — so a cold probe cannot
-     * delay the first request; losing requests keep running detached until
-     * their own socket timeout (tiny payloads, bounded by the timeouts below).
-     */
+    
+
+
+
+
+
+
     private suspend fun fetchJsonRaced(apiUrl: String, accept: (String) -> Boolean): String? {
         val urls = (com.webtoapp.core.network.CnMirrorProbe.peekChannels()
             .map { it.rewrite(apiUrl) } + apiUrl).distinct()

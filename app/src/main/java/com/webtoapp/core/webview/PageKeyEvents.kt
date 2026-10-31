@@ -7,19 +7,19 @@ import android.webkit.WebView
 import com.webtoapp.core.engine.BrowserSurface
 import com.webtoapp.core.engine.GeckoViewEngine
 
-/**
- * Page-facing key events for the system Back key and the volume keys.
- *
- * `wta:back` and `wta:volume` are cancelable and bubble from `document`.
- * `preventDefault()` on `wta:back` keeps the app on the page. Volume delivery
- * is controlled by the editor: forwarding and swallowing the system volume
- * change are separate switches.
- *
- * System WebView reports `preventDefault` through `evaluateJavascript`.
- * GeckoView's `javascript:` load cannot return a value, so the same script
- * also calls `prompt('__wta_key__', '1'|'0')`, which [GeckoViewEngine] answers
- * without showing a dialog.
- */
+
+
+
+
+
+
+
+
+
+
+
+
+
 object PageKeyEvents {
 
     const val PROMPT_TOKEN = "__wta_key__"
@@ -39,10 +39,10 @@ object PageKeyEvents {
         else -> null
     }
 
-    /**
-     * @return true when the event was a volume key that this app is forwarding
-     *   and the editor asked to swallow the system volume change.
-     */
+    
+
+
+
     fun handleVolume(
         event: KeyEvent,
         forward: Boolean,
@@ -76,10 +76,10 @@ object PageKeyEvents {
         onPrevented(false)
     }
 
-    /**
-     * Gecko `window.prompt('__wta_key__', prevented)`.
-     * @return true when this prompt belonged to a key probe and must not be shown.
-     */
+    
+
+
+
     fun claimGeckoPrompt(message: String?, value: String?): Boolean {
         if (message != PROMPT_TOKEN) return false
         reportGecko(value == "1")

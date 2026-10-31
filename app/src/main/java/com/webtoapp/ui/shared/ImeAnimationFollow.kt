@@ -1,20 +1,20 @@
 package com.webtoapp.ui.shared
 
-/**
- * Decides how the page follows a keyboard animation.
- *
- * The WebView must not be resized or translated. A translation (#1343) slides
- * fixed elements behind the status bar (#1398). A height change when the
- * animation ends shrinks the layout viewport while Chromium still applies the
- * window IME inset to the visual viewport, so the focused field — already
- * sitting on the keyboard — is inset a second time and flashes.
- *
- * Opening and closing only clip to the keyboard and, while opening, scroll
- * the document by the covered amount. The last animation frame is the
- * settled frame.
- */
+
+
+
+
+
+
+
+
+
+
+
+
+
 internal class ImeAnimationFollow {
-    /** Keyboard overlap the clip settled on. Not a view padding. */
+    
     var settledBottom: Int = 0
         private set
 
@@ -26,7 +26,7 @@ internal class ImeAnimationFollow {
         targetBottom = settledBottom
     }
 
-    /** Final inset reported while an animation is running. */
+    
     fun onTarget(bottom: Int) {
         if (!animating) return
         targetBottom = bottom.coerceAtLeast(0)
@@ -60,6 +60,6 @@ internal data class ImeFrame(
     val translationY: Float,
     val layoutBottom: Int?,
     val scrollDocument: Boolean = false,
-    /** Pixels of the content bottom the keyboard covers. 0 clears the clip. */
+    
     val clipBottom: Int? = null,
 )

@@ -10,19 +10,19 @@ import com.webtoapp.data.model.WebApp
 import java.io.File
 import java.util.Locale
 
-/**
- * Clears a single app's host-side caches:
- *
- * - the incremental APK build cache entry (`apk_build_cache/app_<id>`) — usually the
- *   largest per-app disk consumer; regenerated on the next build;
- * - the app's WebView origin storage (localStorage / IndexedDB / WebSQL) via
- *   [WebStorage.deleteOrigin], so the site starts fresh on the next preview;
- * - the shared WebView HTTP disk cache — android.webkit has no per-origin API for
- *   it, and it is pure re-downloadable cache.
- *
- * Cookies, app configuration and exported APKs are intentionally untouched —
- * clearing cookies would log the user out of every other previewed app.
- */
+
+
+
+
+
+
+
+
+
+
+
+
+
 object AppCacheCleaner {
 
     data class Result(
@@ -75,7 +75,7 @@ object AppCacheCleaner {
         return Result(freedBytes, originsCleared)
     }
 
-    /** Web origins whose site storage belongs to this app. Pure and unit-testable. */
+    
     internal fun originsFor(app: WebApp): List<String> {
         val urls = buildList {
             add(app.url)
@@ -89,9 +89,9 @@ object AppCacheCleaner {
     private fun webOriginOf(raw: String): String? {
         if (raw.isBlank()) return null
         val trimmed = raw.trim()
-        // Saved apps may store the URL without a scheme (the editor normalizes
-        // it only at build/preview time); treat bare hostnames as http, same as
-        // ensureWebUrlScheme's default.
+        
+        
+        
         val candidate = if (trimmed.contains("://")) trimmed else "http://$trimmed"
         val uri = try {
             java.net.URI(candidate)

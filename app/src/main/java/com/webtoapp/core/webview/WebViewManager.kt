@@ -96,9 +96,9 @@ class WebViewManager(
 
         private const val PLUGIN_NOTIFICATION_CHANNEL_ID = "plugin_notifications"
 
-        // Transport WebViews backing onCreateWindow are only destroyed when a
-        // navigation actually lands; a popup that never loads would leak the
-        // whole view, so cap their lifetime (#1033).
+        
+        
+        
         private const val TRANSPORT_WEBVIEW_TIMEOUT_MS = 15_000L
 
         private val DESKTOP_UA_MODES = setOf(
@@ -182,13 +182,13 @@ class WebViewManager(
 
         private val WEBVIEW_WV_MARKER_REGEX = Regex(";\\s*wv\\s*\\)")
 
-        /**
-         * Android WebView appends `Version/4.0` beside `Chrome/`. That token is the
-         * old Android browser marker, not a Safari version. Emscripten still treats
-         * any UA containing `Safari/` and `Version/` as Safari, so a Godot web
-         * export throws "requires Safari 15.2" while `index.js` evaluates and the
-         * canvas stays blank.
-         */
+        
+
+
+
+
+
+
         private val WEBVIEW_VERSION_TOKEN_REGEX = Regex("\\sVersion/4\\.0(?=\\s)")
 
         @JvmStatic
@@ -204,12 +204,12 @@ class WebViewManager(
             return ua
         }
 
-        /**
-         * Classifies whether a navigation target is an external link relative to the current
-         * page. Navigations between the app's own local origins (file:// or the loopback dev
-         * server) are internal content, never external; a local page with no host (file://)
-         * opening a remote URL is external.
-         */
+        
+
+
+
+
+
         @JvmStatic
         fun isExternalUrl(targetUrl: String, currentUrl: String?): Boolean {
             if (currentUrl == null) return false
@@ -221,7 +221,7 @@ class WebViewManager(
             return !targetHost.endsWith(".$currentHost") && !currentHost.endsWith(".$targetHost")
         }
 
-        /** True for URLs that belong to the app's own local content (file:// or loopback server). */
+        
         @JvmStatic
         fun isLocalAppUrl(url: String?): Boolean {
             if (url == null) return false
@@ -231,20 +231,20 @@ class WebViewManager(
             return isLoopbackHost(host)
         }
 
-        /** True for loopback hosts (127.0.0.1 / localhost / ::1). */
+        
         @JvmStatic
         fun isLoopbackHost(host: String): Boolean {
             val h = host.lowercase()
             return h == "127.0.0.1" || h == "localhost" || h == "[::1]" || h == "::1"
         }
 
-        /**
-         * Hardens a page-supplied `intent://` parse result before launch (Chrome parity):
-         * an explicit `component` bypasses intent-filter/category resolution entirely and
-         * would let a page address any app's exported activity; a `selector` redirects
-         * resolution away from data/type. Strip both — `package=` targeting keeps working
-         * via implicit resolution, and BROWSABLE keeps the result browser-eligible.
-         */
+        
+
+
+
+
+
+
         @JvmStatic
         fun hardenIntentSchemeIntent(intent: android.content.Intent) {
             intent.addCategory(android.content.Intent.CATEGORY_BROWSABLE)
@@ -256,13 +256,13 @@ class WebViewManager(
             browsingDataClearGeneration++
         }
 
-        /**
-         * Set when this process deleted the WebView profile directory for the
-         * current [browsingDataClearGeneration]. The matching
-         * [clearBrowsingData] call must be skipped: the directory is already
-         * empty, and touching [android.webkit.CookieManager] would start the
-         * provider and race the page that plants the next session cookie.
-         */
+        
+
+
+
+
+
+
         @Volatile
         private var wipedProfileGeneration = -1L
 
@@ -278,25 +278,25 @@ class WebViewManager(
 
         fun runWhenFreshSessionReady(block: () -> Unit) = FreshSessionGate.runWhenReady(block)
 
-        /**
-         * (Re-)applies the "follow system dark mode" state to a single WebView, derived from
-         * the CURRENT system uiMode. Safe to call at setup time and again whenever the system
-         * theme changes (e.g. Activity.onConfigurationChanged), which is required because:
-         *
-         *  - Which darkening API the WebView honors depends on the host app's targetSdkVersion:
-         *    targetSdk <= 32 only honors FORCE_DARK; targetSdk >= 33 only honors
-         *    setAlgorithmicDarkeningAllowed. Dispatch on the real runtime targetSdk (see
-         *    preferAlgorithmicDarkening) so dark mode keeps working on generated APKs whose
-         *    targetSdk is raised above 32 and on the Play AAB (targetSdk rewritten to 36)
-         *    (regression from #342, reported as #485).
-         *  - FORCE_DARK is a static switch: it does not track system theme changes by itself,
-         *    so the hosting activity must re-derive ON/OFF from the uiMode on every change
-         *    (#301 / #341).
-         *
-         * DARK_STRATEGY_PREFER_WEB_THEME_OVER_USER_AGENT_DARKENING keeps pages that ship their
-         * own prefers-color-scheme: dark theme using their own theme, while pages without one
-         * still get algorithmically darkened — so both categories follow the system.
-         */
+        
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         @JvmStatic
         fun refreshSystemDarkMode(webView: WebView?, followSystemDarkMode: Boolean) {
             if (webView == null) return
@@ -304,14 +304,14 @@ class WebViewManager(
                 val systemInDarkMode = (webView.context.resources.configuration.uiMode and
                     android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
                     android.content.res.Configuration.UI_MODE_NIGHT_YES
-                // Which darkening API actually takes effect depends on the HOST app's
-                // targetSdkVersion (read at runtime from the APK's own manifest), NOT on
-                // the WebView version:
-                //   targetSdk <= 32: setForceDark() works; setAlgorithmicDarkeningAllowed() is a no-op.
-                //   targetSdk >= 33: setForceDark() is a no-op; setAlgorithmicDarkeningAllowed() works.
-                // Picking by WebViewFeature alone silently broke dark mode on the Play AAB path
-                // (whose manifest is rewritten to targetSdk 36) and on any generated APK whose
-                // targetSdk is raised above 32. Dispatch on the real runtime targetSdk instead.
+                
+                
+                
+                
+                
+                
+                
+                
                 val useAlgorithmic = preferAlgorithmicDarkening(webView.context)
                 if (followSystemDarkMode) {
                     if (useAlgorithmic) {

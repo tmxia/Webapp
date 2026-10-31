@@ -90,7 +90,7 @@ object IconLibraryStorage {
     ): IconLibraryItem? = withContext(Dispatchers.IO) {
         try {
             val inputStream = context.contentResolver.openInputStream(uri) ?: return@withContext null
-            // Library icons render tiny; never store hostile full-res originals (#779).
+            
             val bitmap = com.webtoapp.util.BoundedBitmaps.decodeBoundedBitmapStream(inputStream)
                 ?: return@withContext null
             inputStream.close()

@@ -16,37 +16,37 @@ import kotlinx.coroutines.sync.withLock
 import okhttp3.Request
 import java.util.concurrent.TimeUnit
 
-/**
- * Picks the fastest reachable GitHub route before a download starts.
- *
- * Every channel is probed concurrently with a single small ranged request and
- * ranked by time-to-first-byte. Channels slower than [ACCEPTABLE_LATENCY_MS]
- * are dropped so a download never wastes its first attempt on a mirror that is
- * technically alive but unusable.
- *
- * The result is cached for [CACHE_TTL_MS], so repeated downloads in the same
- * session pay the probe cost once instead of re-measuring every channel every
- * time. If everything fails the probe, the caller still gets the full channel
- * list in declaration order — the probe never leaves a download with nowhere
- * to go.
- */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 object CnMirrorProbe {
 
     private const val TAG = "CnMirrorProbe"
     private const val CACHE_TTL_MS = 30L * 60 * 1000
 
-    /** Channels at or under this TTFB are considered usable. */
+    
     const val ACCEPTABLE_LATENCY_MS = 1000L
 
-    // Probe through a real GitHub release asset — the exact path large runtime
-    // downloads take. A HEAD on a README says nothing about release routes.
+    
+    
     private const val PROBE_TARGET =
         "https://github.com/git-lfs/git-lfs/releases/download/v3.7.0/git-lfs-linux-amd64-v3.7.0.tar.gz"
 
-    // One ranged KB is enough to measure TTFB without paying for real payload.
+    
     private const val PROBE_RANGE_BYTES = 1024
     private const val PROBE_TIMEOUT_MS = 2500L
-    private const val PROBE_BUDGET_MS = 4000L // hard ceiling for a single channel
+    private const val PROBE_BUDGET_MS = 4000L 
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val mutex = Mutex()
@@ -66,12 +66,12 @@ object CnMirrorProbe {
         }
     }
 
-    /**
-     * Channels ordered fastest-first. Safe to call from anywhere: on a worker
-     * thread a stale cache triggers one blocking probe round (bounded by
-     * [PROBE_BUDGET_MS]); on the main thread it never blocks and falls back to
-     * the last known order while a refresh runs in the background.
-     */
+    
+
+
+
+
+
     fun orderedChannels(): List<MirrorChannel> {
         val now = System.currentTimeMillis()
         if (cachedOrder.isNotEmpty() && (now - cachedAt) < CACHE_TTL_MS) {
@@ -87,19 +87,19 @@ object CnMirrorProbe {
         return mergeNewChannels(cachedOrder)
     }
 
-    /** Forget the cached order; the next [orderedChannels] re-measures. */
+    
     fun invalidate() {
         cachedOrder = emptyList()
         cachedAt = 0L
     }
 
-    /**
-     * The best-known channel order without ever blocking: the measured order while
-     * the cache is warm, otherwise declaration order — and a stale cache fires a
-     * background refresh so the next caller sees measured results. For callers
-     * (small JSON fetches) that race several candidates and therefore must not
-     * spend up-front time on a probe round.
-     */
+    
+
+
+
+
+
+
     fun peekChannels(): List<MirrorChannel> {
         val now = System.currentTimeMillis()
         if (cachedOrder.isNotEmpty() && (now - cachedAt) < CACHE_TTL_MS) {
@@ -109,10 +109,10 @@ object CnMirrorProbe {
         return mergeNewChannels(cachedOrder)
     }
 
-    /**
-     * Measure every channel and cache the ones that answer in time. Concurrent
-     * callers serialize on [mutex] and share one probe round.
-     */
+    
+
+
+
     suspend fun probe(): List<MirrorChannel> {
         mutex.withLock {
             val now = System.currentTimeMillis()

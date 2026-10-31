@@ -28,10 +28,10 @@ import com.webtoapp.ui.components.WtaCodeEditorDialog
 import com.webtoapp.ui.design.*
 import kotlinx.coroutines.launch
 
-/**
- * Plugin editor: manifest fields on the first tab, package files on the rest.
- * No DSL forms — what you write is what ships inside the .hcj directory.
- */
+
+
+
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PluginEditorScreen(
@@ -46,9 +46,9 @@ fun PluginEditorScreen(
     var isNew by remember { mutableStateOf(pluginId == null) }
     var kind by remember { mutableStateOf(PluginKind.HCJ) }
 
-    // Manifest fields. Only name/description are user-facing; the
-    // rest is preserved from the on-disk manifest (or defaulted for new
-    // plugins) — self-authored code needs no permission ceremony.
+    
+    
+    
     var id by remember { mutableStateOf("") }
     var name by remember { mutableStateOf("") }
     var version by remember { mutableStateOf("1.0.0") }
@@ -61,17 +61,17 @@ fun PluginEditorScreen(
     var permissions by remember { mutableStateOf(PluginPermission.values().toSet()) }
     var showEntry by remember { mutableStateOf(true) }
 
-    // Package files — one authored document (plugin.html); css only survives
-    // a load→save round-trip for legacy packages that still carry style.css.
+    
+    
     var pluginHtml by remember { mutableStateOf("") }
     var css by remember { mutableStateOf("") }
     var extraFiles by remember { mutableStateOf(mapOf<String, String>()) }
 
     var showCodeEditor by remember { mutableStateOf(false) }
     var nameError by remember { mutableStateOf(false) }
-    // Fields the form doesn't edit (userscript grants/requires, legacyCompat,
-    // noframes, preferredEntry) — preserved from the on-disk manifest on save
-    // so editing a userscript or a migrated plugin doesn't silently strip them.
+    
+    
+    
     var preservedManifest by remember { mutableStateOf<PluginManifest?>(null) }
 
     LaunchedEffect(pluginId) {
@@ -98,8 +98,8 @@ fun PluginEditorScreen(
         showEntry = plugin.showInToolbar
 
         val files = store.readPackageFiles(plugin.id)
-        // Manifest on disk may carry fields not mirrored into the Plugin record
-        // (e.g. gmGrants) — prefer it when present.
+        
+        
         val rawManifest = files[PluginStore.MANIFEST_FILE]
             ?.let { PluginManifest.fromJson(it) }
         preservedManifest = rawManifest

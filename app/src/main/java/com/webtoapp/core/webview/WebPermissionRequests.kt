@@ -3,23 +3,23 @@ package com.webtoapp.core.webview
 import android.webkit.PermissionRequest
 import com.webtoapp.core.logging.AppLogger
 
-/**
- * Answers a WebView [PermissionRequest] without letting the failure kill the activity.
- *
- * [PermissionRequest.grant] throws [IllegalStateException] once the request was
- * already granted or denied. Requesting an undeclared permission throws
- * [IllegalArgumentException] from the permission launcher. Either one previously
- * finished the generated app the moment a page opened the camera.
- */
+
+
+
+
+
+
+
+
 object WebPermissionRequests {
 
     private const val TAG = "WebPermission"
 
-    /**
-     * @return true when [grant] or [deny] was delivered. False when the request
-     * was already cancelled, which is what the system permission dialog does
-     * to a WebView capture request.
-     */
+    
+
+
+
+
     fun settle(request: PermissionRequest, granted: Boolean): Boolean {
         return try {
             if (granted) request.grant(request.resources) else request.deny()
@@ -37,22 +37,22 @@ object WebPermissionRequests {
         }
     }
 
-    /**
-     * The page's getUserMedia is already rejected once its [PermissionRequest]
-     * dies. A runtime grant cannot revive it. Reload so the page asks again
-     * while the OS permission is already held and can be granted in place.
-     */
+    
+
+
+
+
     fun shouldReloadAfterRuntimePermission(
         runtimeGranted: Boolean,
         webRequestSettled: Boolean,
     ): Boolean = runtimeGranted && !webRequestSettled
 }
 
-/**
- * Holds the WebView capture request across the Android permission dialog.
- * The dialog pauses the activity, and WebView cancels the request. A later
- * grant then throws, which used to become a permanent camera denial.
- */
+
+
+
+
+
 class CapturePermissionBridge {
 
     private var pending: PermissionRequest? = null
@@ -78,7 +78,7 @@ class CapturePermissionBridge {
         }
     }
 
-    /** @return true when the caller should reload the page */
+    
     fun onRuntimeResult(runtimeGranted: Boolean): Boolean {
         val request = pending
         val wasCancelled = cancelled

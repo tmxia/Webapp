@@ -3,16 +3,16 @@ package com.webtoapp.core.crypto
 import java.security.MessageDigest
 import java.security.SecureRandom
 
-/**
- * Embedded-key mode (#917): a random AES key generated at build time and stored
- * inside `encryption_meta.json` so decryption never touches the signing
- * certificate — Play App Signing / manual re-signing can no longer break it.
- *
- * The stored key is XOR-masked with SHA-256(packageName + salt) so it does not
- * appear as a raw 32-byte blob to casual inspection. This is obfuscation, not
- * real secrecy — same protection level as the signature-derived key, whose
- * input (the signing cert) is publicly readable from the APK anyway.
- */
+
+
+
+
+
+
+
+
+
+
 internal object EmbeddedKey {
 
     private const val KEY_BYTES = 32

@@ -125,11 +125,11 @@ enum class AiProvider(
     );
 
     companion object {
-        /**
-         * Base URLs of providers removed in the catalog trim. Persisted ApiKeyConfigs
-         * referencing a removed provider migrate to CUSTOM with this base URL so the
-         * user's endpoint/key setup keeps working (see AiConfigManager).
-         */
+        
+
+
+
+
         val REMOVED_PROVIDER_BASE_URLS: Map<String, String> = mapOf(
             "MISTRAL" to "https://api.mistral.ai",
             "COHERE" to "https://api.cohere.com",
@@ -352,8 +352,8 @@ data class ApiKeyConfig(
             AiProvider.ANTHROPIC -> "/v1/messages"
             AiProvider.GOOGLE -> "/v1beta/models"
             AiProvider.OLLAMA -> "/api/chat"
-            // Zhipu publishes Chat Completions under /api/paas/v4, the same version as
-            // modelsEndpoint. /v1/chat/completions is a different API and 404s (#1320).
+            
+            
             AiProvider.GLM -> "/v4/chat/completions"
             AiProvider.CUSTOM -> when (apiFormat) {
                 ApiFormat.ANTHROPIC -> "/v1/messages"

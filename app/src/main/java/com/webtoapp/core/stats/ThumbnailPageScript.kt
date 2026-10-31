@@ -12,17 +12,17 @@ import com.webtoapp.core.script.UserScriptStorage
 import com.webtoapp.data.model.UserScript
 import com.webtoapp.data.model.WebApp
 
-/**
- * Styles the offscreen thumbnail WebView with the same cosmetic payload and
- * the same plugin / userscript styles the real page injects. The capture
- * WebView does not run [com.webtoapp.core.webview.WebViewManager], so without
- * this the card keeps showing the raw site after a refresh.
- *
- * Userscripts run against a style stub, not the live Greasemonkey bridge:
- * [GM_addStyle] writes a stylesheet, and the other GM calls no-op so a script
- * still reaches its style call. Network blocking, extensions, and login state
- * stay out of the thumbnail.
- */
+
+
+
+
+
+
+
+
+
+
+
 internal class PreparedThumbnailStyles(
     private val rulesKey: String?,
     private val plugins: List<PluginSession.Resolved>,
@@ -162,10 +162,10 @@ private object ThumbnailAdBlock {
     }
 }
 
-/**
- * Enough of the Greasemonkey surface for a userscript to inject CSS.
- * Storage and network calls return empty results and do not touch the app.
- */
+
+
+
+
 private const val THUMBNAIL_STYLE_STUB = """
 (function(){
   if (window.__wta_thumb_style_stub__) return;

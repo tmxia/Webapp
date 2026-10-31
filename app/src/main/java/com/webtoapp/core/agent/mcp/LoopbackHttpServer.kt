@@ -13,10 +13,10 @@ import java.net.ServerSocket
 import java.net.Socket
 import java.nio.charset.StandardCharsets
 
-/**
- * HTTP/1.1 on 127.0.0.1 only. Speaks just enough for one MCP POST: request
- * line, headers, a Content-Length body, and one response. No chunked requests.
- */
+
+
+
+
 class LoopbackHttpServer(
     private val preferredPort: Int,
     private val handler: suspend (HttpRequest) -> HttpResponse

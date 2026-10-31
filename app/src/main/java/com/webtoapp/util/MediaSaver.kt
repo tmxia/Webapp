@@ -82,10 +82,10 @@ object MediaSaver {
         albumName: String = AlbumFolderName.DEFAULT
     ): SaveResult = withContext(Dispatchers.IO) {
         try {
-            // Remote media only: a caller-supplied file:// / content:// URL would copy
-            // app-private files into public media storage (readable by every app with
-            // media permissions). The JS bridges and long-press handler only deal in
-            // web resources, so this guard changes nothing for them.
+            
+            
+            
+            
             val scheme = runCatching { URL(url).protocol?.lowercase() }.getOrNull()
             if (scheme != "http" && scheme != "https") {
                 return@withContext SaveResult.Error("Only HTTP(S) URLs can be saved to the gallery")

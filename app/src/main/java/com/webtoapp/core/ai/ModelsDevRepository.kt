@@ -18,9 +18,9 @@ import kotlinx.coroutines.withContext
 import okhttp3.Request
 import java.io.File
 
-/**
- * A model entry from the models.dev catalog.
- */
+
+
+
 data class CatalogModel(
     val id: String,
     val name: String,
@@ -57,15 +57,15 @@ sealed class ModelCatalogState {
     data class Error(val message: String) : ModelCatalogState()
 }
 
-/**
- * Fetches and caches the models.dev open model catalog (https://models.dev/api.json),
- * replacing the old bundled LiteLLM registry. Serves accurate model metadata
- * (capabilities, context length, pricing) for enrichment and for the catalog browser.
- *
- * The catalog is loaded synchronously from the disk cache on first access (fast path)
- * and refreshed asynchronously from the network; lookups read the in-memory index and
- * return null when the catalog is not yet available so callers can fall back to heuristics.
- */
+
+
+
+
+
+
+
+
+
 class ModelsDevRepository private constructor(private val context: Context) {
 
     companion object {
@@ -88,7 +88,7 @@ class ModelsDevRepository private constructor(private val context: Context) {
             }
         }
 
-        // models.dev provider id -> AiProvider (best effort)
+        
         private val PROVIDER_TO_AI: Map<String, AiProvider> = mapOf(
             "openai" to AiProvider.OPENAI,
             "anthropic" to AiProvider.ANTHROPIC,
@@ -104,7 +104,7 @@ class ModelsDevRepository private constructor(private val context: Context) {
             "ollama-cloud" to AiProvider.OLLAMA
         )
 
-        // AiProvider -> models.dev provider ids (for provider-scoped lookup)
+        
         private val AI_TO_PROVIDER_IDS: Map<AiProvider, List<String>> = buildMap {
             PROVIDER_TO_AI.forEach { (pid, ai) -> put(ai, (get(ai) ?: emptyList()) + pid) }
             put(AiProvider.OLLAMA, (get(AiProvider.OLLAMA) ?: emptyList()) + "ollama")
@@ -138,7 +138,7 @@ class ModelsDevRepository private constructor(private val context: Context) {
             _state.value = ModelCatalogState.Loaded(byId.size, fromCache = false)
             return@withContext
         }
-        // Network failed: fall back to a stale cache if we have nothing in memory.
+        
         if (byId.isEmpty() && cacheFile.exists()) {
             val cached = runCatching { cacheFile.readText() }.getOrNull()
             if (cached != null && parseAndIndex(cached)) {
@@ -250,7 +250,7 @@ class ModelsDevRepository private constructor(private val context: Context) {
         return System.currentTimeMillis() - f.lastModified()
     }
 
-    // ---- Lookup API (drop-in for the old LiteLLMModelRegistry) ----
+    
 
     fun findModel(modelId: String, provider: AiProvider? = null): CatalogModel? {
         if (byId.isEmpty()) return null
@@ -302,7 +302,7 @@ class ModelsDevRepository private constructor(private val context: Context) {
             .take(50)
     }
 
-    // ---- Catalog browsing (for the UI) ----
+    
 
     fun allModels(): List<CatalogModel> = byProvider.values.flatten()
 

@@ -8,19 +8,19 @@ import android.os.Build
 import com.webtoapp.R
 import com.webtoapp.ui.design.WtaMotion
 
-/**
- * The single open/close motion for a host preview activity.
- *
- * List taps used to navigate onto an empty Compose route (a slide), pop that
- * route (the slide reverses), and only then start the activity (a third,
- * default window animation). [launch] skips the route so the window
- * transition is the only thing that moves: the preview eases up out of the
- * list and the list recedes behind it.
- *
- * Curves match [WtaMotion.EnterEasing] / [WtaMotion.ExitEasing]. The system
- * transition-animation scale still applies on top. In-app animations off, or
- * the instant speed step, play nothing.
- */
+
+
+
+
+
+
+
+
+
+
+
+
+
 object HostPreviewMotion {
     const val EXTRA = "wta_host_preview_motion"
 
@@ -38,7 +38,7 @@ object HostPreviewMotion {
         context.startActivity(intent, options.toBundle())
     }
 
-    /** Close transition for a preview this object opened. Call from onCreate / onNewIntent. */
+    
     fun install(activity: Activity) {
         if (!activity.intent.getBooleanExtra(EXTRA, false)) return
         if (Build.VERSION.SDK_INT < 34) return
@@ -46,7 +46,7 @@ object HostPreviewMotion {
         activity.overrideActivityTransition(Activity.OVERRIDE_TRANSITION_CLOSE, enter, exit)
     }
 
-    /** Pre-34 close transition. Call after super.finish(). */
+    
     fun onFinish(activity: Activity) {
         if (!activity.intent.getBooleanExtra(EXTRA, false)) return
         if (Build.VERSION.SDK_INT >= 34) return

@@ -28,7 +28,7 @@ object BgmStorage {
 
     private val IMAGE_COVER_EXTENSIONS = setOf("png", "jpg", "jpeg", "jpe", "jfif", "webp", "bmp", "gif", "heic", "heif")
 
-    /** Audio extensions every writer (upload, online download) and the library scanner agree on. */
+    
     val MUSIC_EXTENSIONS = listOf("mp3", "m4a", "aac", "ogg", "flac", "wav")
 
     private val MUSIC_EXTENSION_SET = MUSIC_EXTENSIONS.toSet()
@@ -330,11 +330,11 @@ object BgmStorage {
         }
     }
 
-    /**
-     * Library-level tag overrides, keyed by origin + file basename so they survive
-     * rescans. Without this, tags edited in the selector lived only inside the app
-     * configs that happened to include the track.
-     */
+    
+
+
+
+
     fun saveTagsForBgm(context: Context, bgm: BgmItem, tags: List<BgmTag>) {
         try {
             val overrides = loadTagOverrides(context)

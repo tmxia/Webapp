@@ -15,23 +15,23 @@ import com.webtoapp.core.logging.AppLogger
 import java.io.ByteArrayInputStream
 import java.nio.charset.StandardCharsets
 
-/**
- * System WebView has no Notifications implementation: `window.Notification` is
- * missing and `ServiceWorkerRegistration.showNotification` is missing inside the
- * worker. Sites such as 秋秋机 post a message to their service worker, and the
- * worker calls `showNotification`. Replacing `new Notification()` on the page
- * never sees that call.
- *
- * The page polyfill rewrites `navigator.serviceWorker.register` onto
- * [BRIDGE_PATH]. This object serves a wrapper script for that URL. The wrapper
- * loads the real worker and replaces `showNotification` so the call comes back
- * to [post], which is the same shade entry as [NativeBridge.showWebNotification].
- */
+
+
+
+
+
+
+
+
+
+
+
+
 internal object WebNotificationBridge {
     const val BRIDGE_PATH = "/__wta_sw_bridge__"
     const val NOTIFY_PATH = "/__wta_notify__"
 
-    /** Bumped when the wrapper script changes, so an installed worker updates. */
+    
     const val WRAPPER_VERSION = "1"
 
     private const val CHANNEL_ID = "webapp_notifications"
@@ -109,10 +109,10 @@ internal object WebNotificationBridge {
         """.trimIndent()
     }
 
-    /**
-     * Posts one web notification. A channel created earlier at a lower importance
-     * stays at that importance; Android does not apply a later create call.
-     */
+    
+
+
+
     fun post(context: Context, title: String, body: String, tag: String): Boolean {
         return try {
             if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) return false

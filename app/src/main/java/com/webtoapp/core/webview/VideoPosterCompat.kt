@@ -3,18 +3,18 @@ package com.webtoapp.core.webview
 import android.webkit.WebView
 import com.webtoapp.core.logging.AppLogger
 
-/**
- * Android WebView renders a `<video>` without a `poster` attribute through an
- * internal pseudo-URL (`android-webview-video-poster:default_video_poster/<id>`)
- * that only exists inside WebView. Site scripts that feed every media URL
- * through fetch / canvas / lazy-loader pipelines cannot load that scheme and
- * fail with "No 'Access-Control-Allow-Origin' header" (or a CSP violation),
- * which can break their player init (#563). Browsers never generate the
- * pseudo-URL, so sites cannot guard against it themselves.
- *
- * Giving each poster-less video a transparent data-URI poster stops WebView
- * from generating the pseudo-URL at all, which removes the whole error class.
- */
+
+
+
+
+
+
+
+
+
+
+
+
 object VideoPosterCompat {
 
     fun injectScript(webView: WebView) {

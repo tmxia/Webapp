@@ -53,10 +53,10 @@ class BgmPlayerState internal constructor(
     fun previous() = transport.previous()
 }
 
-/**
- * Shuffle order state. Mirrors the host [com.webtoapp.core.bgm.BgmPlayer]
- * semantics: a full permutation per cycle (no repeats), reshuffled on wrap.
- */
+
+
+
+
 internal data class BgmShuffleOrder(
     val order: List<Int> = emptyList(),
     val pos: Int = 0

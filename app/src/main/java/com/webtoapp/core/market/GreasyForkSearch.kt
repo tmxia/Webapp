@@ -67,8 +67,8 @@ object GreasyForkSearch {
 
     private const val TAG = "GfSearch"
 
-    // Must be the api subdomain: greasyfork.org 308-redirects here and drops the whole
-    // query string, which silently turned every search/sort/category into the default hot list.
+    
+    
     private const val BASE = "https://api.greasyfork.org"
     private const val MAX_SCRIPT_SIZE = 4L * 1024 * 1024
 

@@ -40,11 +40,11 @@ class ModuleMarketRepository private constructor(
 
         private const val REGISTRY_TTL_MS = 60 * 60 * 1000L
 
-        /**
-         * Hard bound on one [fetchRaw] race. Loser requests keep running on
-         * [raceScope] until their own socket timeout — a blocking OkHttp call
-         * does not honour coroutine cancellation.
-         */
+        
+
+
+
+
         private const val FETCH_RACE_TIMEOUT_MS = 20_000L
 
         private const val CACHE_DIR_NAME = "module_market"
@@ -183,8 +183,8 @@ class ModuleMarketRepository private constructor(
                 return@withContext installChromeExtension(entry, onProgress)
             }
 
-            // Catalog protocol: plugin.json package only. The retired
-            // module.json format is no longer served or installed.
+            
+            
             val pluginJson = fetchRaw("${entry.path}/plugin.json")
                 ?: return@withContext Result.failure(IOException("plugin.json download failed"))
             installPluginPackage(entry, pluginJson, onProgress)
@@ -194,11 +194,11 @@ class ModuleMarketRepository private constructor(
         }
     }
 
-    /**
-     * Install a `plugin.json` package straight from the catalog. Files map to
-     * the package convention; `plugin.json` itself is written by
-     * [com.webtoapp.core.plugin.PluginStore.installPackage].
-     */
+    
+
+
+
+
     private suspend fun installPluginPackage(
         entry: ModuleMarketEntry,
         pluginJson: String,
@@ -213,7 +213,7 @@ class ModuleMarketRepository private constructor(
         if (pluginHtml.isNotBlank()) {
             files[com.webtoapp.core.plugin.PluginStore.PLUGIN_FILE] = pluginHtml
         } else {
-            // Legacy multi-file layout still installs unchanged.
+            
             val mainJs = fetchRaw("${entry.path}/main.js")
                 ?: return Result.failure(IOException("plugin code download failed"))
             files[com.webtoapp.core.plugin.PluginStore.MAIN_FILE] = mainJs
@@ -294,16 +294,16 @@ class ModuleMarketRepository private constructor(
     val contributingUrl: String =
         "https://github.com/$OWNER/$REPO/blob/$BRANCH/$MODULES_DIR/README.md"
 
-    /**
-     * Race every mirror candidate for a catalogue file: the first non-null
-     * body wins. Serial fallback would pay a full connect timeout per dead
-     * proxy before reaching a working route — a real regression on networks
-     * that black-hole GitHub mirrors. Same detached-loser pattern as
-     * UpdateChecker.fetchJsonRaced.
-     */
+    
+
+
+
+
+
+
     private suspend fun fetchRaw(relativePath: String): String? {
-        // GitHub hosts get the measured mirror pool; jsDelivr is not a
-        // GitHub host and passes through as a single candidate.
+        
+        
         val candidates = SOURCES
             .flatMap { base ->
                 com.webtoapp.core.network.GitHubMirror.proxiedCnGitHubHost("$base/$relativePath")

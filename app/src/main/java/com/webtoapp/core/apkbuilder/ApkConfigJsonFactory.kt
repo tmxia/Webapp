@@ -234,17 +234,17 @@ internal object ApkConfigJsonFactory {
         "newWindowBehavior" to webViewBehavior.newWindowBehavior,
         "enablePaymentSchemes" to webViewBehavior.enablePaymentSchemes,
         "enableShareBridge" to webViewBehavior.enableShareBridge,
-        // Inbound share sheet (#943). Read by the runtime through ShellConfig.webViewConfig;
-        // the resolved mime list is baked into the manifest at export time and never
-        // consulted at runtime.
+        
+        
+        
         "receiveShareImages" to shareReceive.images,
         "receiveShareText" to shareReceive.text,
         "shareDeliveryMode" to shareReceive.deliveryMode,
         "sharePromptBeforeUse" to shareReceive.promptBeforeUse,
         "shareShowReceivedToast" to shareReceive.showReceivedToast,
-        // "Open with" file association — the runtime gate for ACTION_VIEW file/content
-        // intents. The declared mime/extension sets are contract constants, so only the
-        // boolean crosses the wire.
+        
+        
+        
         "openWithEnabled" to openWith.enabled,
         "enableZoomPolyfill" to webViewBehavior.enableZoomPolyfill,
         "enableCrossOriginIsolation" to webViewBehavior.enableCrossOriginIsolation,

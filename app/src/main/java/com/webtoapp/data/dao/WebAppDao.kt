@@ -146,10 +146,10 @@ interface WebAppDao {
     @Query("SELECT url FROM web_apps")
     suspend fun getAllUrls(): List<String>
 
-    /**
-     * Custom home order only. Does not touch [WebApp.updatedAt], so "recently
-     * updated" keeps meaning the last real edit.
-     */
+    
+
+
+
     @Query("UPDATE web_apps SET homeSortIndex = :index WHERE id = :id")
     suspend fun updateHomeSortIndex(id: Long, index: Int)
 

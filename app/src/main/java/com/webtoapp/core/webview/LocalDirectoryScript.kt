@@ -1,10 +1,10 @@
 package com.webtoapp.core.webview
 
-/**
- * Page-facing helper installed only when the directory capability is on.
- * Chunking stays here so a page can `await WtaDirectory.read(path)` without
- * reimplementing the bridge's size cap.
- */
+
+
+
+
+
 internal object LocalDirectoryScript {
     const val SOURCE: String = """
 (function(){

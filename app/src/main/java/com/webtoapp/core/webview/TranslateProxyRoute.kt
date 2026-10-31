@@ -5,15 +5,15 @@ import java.net.InetSocketAddress
 import java.net.Proxy
 import java.net.URL
 
-/**
- * Egress for translation requests.
- *
- * WebView proxy settings ([androidx.webkit.ProxyController], the local SOCKS
- * bridge, the DNS/hosts bridge) do not apply to [java.net.HttpURLConnection].
- * A page that only loads because the app has a proxy would otherwise translate
- * via a direct connection and fail. [PacProxyManager] and the legacy fetch
- * bridge publish the same HTTP or SOCKS endpoint they just armed.
- */
+
+
+
+
+
+
+
+
+
 internal object TranslateProxyRoute {
 
     enum class Kind { DIRECT, HTTP, SOCKS }

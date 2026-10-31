@@ -22,13 +22,13 @@ import java.io.InputStream
 import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
-/**
- * Compilable Android project for one app.
- *
- * The zip is an Android Studio project: Gradle build files, a WebView
- * activity, the manifest, and the app's own files. It is not the WebToApp
- * shell runtime, and it does not include the signing keystore.
- */
+
+
+
+
+
+
+
 class AppSourcePackager(private val context: Context) {
 
     fun pack(webApp: WebApp): File {
@@ -68,7 +68,7 @@ class AppSourcePackager(private val context: Context) {
         }
     }
 
-    /** Opens the system share sheet for a zip produced by [pack]. */
+    
     fun share(file: File): Boolean {
         return try {
             val uri = FileProvider.getUriForFile(

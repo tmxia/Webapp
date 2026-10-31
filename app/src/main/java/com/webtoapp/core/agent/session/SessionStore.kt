@@ -91,14 +91,14 @@ class SessionStore(
         it.copy(messages = messages)
     }
 
-    /**
-     * Insert or replace the trailing assistant [message] for a session, keyed by
-     * [message.id]. Used by [com.webtoapp.core.agent.runtime.AgentService] to keep a
-     * live "draft" of the in-flight turn so the output survives even if the UI is
-     * destroyed mid-turn. If the trailing message already has this id it is replaced
-     * in place (so the list does not grow on every throttled snapshot); otherwise the
-     * message is appended.
-     */
+    
+
+
+
+
+
+
+
     suspend fun upsertAssistantDraft(id: String, message: AgentMessage): AgentSession? = mutate(id) { s ->
         val msgs = s.messages.toMutableList()
         val draftIdx = msgs.indexOfLast { it.id == message.id }
@@ -110,11 +110,11 @@ class SessionStore(
         s.copy(messages = msgs)
     }
 
-    /**
-     * Finalize a draft: replace the trailing message whose id == [final.id] with
-     * [final] (used when the turn ends), or append [final] if no draft with that id
-     * exists. Returns the updated session.
-     */
+    
+
+
+
+
     suspend fun finalizeDraft(id: String, final: AgentMessage): AgentSession? = mutate(id) { s ->
         val msgs = s.messages.toMutableList()
         val draftIdx = msgs.indexOfLast { it.id == final.id }
@@ -126,11 +126,11 @@ class SessionStore(
         s.copy(messages = msgs)
     }
 
-    /**
-     * Remove the trailing draft message with [draftMessageId] if it is still present
-     * and was never finalized. Used to clean up an aborted draft that produced no
-     * usable output.
-     */
+    
+
+
+
+
     suspend fun dropDraft(sessionId: String, draftMessageId: String): AgentSession? = mutate(sessionId) { s ->
         val msgs = s.messages.toMutableList()
         val idx = msgs.indexOfLast { it.id == draftMessageId }
@@ -173,19 +173,19 @@ class SessionStore(
         return captured
     }
 
-    /**
-     * Deserialise the sessions blob. Gson bypasses Kotlin constructor defaults, so
-     * fields absent from legacy (pre-Agent-rename) session JSON deserialise as null
-     * even though the Kotlin properties are declared non-null. Every session and
-     * message is normalised here so callers can rely on empty lists instead of
-     * tripping NPEs deep in the UI/VM (issue #712: restoring a pre-Agent backup
-     * then opening Agent crashed on `userAttachments.isNotEmpty()`).
-     *
-     * Normalisation is keyed on the raw JSON so repeated decodes of an unchanged blob
-     * (sessionsFlow re-emits after every write, and [get] re-reads mid-turn) reuse the
-     * previous result instead of copying every session and message again. The blob is
-     * the source of truth; a content-keyed cache cannot go stale.
-     */
+    
+
+
+
+
+
+
+
+
+
+
+
+
     private fun decode(raw: String?): List<AgentSession> {
         if (raw.isNullOrBlank()) return emptyList()
         lastDecodeCache[raw]?.let { return it }
@@ -223,7 +223,7 @@ class SessionStore(
         mentionedFiles = message.mentionedFiles ?: emptyList()
     )
 
-    /** Test hook: exposes [decode] (including legacy-JSON normalisation) without touching DataStore. */
+    
     fun decodeForTest(raw: String): List<AgentSession> = decode(raw)
 
     companion object {

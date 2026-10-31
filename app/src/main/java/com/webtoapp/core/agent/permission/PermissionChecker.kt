@@ -12,10 +12,10 @@ class PermissionChecker(
     @Volatile var mode: PermissionMode = initialMode
         private set
 
-    // Baseline mode outside plan sessions. Plan mode is a temporary overlay on top
-    // of this baseline; approve()/resetToBaseline() return to it so an enabled
-    // auto-approve preference survives a plan round-trip, and a Plan mode left
-    // over from an abandoned plan review never leaks into later sessions.
+    
+    
+    
+    
     @Volatile private var baselineMode: PermissionMode = initialMode
 
     private val alwaysAllow = mutableSetOf<String>()
@@ -36,17 +36,17 @@ class PermissionChecker(
         mode = newMode
     }
 
-    /**
-     * Record the user's auto-approve preference as the baseline mode. Applied
-     * immediately only when no plan session is active — clobbering an active
-     * Plan mode here would silently re-allow writes the plan prompt forbids.
-     */
+    
+
+
+
+
     fun syncAutoApprove(enabled: Boolean) {
         baselineMode = if (enabled) PermissionMode.AutoApprove else PermissionMode.Default
         if (mode != PermissionMode.Plan) mode = baselineMode
     }
 
-    /** Drop any active Plan overlay and return to the baseline mode. */
+    
     fun resetToBaseline() {
         mode = baselineMode
     }
@@ -90,9 +90,9 @@ class PermissionChecker(
         val req = PermissionRequest(
             toolCallId = "perm-${System.nanoTime()}",
             toolName = tool.name,
-            // activityDescription implementations read untyped args (get("x")?.asString)
-            // and can throw on JSON null / wrong types — the permission prompt must not
-            // be able to kill the run.
+            
+            
+            
             activity = runCatching { tool.activityDescription(args) }.getOrNull(),
             argsPreview = previewArgs(args)
         )

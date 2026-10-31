@@ -4,13 +4,13 @@ import android.app.Activity
 import android.os.Build
 import androidx.core.view.WindowInsetsControllerCompat
 
-/**
- * Status-bar color modes also drive the navigation bar and the fullscreen
- * margin bands (#1171). Transparent leaves the bars clear and turns off the
- * system contrast scrim. Follow-page and transparent modes paint the bands
- * from the sampled page so a colorful page is not framed in theme white
- * or black.
- */
+
+
+
+
+
+
+
 object PageEdgeChrome {
     const val LIGHT = "#FFFBFE"
     const val DARK = "#1C1B1F"
@@ -36,7 +36,7 @@ object PageEdgeChrome {
         else -> null
     }
 
-    /** Null means a transparent navigation bar. */
+    
     fun navigationBarHex(
         mode: String,
         sampleBottom: String?,
@@ -63,9 +63,9 @@ object PageEdgeChrome {
         darkIcons: Boolean?,
         isDark: Boolean
     ) {
-        // Below API 30 the decor does not draw behind the bars, so a transparent
-        // navigation bar is just the window background. Match the status-bar
-        // degradation and paint the theme color instead.
+        
+        
+        
         val effectiveMode = if (
             mode == "TRANSPARENT" && WindowHelper.isClassicSystemBarsWindow(activity)
         ) {

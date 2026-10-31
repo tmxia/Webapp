@@ -1911,8 +1911,8 @@ object StringsC {
         AppLanguage.KOREAN -> "URL을 저장하고 어떤 앱에서든 전환, 페이지 영역을 차지하지 않음"
     }
 
-    // Qualify through the facade so generateShellStrings follows the closure
-    // into each name/desc property (bare identifiers in this object are not scanned).
+    
+    
     fun builtinPluginName(id: String, fallback: String): String = when (id) {
         "builtin-media-downloader" -> Strings.builtinMediaDownloader
         "builtin-video-enhancer" -> Strings.builtinVideoEnhancer

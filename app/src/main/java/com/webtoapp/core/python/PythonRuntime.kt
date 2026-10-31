@@ -27,20 +27,20 @@ class PythonRuntime(private val context: Context) {
     companion object {
         private const val TAG = "PythonRuntime"
 
-        // Progress-driven startup budget (#534): the base window resets on every
-        // progress signal (process output line, bound socket, probe response) so
-        // slow-but-alive servers keep waiting, while the hard cap bounds the
-        // total wait. Replaces the old fixed 30s cutoff that killed Flask
-        // servers which bound just after the deadline.
+        
+        
+        
+        
+        
         internal const val HEALTH_CHECK_BASE_BUDGET_MS = 90_000L
         internal const val HEALTH_CHECK_HARD_CAP_MS = 300_000L
         private const val HEALTH_CHECK_INTERVAL_MS = 500L
         private const val HEALTH_CHECK_STABILITY_DELAY_MS = 150L
         private const val REQUIRED_HEALTHY_RESPONSES = 2
 
-        // Consecutive bound-socket polls (without an HTTP probe success) that
-        // alone count as ready — covers apps whose probe paths never answer
-        // 2xx-499 (e.g. a user handler returning 500 on /).
+        
+        
+        
         private const val REQUIRED_BOUND_SOCKET_SUCCESSES = 6
     }
 

@@ -2,15 +2,15 @@ package com.webtoapp.core.webview
 
 import android.webkit.JavascriptInterface
 
-/**
- * Page-side half of background playback.
- *
- * The native lifecycle still decides whether the WebView is paused. This script
- * only stops the page from pausing itself while [BackgroundMediaHold.held] is
- * true: visibility stays "visible", and a visibility-triggered `pause()` is
- * ignored. A notification pause sets `__wtaAllowMediaPauseUntil` first so the
- * user can still stop playback from the shade.
- */
+
+
+
+
+
+
+
+
+
 object BackgroundMediaScript {
     const val JS_INTERFACE = "WtaBackgroundMedia"
 
@@ -85,7 +85,7 @@ object BackgroundMediaScript {
     """
 }
 
-/** Synchronous hold flag read by [BackgroundMediaScript] from page script. */
+
 class BackgroundMediaHold {
     @Volatile
     var held: Boolean = false

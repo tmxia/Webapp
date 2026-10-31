@@ -9,11 +9,11 @@ import java.util.zip.ZipOutputStream
 
 object ZipUtils {
 
-    /**
-     * AssetManager refuses to open a deflated entry whose uncompressed size
-     * exceeds 1 MiB. Plugin bodies are inlined into `app_config.json`, so a
-     * config at or above this size has to be stored.
-     */
+    
+
+
+
+
     const val ASSET_UNCOMPRESSED_STORE_THRESHOLD = 1024 * 1024
 
     fun configBytesShouldBeStored(uncompressedSize: Int): Boolean =
@@ -120,7 +120,7 @@ object ZipUtils {
     }
 
     fun copyEntry(zipIn: ZipFile, zipOut: ZipOutputStream, entry: ZipEntry) {
-        // Large entries (>2MB) stream to avoid heap pressure from readBytes().
+        
         if (entry.size > 2L * 1024 * 1024) {
             val newEntry = ZipEntry(entry.name)
             newEntry.method = ZipEntry.DEFLATED
@@ -134,8 +134,8 @@ object ZipUtils {
     }
 
     fun copyEntryPreserveMethod(zipIn: ZipFile, zipOut: ZipOutputStream, entry: ZipEntry) {
-        // Fast path: large entries stream without readBytes(). STORED entries can
-        // reuse size/crc from the source central directory (bytes unchanged).
+        
+        
         if (entry.size > 2L * 1024 * 1024) {
             if (entry.method == ZipEntry.STORED && entry.size != -1L && entry.crc != -1L) {
                 val newEntry = ZipEntry(entry.name)
@@ -143,7 +143,7 @@ object ZipUtils {
                 newEntry.size = entry.size
                 newEntry.compressedSize = entry.size
                 newEntry.crc = entry.crc
-                // Preserve alignment padding for resources.arsc if present.
+                
                 if (entry.extra != null && entry.extra!!.isNotEmpty()) {
                     newEntry.extra = entry.extra
                 }

@@ -34,8 +34,8 @@ object ZipAligner {
     }
 
     fun alignInPlace(apkFile: File): Boolean {
-        // Fast path: cached/REUSE outputs are already aligned — header-only scan
-        // is far cheaper than a full rewrite. Skip when native libs pass.
+        
+        
         try {
             if (verifyNativeLibAlignment(apkFile)) {
                 AppLogger.d(TAG, "APK already 16KB-aligned, skipping rewrite")
@@ -78,14 +78,14 @@ object ZipAligner {
     }
 
 
-    /**
-     * Manual zip writer: java.util.zip.ZipOutputStream silently drops `entry.extra`
-     * set on STORED entries with known sizes, which deletes the alignment padding
-     * this class exists to inject. Entries are therefore written as raw bytes:
-     * local file headers (with padding extras), data, then a central directory
-     * assembled in memory. Deflated entries stream through a raw deflate
-     * (nowrap) compressor so no zlib wrapper lands in the file.
-     */
+    
+
+
+
+
+
+
+
     private class ManualZipWriter(out: OutputStream) : Closeable {
         private val stream = java.io.BufferedOutputStream(out, COPY_BUFFER_SIZE)
         private val entries = mutableListOf<CentralDirRecord>()
@@ -116,11 +116,11 @@ object ZipAligner {
         ) {
             val hdr = ByteBuffer.allocate(LFH_FIXED_SIZE).order(ByteOrder.LITTLE_ENDIAN)
             hdr.putInt(0x04034b50)
-            hdr.putShort(20)                        // version needed
-            hdr.putShort(0)                         // flags: no data descriptor (sizes known)
+            hdr.putShort(20)                        
+            hdr.putShort(0)                         
             hdr.putShort(method.toShort())
-            hdr.putShort(0)                         // mod time
-            hdr.putShort(0)                         // mod date
+            hdr.putShort(0)                         
+            hdr.putShort(0)                         
             hdr.putInt(crc.toInt())
             hdr.putInt(compressedSize.toInt())
             hdr.putInt(size.toInt())
@@ -131,7 +131,7 @@ object ZipAligner {
             if (extra != null && extra.isNotEmpty()) write(extra)
         }
 
-        /** STORED entry with an explicit extra field (the alignment padding). */
+        
         fun addStored(name: String, data: InputStream, size: Long, crc: Long, extra: ByteArray?) {
             val nameBytes = name.toByteArray(Charsets.UTF_8)
             val lfhOffset = offset
@@ -145,7 +145,7 @@ object ZipAligner {
             entries += CentralDirRecord(nameBytes, crc, size, size, ZipEntry.STORED, extra, lfhOffset)
         }
 
-        /** DEFLATED entry streamed through a raw deflate compressor. */
+        
         fun addDeflated(name: String, data: InputStream) {
             val nameBytes = name.toByteArray(Charsets.UTF_8)
             val lfhOffset = offset
@@ -182,9 +182,9 @@ object ZipAligner {
             } finally {
                 deflater.end()
             }
-            // Sizes/crc were unknown when the header was written (they are not known
-            // until the stream is fully consumed); remember the real header bytes and
-            // applyHeaderPatches() rewrites them in place once the file is complete.
+            
+            
+            
             val patch = ByteBuffer.allocate(LFH_FIXED_SIZE).order(ByteOrder.LITTLE_ENDIAN)
             patch.putInt(0x04034b50)
             patch.putShort(20)
@@ -204,7 +204,7 @@ object ZipAligner {
         private val pendingHeaderPatches = mutableListOf<Pair<Long, ByteArray>>()
         val offsetOfEntry: Long get() = offset
 
-        /** Empty directory entry. */
+        
         fun addDirectory(name: String) {
             val nameBytes = name.toByteArray(Charsets.UTF_8)
             val lfhOffset = offset
@@ -216,21 +216,21 @@ object ZipAligner {
             val out = java.io.ByteArrayOutputStream()
             val hdr = ByteBuffer.allocate(46).order(ByteOrder.LITTLE_ENDIAN)
             hdr.putInt(0x02014b50)
-            hdr.putShort(20)                        // version made by
-            hdr.putShort(20)                        // version needed
-            hdr.putShort(0)                         // flags
+            hdr.putShort(20)                        
+            hdr.putShort(20)                        
+            hdr.putShort(0)                         
             hdr.putShort(e.method.toShort())
-            hdr.putShort(0)                         // mod time
-            hdr.putShort(0)                         // mod date
+            hdr.putShort(0)                         
+            hdr.putShort(0)                         
             hdr.putInt(e.crc.toInt())
             hdr.putInt(e.compressedSize.toInt())
             hdr.putInt(e.size.toInt())
             hdr.putShort(e.name.size.toShort())
             hdr.putShort((e.extra?.size ?: 0).toShort())
-            hdr.putShort(0)                         // comment
-            hdr.putShort(0)                         // disk
-            hdr.putShort(0)                         // internal attrs
-            hdr.putInt(0)                           // external attrs
+            hdr.putShort(0)                         
+            hdr.putShort(0)                         
+            hdr.putShort(0)                         
+            hdr.putInt(0)                           
             hdr.putInt(e.lfhOffset.toInt())
             out.write(hdr.array())
             out.write(e.name)
@@ -258,7 +258,7 @@ object ZipAligner {
             stream.close()
         }
 
-        /** Apply remembered local-header patches after the file is complete. */
+        
         fun applyHeaderPatches(file: File) {
             if (pendingHeaderPatches.isEmpty()) return
             RandomAccessFile(file, "rw").use { raf ->
@@ -304,8 +304,8 @@ object ZipAligner {
                             val entryCrc = if (entry.crc != -1L) entry.crc else computeCrc(zipIn, entry)
                             val nameBytes = entry.name.toByteArray(Charsets.UTF_8)
 
-                            // dataOffset = current offset + fixed header + name; pad with
-                            // an extra field so the data starts at an alignment multiple.
+                            
+                            
                             val currentOffset = writer.offsetOfEntry
                             val dataOffsetNoExtra = currentOffset + LFH_FIXED_SIZE + nameBytes.size
                             val alignment = getEntryAlignment(entry.name)
@@ -374,13 +374,13 @@ object ZipAligner {
                 for (entry in entries) {
                     if (!isNativeLibraryEntry(entry.name)) continue
                     nativeLibCount++
-                    // DEFLATED libs can never be mmap'd from the zip: the
-                    // manifest ships extractNativeLibs=true (the template is
-                    // packaged with jniLibs.useLegacyPackaging), so the OS
-                    // extracts them to nativeLibraryDir at install and the
-                    // data offset is irrelevant. Only STORED libs — the
-                    // injected runtime binaries like libnode.so — may be
-                    // mapped in place and must sit on a page boundary.
+                    
+                    
+                    
+                    
+                    
+                    
+                    
                     if (entry.method != ZipEntry.STORED) continue
                     storedCount++
                     val dataOffset = entryDataOffset(raf, entry.localHeaderOffset)
@@ -404,15 +404,15 @@ object ZipAligner {
         val localHeaderOffset: Long
     )
 
-    /**
-     * Parse the zip central directory. The verifiers used to walk local file headers
-     * sequentially, advancing by the LFH compressedSize plus an optional 16-byte data
-     * descriptor — but entries written through java.util.zip with unknown sizes carry
-     * compressedSize=0 in the LFH (bit 3 set), so the scan landed inside the compressed
-     * stream, missed the next entry signature and bailed out with a false "verified"
-     * long before it ever reached lib/. The central directory holds the real sizes and
-     * local-header offsets, so indexing from it cannot desynchronize.
-     */
+    
+
+
+
+
+
+
+
+
     private fun readCentralDirectory(raf: RandomAccessFile): List<CentralDirectoryEntry>? {
         val length = raf.length()
         if (length < 22L) return null
@@ -432,14 +432,14 @@ object ZipAligner {
         }
         if (eocdAt < 0) return null
 
-        // .slice(): absolute getters on a wrap(array, offset, len) buffer index the
-        // backing array from 0, not from offset — without the slice every field below
-        // reads misaligned garbage.
+        
+        
+        
         val eocd = ByteBuffer.wrap(tail, eocdAt, 22).slice().order(ByteOrder.LITTLE_ENDIAN)
         val entryCount = eocd.getShort(10).toInt() and 0xFFFF
         val cdSize = eocd.getInt(12).toLong() and 0xFFFFFFFFL
         val cdOffset = eocd.getInt(16).toLong() and 0xFFFFFFFFL
-        // zip64 markers — this pipeline never produces one; refuse to claim verification.
+        
         if (entryCount == 0xFFFF || cdSize == 0xFFFFFFFFL || cdOffset == 0xFFFFFFFFL) return null
         if (cdOffset < 0 || cdOffset + cdSize > length) return null
 
@@ -451,7 +451,7 @@ object ZipAligner {
         var p = 0
         repeat(entryCount) {
             if (p + 46 > cd.size) return null
-            // slice(): see the EOCD note — absolute getters index the backing array.
+            
             val e = ByteBuffer.wrap(cd, p, 46).slice().order(ByteOrder.LITTLE_ENDIAN)
             if (e.getInt(0) != 0x02014b50) return null
             val method = e.getShort(10).toInt() and 0xFFFF
@@ -467,7 +467,7 @@ object ZipAligner {
         return entries
     }
 
-    /** Entry data offset = local header offset + fixed LFH + name + extra field lengths. */
+    
     private fun entryDataOffset(raf: RandomAccessFile, lfhOffset: Long): Long {
         val lfh = ByteArray(LFH_FIXED_SIZE)
         raf.seek(lfhOffset)

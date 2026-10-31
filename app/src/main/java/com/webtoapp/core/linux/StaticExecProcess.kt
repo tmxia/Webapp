@@ -11,12 +11,12 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
 
-/**
- * JNI binding for libstatic_exec.so — the user-mode exec loader that starts
- * static ELFs (pmmp PHP) under SELinux W^X by mapping PT_LOAD segments from
- * an executable memfd, building the AArch64 initial stack, and jumping to
- * e_entry. Host-side tooling only; generated APKs no longer exec anything.
- */
+
+
+
+
+
+
 internal object StaticExecBridge {
     private var loaded = false
 
@@ -33,31 +33,31 @@ internal object StaticExecBridge {
         }
     }
 
-    /** Returns pid, or -1 with [err] = {code, detail} on failure. */
+    
     external fun nativeSpawn(
         path: String, argv: Array<String>, envp: Array<String>, cwd: String?,
         fdIn: Int, fdOut: Int, fdErr: Int, err: IntArray
     ): Long
 
-    /** 1 = reaped (status written), 0 = still running, -1 = error. */
+    
     external fun nativeWaitpid(pid: Long, statusOut: IntArray?, blocking: Boolean): Int
 
     external fun nativeKill(pid: Long, sig: Int): Int
 }
 
-/**
- * Drop-in [Process] for processes started via [StaticExecBridge]. Mirrors the
- * surface the runtimes use: inputStream/errorStream readers, isAlive /
- * waitFor / exitValue, graceful + forcible destroy, and a reflectable `pid`
- * field (getProcessPid implementations read it via reflection).
- */
+
+
+
+
+
+
 class StaticExecProcess private constructor(
     private val pidLong: Long,
     stdoutFd: Int,
     stderrFd: Int
 ) : Process() {
 
-    @Suppress("unused") // read via reflection by getProcessPid
+    @Suppress("unused") 
     private val pid: Int = pidLong.toInt()
 
     private val stdout = ParcelFileDescriptor.adoptFd(stdoutFd)
@@ -86,11 +86,11 @@ class StaticExecProcess private constructor(
     }
 
     override fun destroy() {
-        StaticExecBridge.nativeKill(pidLong, 15) /* SIGTERM */
+        StaticExecBridge.nativeKill(pidLong, 15) 
     }
 
     override fun destroyForcibly(): Process {
-        StaticExecBridge.nativeKill(pidLong, 9) /* SIGKILL */
+        StaticExecBridge.nativeKill(pidLong, 9) 
         return this
     }
 
@@ -101,7 +101,7 @@ class StaticExecProcess private constructor(
 
     fun pidValue(): Long = pidLong
 
-    /** Start the background reaper; call once after a successful spawn. */
+    
     private fun startReaper() {
         Thread {
             try {
@@ -150,7 +150,7 @@ class StaticExecProcess private constructor(
                 return null
             }
 
-            val outPipe = ParcelFileDescriptor.createPipe() // [read, write]
+            val outPipe = ParcelFileDescriptor.createPipe() 
             val errPipe = ParcelFileDescriptor.createPipe()
             val errInfo = IntArray(2)
             val envp = env.entries.map { "${it.key}=${it.value}" }.toTypedArray()
@@ -175,20 +175,20 @@ class StaticExecProcess private constructor(
                 return null
             }
 
-            // Close our write ends: the child holds its own copies since fork,
-            // and EOF must reach the readers when the child exits. Keeping the
-            // parent copies open would block readers forever after child death.
+            
+            
+            
             outPipe[1].close()
             errPipe[1].close()
 
-            // Detach (not just read .fd): the raw int must become UNOWNED
-            // before adoptFd takes over, otherwise fdsan aborts the process
-            // ("expected to be unowned"). This killed the first in-app spawn.
+            
+            
+            
             val outRead = outPipe[0].detachFd()
             val errRead = errPipe[0].detachFd()
 
-            // Read ends are adopted below; their PFD wrappers must be left
-            // untouched from here on.
+            
+            
             val proc = StaticExecProcess(pid, outRead, errRead)
             proc.startReaper()
             return proc

@@ -35,12 +35,12 @@ private fun safeRegexMatch(pattern: String, input: String): Boolean {
     }
 }
 
-/**
- * Cache of compiled glob→regex translations for [ExtensionModule.matchRule]. URL
- * matching runs per page load per injection phase per rule, so compiling a fresh
- * Regex each time is measurable jank; reuses [regexCache] so the compiled pattern
- * from [safeRegexMatch] and glob translation live in one bounded LRU.
- */
+
+
+
+
+
+
 private fun cachedRegex(pattern: String, ignoreCase: Boolean): Regex? {
     val key = if (ignoreCase) "i:$pattern" else "c:$pattern"
     return synchronized(regexCache) {
@@ -325,13 +325,13 @@ data class ExtensionModule(
         }
     }
 
-    /**
-     * Gson allocates instances via Unsafe and leaves Kotlin non-null fields null when the
-     * JSON omits them (Kotlin default values are bypassed). Coerce every object-typed field
-     * back to its declared default so consumers never observe null in a non-null field
-     * (fixes the ModuleCard NullPointerException when rendering such a module). Primitive
-     * fields (enabled/builtIn/noframes/createdAt/updatedAt) cannot be null and are left as-is.
-     */
+    
+
+
+
+
+
+
     fun sanitized(): ExtensionModule = copy(
         id = (id as String?)?.takeIf { it.isNotBlank() } ?: UUID.randomUUID().toString(),
         name = (name as String?) ?: "",

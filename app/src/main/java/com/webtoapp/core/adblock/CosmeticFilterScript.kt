@@ -1,11 +1,11 @@
 package com.webtoapp.core.adblock
 
-/**
- * Page script that applies [AdBlocker.getCosmeticPayloadJson].
- * WebViewManager installs it at document start and again after load.
- * The home-card thumbnail runs the same function so a recapture shows
- * the cosmetic colors and hidden elements the real page shows.
- */
+
+
+
+
+
+
 object CosmeticFilterScript {
     const val APPLY_JS = """
         (function(p) {

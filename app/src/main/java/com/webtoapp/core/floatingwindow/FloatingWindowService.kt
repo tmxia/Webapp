@@ -129,9 +129,9 @@ class FloatingWindowService : Service() {
                 }
 
                 val shellConfig = try {
-                    // Koin is not started inside exported APKs (the shell Application registers
-                    // runtime services directly), so resolve via the Application accessor that
-                    // works in both host and shell runtimes.
+                    
+                    
+                    
                     com.webtoapp.WebToAppApplication.shellMode.getConfig()
                 } catch (e: Exception) {
                     AppLogger.w(TAG, "Shell config unavailable, falling back to raw URL", e)

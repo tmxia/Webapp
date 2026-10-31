@@ -142,11 +142,11 @@ internal fun statusBarSampleDelays(firstDelayMs: Long, settle: Boolean): LongArr
     return if (settle) longArrayOf(first, first + 350L, first + 1200L) else longArrayOf(first)
 }
 
-/**
- * `evaluateJavascript` callbacks are not ordered. A slow early read must not
- * overwrite a color that a later read in the same burst already published,
- * and a cancelled burst must not publish at all (#1218).
- */
+
+
+
+
+
 internal class PageColorSampleGate {
     private var generation = 0
     private var nextId = 0
@@ -180,7 +180,7 @@ class StatusBarPageColorTracker(
 
     fun attach() {
         webView.setOnScrollChangeListener { _, _, _, _, _ ->
-            // One sample is enough once the user is moving the page.
+            
             scheduleSample(48L)
         }
     }
@@ -195,11 +195,11 @@ class StatusBarPageColorTracker(
         onColors(PageEdgeColors(null, null))
     }
 
-    /**
-     * [settle] posts two later samples. A page's background often paints
-     * after the first `onPageFinished` tick, and a single early read stays
-     * on the light fallback until the next scroll or tab change (#1218).
-     */
+    
+
+
+
+
     fun scheduleSample(delayMs: Long = 0L, settle: Boolean = false) {
         val burst = cancelPending()
         if (!shouldSample()) {

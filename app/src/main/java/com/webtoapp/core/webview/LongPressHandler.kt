@@ -421,8 +421,8 @@ class LongPressHandler(
 
         val imageBytes = Base64.decode(base64Data, Base64.DEFAULT)
 
-        // Write bytes directly: no decode roundtrip (lossless, faster, and immune
-        // to oversized-bitmap OOM on hostile data URLs, #779).
+        
+        
         return saveBytesToGallery(imageBytes, "IMG_${System.currentTimeMillis()}.$extension", mimeType)
     }
 
@@ -523,16 +523,16 @@ class LongPressHandler(
     }
 }
 
-/**
- * Long-press haptics for system WebView.
- *
- * [View.performLongClick] vibrates after a listener returns true, before we know
- * whether a menu will open. Returning true also keeps the gesture from the page,
- * so Chromium does not add a second buzz. Returning false leaves Chromium's own
- * haptic in place: it fires only when the page or a text selection consumes the
- * gesture. [finish] swallows the framework buzz for one turn when the per-app
- * option is on; [onMenuShown] plays it back only if a menu really opens.
- */
+
+
+
+
+
+
+
+
+
+
 object LongPressHapticGate {
     fun finish(view: View, onActionOnly: Boolean, handled: Boolean): Boolean {
         if (onActionOnly && handled) suppressFrameworkBuzz(view)

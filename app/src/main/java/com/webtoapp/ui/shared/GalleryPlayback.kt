@@ -1,20 +1,20 @@
 package com.webtoapp.ui.shared
 
-/**
- * Pure playback-advance decision shared by the host gallery player
- * ([com.webtoapp.ui.gallery.GalleryPlayerScreen]) and the shell player
- * ([com.webtoapp.ui.shell.ShellGalleryPlayer]) so both wrap — and reshuffle —
- * identically. Unit-tested on plain JVM.
- */
+
+
+
+
+
+
 internal data class GalleryAdvance(
     val targetIndex: Int,
-    /** True when the wrap must reshuffle the order first (shuffle-on-loop). */
+    
     val reshuffle: Boolean
 )
 
-/**
- * @return next action, or null when playback should stop (end reached, no loop).
- */
+
+
+
 internal fun galleryAutoAdvanceTarget(
     currentIndex: Int,
     itemCount: Int,

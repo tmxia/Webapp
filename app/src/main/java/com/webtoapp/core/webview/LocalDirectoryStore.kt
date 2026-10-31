@@ -14,14 +14,14 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.io.InputStream
 
-/**
- * One user-picked folder, kept with a persistable SAF grant.
- *
- * The page never receives a filesystem path. Every call takes a relative path
- * inside the granted tree, and `..` is rejected before any child is resolved.
- * The grant lives in this app's private preferences, so a preview grant does
- * not transfer into an exported APK (that package must pick the folder again).
- */
+
+
+
+
+
+
+
+
 class LocalDirectoryStore internal constructor(
     private val context: Context,
     private val grantKey: String,
@@ -168,7 +168,7 @@ class LocalDirectoryStore internal constructor(
         JSONObject().apply { put("ok", true) }.toString()
     }
 
-    /** Tree URI to reopen the system picker on, if a grant is still stored. */
+    
     fun currentTreeUri(): Uri? = synchronized(lock) { storedUri() }
 
     private fun infoLocked(): String {
@@ -342,10 +342,10 @@ class LocalDirectoryStore internal constructor(
     }
 }
 
-/**
- * Relative path inside the granted tree. Returns null when the path could
- * escape the tree or is otherwise not a sequence of entry names.
- */
+
+
+
+
 internal fun parseDirectoryPath(raw: String): List<String>? {
     if (raw.length > 1024) return null
     if (raw.indexOf('\u0000') >= 0) return null

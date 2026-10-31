@@ -106,8 +106,8 @@ object LocalBuildEnvironment {
     private val COMPOSER_OFFICIAL_URL = "https://getcomposer.org/download/$COMPOSER_VERSION/composer.phar"
     private val COMPOSER_GITHUB_URL = "https://github.com/composer/composer/releases/download/$COMPOSER_VERSION/composer.phar"
 
-    // CN: probed GitHub proxies first (release-asset throughput), then the
-    // slow official origin, then direct GitHub as the last resort.
+    
+    
     private fun composerPharUrls(): List<String> {
         val cn = com.webtoapp.core.wordpress.WordPressDependencyManager.getMirrorRegion() ==
             com.webtoapp.core.wordpress.WordPressDependencyManager.MirrorRegion.CN
@@ -222,7 +222,7 @@ object LocalBuildEnvironment {
                 null
             )
             val proc = launch.process ?: return null
-            // `composer --version` prints to stdout; drain it, then wait.
+            
             val out = proc.inputStream.bufferedReader().use { it.readText() }
             val finished = proc.waitForCompat(5_000)
             if (!finished) {

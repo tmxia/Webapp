@@ -2,25 +2,25 @@ package com.webtoapp.core.plugin
 
 import com.webtoapp.core.extension.ExtensionModule
 
-/**
- * One Manage Plugins row per installed Chrome extension.
- *
- * The parser still emits one [ExtensionModule] per `content_scripts` entry
- * (popup, background, and the manifest ride on the first entry). The plugin
- * list keeps a single record: the other entries are the same extension.
- */
+
+
+
+
+
+
+
 private val CONTENT_SCRIPT_SUFFIX = Regex("""\s\[\d+]$""")
 
-/** Parser names look like `Dark Reader [1]`. The extension name has no suffix. */
+
 internal fun stripChromeContentScriptSuffix(name: String): String =
     name.replace(CONTENT_SCRIPT_SUFFIX, "")
 
-/**
- * One plugin for every module that shares [ExtensionModule.chromeExtId].
- * The id is the first module's id so an app that attached that row keeps it.
- * Popup, background, options, and the manifest are taken from whichever
- * module actually carries them.
- */
+
+
+
+
+
+
 internal fun chromePluginFromModules(modules: List<ExtensionModule>): Plugin? {
     val group = modules.filter { it.chromeExtId.isNotBlank() }
     if (group.isEmpty()) return null
@@ -55,11 +55,11 @@ internal data class ChromePluginCollapse(
     val changed: Boolean
 )
 
-/**
- * Fold sibling Chrome rows that share a [Plugin.chromeExtId] into the first
- * row in list order. [aliases] maps every dropped id onto that kept id so an
- * app that attached `ext_cs_1` still resolves the extension.
- */
+
+
+
+
+
 internal fun collapseChromePlugins(
     plugins: List<Plugin>,
     enabledIds: List<String>,
@@ -122,7 +122,7 @@ private fun mergeChromeFields(keep: Plugin, extra: Plugin): Plugin = keep.copy(
     updatedAt = maxOf(keep.updatedAt, extra.updatedAt)
 )
 
-/** Dropped sibling ids become the kept id. Order of the remaining ids is kept. */
+
 internal fun remapEnabledIds(
     enabledIds: List<String>,
     removedToKept: Map<String, String>
@@ -135,17 +135,17 @@ internal fun remapEnabledIds(
     return out
 }
 
-/**
- * The manager draws a working copy so a long-press drag can reorder before
- * the store write lands. A delete has to show up even while that drag is
- * unfinished: drop ids the store no longer has, keep the drag's order, and
- * append anything new. When nothing is held, the store list is the list.
- */
-/**
- * Keep a just-dropped order until the store list matches it. A delete changes
- * the id set, so the hold ends and the store list (without that row) shows.
- * [dragging] keeps the hold: the finger is still down.
- */
+
+
+
+
+
+
+
+
+
+
+
 internal fun releasePluginOrderHold(
     hold: List<String>?,
     shownIds: List<String>,

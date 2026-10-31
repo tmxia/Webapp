@@ -11,36 +11,36 @@ import java.io.File
 import java.io.InputStream
 import kotlin.math.max
 
-/**
- * Central guard against oversized-bitmap crashes (#779).
- *
- * A user-supplied image (status-bar background, browser icon, module icon, QR
- * import, preview media) decoded at full resolution can exceed what
- * RecordingCanvas can draw (e.g. a 15360x15360 bitmap = ~900MB), killing the
- * process with "Canvas: trying to draw too large" at DRAW time — long after
- * any try/catch around the decode has passed. Every decode of untrusted
- * content must go through here instead of raw BitmapFactory calls.
- *
- * Rule: the longest side never exceeds [maxDimension] (default 2048px, plenty
- * for any on-screen surface in this app). All entry points catch [Throwable],
- * including [OutOfMemoryError], and return null.
- */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 object BoundedBitmaps {
 
     private const val TAG = "BoundedBitmaps"
 
     const val DEFAULT_MAX_DIMENSION = 2048
 
-    /** Icons and other small chrome: 512px is 10x a 48dp target, still tiny. */
+    
     const val ICON_MAX_DIMENSION = 512
 
-    /** Upper bound for buffering a stream before decoding; beyond this, refuse. */
+    
     private const val MAX_DECODE_BYTES = 48 * 1024 * 1024
 
-    /**
-     * Pure math, unit-tested on plain JVM. Power-of-two sample so the longest
-     * source side fits in [maxDimension]. Returns 1 for degenerate input.
-     */
+    
+
+
+
     fun calculateInSampleSize(srcWidth: Int, srcHeight: Int, maxDimension: Int): Int {
         if (maxDimension <= 0) return 1
         if (srcWidth <= 0 || srcHeight <= 0) return 1
@@ -87,8 +87,8 @@ object BoundedBitmaps {
 
     fun decodeBoundedBitmapStream(stream: InputStream, maxDimension: Int = DEFAULT_MAX_DIMENSION): Bitmap? {
         return try {
-            // Streams cannot be bounds-probed without consuming them, so buffer
-            // first (capped) and decode from memory.
+            
+            
             val out = ByteArrayOutputStream(8192)
             val buf = ByteArray(8192)
             var total = 0
@@ -109,11 +109,11 @@ object BoundedBitmaps {
         }
     }
 
-    /**
-     * Rasterize any [Drawable] (app icons, adaptive icons, vectors) capped at
-     * [maxDimension] on the longest side, preserving aspect ratio. Drawables
-     * without intrinsic dimensions raster at exactly [maxDimension] square.
-     */
+    
+
+
+
+
     fun Drawable.toBoundedBitmap(maxDimension: Int = ICON_MAX_DIMENSION): Bitmap? {
         return try {
             if (maxDimension <= 0) return null
@@ -144,10 +144,10 @@ object BoundedBitmaps {
         }
     }
 
-    /**
-     * Downscale an already-decoded bitmap so its longest side fits
-     * [maxDimension]. Returns the original instance when already small enough.
-     */
+    
+
+
+
     fun Bitmap.downscaledToFit(maxDimension: Int): Bitmap {
         return try {
             val longest = max(width, height)
@@ -162,7 +162,7 @@ object BoundedBitmaps {
         }
     }
 
-    /** True when [file] looks like an image the bounded decoders accept. */
+    
     fun isProbablyImageFile(file: File): Boolean {
         if (!file.isFile || !file.canRead() || file.length() <= 0) return false
         if (file.length() > MAX_DECODE_BYTES) return false

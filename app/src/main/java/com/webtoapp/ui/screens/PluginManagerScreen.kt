@@ -45,11 +45,11 @@ import com.webtoapp.ui.plugin.kindLabel
 import com.webtoapp.ui.plugin.pluginIcon
 import kotlinx.coroutines.launch
 
-/**
- * Unified plugin management: HCJ packages, userscripts and Chrome extensions
- * in one list. Kind is a badge, not a tab — the user picked this app for
- * plugins, not for taxonomies.
- */
+
+
+
+
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PluginManagerScreen(
@@ -105,7 +105,7 @@ fun PluginManagerScreen(
                 }
             }
             else -> {
-                // .hcj / .zip / unknown: HCJ package first, Chrome zip as fallback.
+                
                 when (val r = importer.importHcj(uri)) {
                     is PluginImporter.ImportResult.Success ->
                         Toast.makeText(context, Strings.pluginImportSuccess(r.plugin.name), Toast.LENGTH_SHORT).show()
@@ -191,10 +191,10 @@ fun PluginManagerScreen(
                 val shownInstalled = installed.filter(::matches)
                 val shownBuiltIns = builtIns.filter(::matches)
 
-                // Working copies while a drag is in flight. The store list is
-                // what we draw once the drag (and its reorder write) is done.
-                // Membership changes — a delete — apply immediately either way,
-                // so a row cannot linger until the screen is reopened.
+                
+                
+                
+                
                 var installedWorking by remember { mutableStateOf(shownInstalled) }
                 var builtinWorking by remember { mutableStateOf(shownBuiltIns) }
                 var installedOrderHold by remember { mutableStateOf<List<String>?>(null) }

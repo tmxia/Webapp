@@ -52,10 +52,10 @@ import kotlinx.coroutines.delay
 
 private const val IDLE_COLLAPSE_MS = 3500L
 
-/**
- * Screen position of the music ball. Drag reads this object, not a Float
- * captured when the pointer callback was first created.
- */
+
+
+
+
 private class BallSpot {
     var x = 0f
     var y = 0f
@@ -66,12 +66,12 @@ private class BallSpot {
     var moved = false
 }
 
-/**
- * Music ball above the page. It stays a circle until tapped, then opens the
- * track controls on the free side and folds back on its own. Drag tracks
- * [MotionEvent.getRawX] so moving the popup under the finger cannot eat the
- * next delta.
- */
+
+
+
+
+
+
 @Composable
 fun BoxScope.BgmFloatingPlayer(
     title: String,

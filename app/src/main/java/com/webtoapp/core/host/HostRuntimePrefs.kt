@@ -30,19 +30,19 @@ data class McpSettings(
     val port: Int
 )
 
-/**
- * Host-only runtime switches. Not shell-synced: generated APKs never read this.
- *
- * [KEY_SEPARATE_TASKS] is the About-screen "WebApp 独立任务" toggle. When on,
- * home preview opens each WebApp as its own recents task. Desktop shortcuts
- * always do, so Back returns to the launcher (#1391).
- *
- * [KEY_MCP_ENABLED] is the About-screen local MCP switch. The token and port
- * travel with it so an external agent can be pointed at 127.0.0.1.
- *
- * [KEY_ADVANCED_FEATURES] reveals Node.js, PHP, Python, Go, WordPress, and
- * image/video. Off by default. The runtimes stay in the app either way.
- */
+
+
+
+
+
+
+
+
+
+
+
+
+
 @SuppressLint("StaticFieldLeak")
 class HostRuntimePrefs private constructor(private val context: Context) {
 
@@ -93,11 +93,11 @@ class HostRuntimePrefs private constructor(private val context: Context) {
         }
     }
 
-    /**
-     * Launch paths call this on the main thread. DataStore's `first()` must not
-     * be `runBlocking`'d there (it deadlocks against the main-dispatcher read).
-     * The eagerly collected flow is the main-thread source of truth.
-     */
+    
+
+
+
+
     fun isSeparateTasksEnabledBlocking(): Boolean {
         cachedSeparateTasks?.let { return it }
         return if (Looper.myLooper() == Looper.getMainLooper()) {

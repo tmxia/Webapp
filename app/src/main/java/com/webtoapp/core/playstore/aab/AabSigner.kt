@@ -120,12 +120,12 @@ class AabSigner(private val context: Context) {
     private fun loadKeyAndCert(
         identity: JarSigner.SigningIdentity? = null
     ): Pair<PrivateKey, X509Certificate>? {
-        // A supplied per-app identity needs no round-trip through a temp keystore at all.
+        
         if (identity != null) return identity.privateKey to identity.certificate
 
-        // Random per-export password (never a guessable timestamp) and a
-        // noBackupFilesDir location so a crash between export and the
-        // finally-delete can never leak the PKCS12 via cloud backups.
+        
+        
+        
         val tempPassword = java.math.BigInteger(130, java.security.SecureRandom()).toString(32)
         val tempDir = context.noBackupFilesDir.also { it.mkdirs() }
         val tempFile = File.createTempFile("aab_signer_", ".p12", tempDir)

@@ -7,15 +7,15 @@ import com.webtoapp.core.ads.api.AdsFeatureApi
 import com.webtoapp.core.i18n.Strings
 import com.webtoapp.data.model.AdConfig
 
-/**
- * Thin gate in front of the injected ad feature stack (issue #1115).
- *
- * The real implementation lives in `com.webtoapp.stack.admob.AdsFeature`,
- * compiled into the `admob` stack DEX and grafted into the generated APK only
- * when ads are enabled. When the stack DEX is absent (feature off, or the host
- * preview where no stack is injected) every method degrades to a no-op — the
- * template carries zero ad-SDK classes.
- */
+
+
+
+
+
+
+
+
+
 class AdManager(private val context: Context) {
 
     private var isInitialized = false
@@ -61,7 +61,7 @@ class AdManager(private val context: Context) {
             onFailed(Strings.adSdkNotIntegrated)
             return
         }
-        // The stack implementation loads on show; nothing to prefetch here.
+        
         onLoaded()
     }
 
@@ -105,11 +105,11 @@ class AdManager(private val context: Context) {
         isInitialized = false
     }
 
-    /**
-     * Resolve the injected stack once. The template's `AdsFeatureApi` shadows
-     * the copy inside the stack DEX on the shared PathClassLoader, so the
-     * `as` cast is safe when the DEX is present.
-     */
+    
+
+
+
+
     private fun resolveFeature(): AdsFeatureApi? {
         if (!featureResolved) {
             featureResolved = true

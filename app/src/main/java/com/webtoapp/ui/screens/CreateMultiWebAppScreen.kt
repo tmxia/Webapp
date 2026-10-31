@@ -82,7 +82,7 @@ fun CreateMultiWebAppScreen(
     var injectScripts by remember { mutableStateOf<List<com.webtoapp.data.model.UserScript>>(emptyList()) }
     var pluginsEnabled by remember { mutableStateOf(false) }
     var pluginIds by remember { mutableStateOf<Set<String>>(emptySet()) }
-    // Edit must not save the default empty attachment before the row is read.
+    
     var draftReady by remember { mutableStateOf(existingAppId <= 0L) }
 
     var sites by remember { mutableStateOf<List<MultiWebSite>>(emptyList()) }
@@ -108,7 +108,7 @@ fun CreateMultiWebAppScreen(
     var selectedAppIds by remember { mutableStateOf<Set<Long>>(emptySet()) }
     var filterType by remember { mutableStateOf<String?>(null) }
     var filterCategoryId by remember { mutableStateOf<Long?>(null) }
-    // Non-null while the add/edit custom-site dialog is open; siteId == null means adding.
+    
     var siteDialog by remember { mutableStateOf<SiteDialogData?>(null) }
     var categories by remember { mutableStateOf<List<com.webtoapp.data.model.AppCategory>>(emptyList()) }
     LaunchedEffect(Unit) {
@@ -631,10 +631,10 @@ private fun ExistingAppPicker(
     onAddSelected: () -> Unit
 ) {
     val accentColor = MaterialTheme.colorScheme.onSurface
-    // Nested multi-web and server-runtime apps (Node/PHP/Python/Go/WordPress) cannot be
-    // embedded as site sources: their runtimes are not packaged into a multi-web APK, so
-    // such sites would render a broken shell mode in the export. The build degrades
-    // legacy configs to URL sites; the picker hides them so new ones are never created.
+    
+    
+    
+    
     val eligibleApps = existingApps.filter {
         it.appType != com.webtoapp.data.model.AppType.MULTI_WEB && !it.appType.requiresProcessExec
     }

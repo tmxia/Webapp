@@ -25,30 +25,30 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 
-/**
- * Upstream HTTP engine for forced HTTP/3 (issue #721).
- *
- * The TLS-MITM bridge hands every request here once the 强制 HTTP/3 toggle is on:
- * requests are re-issued through Chromium's own network stack (Cronet) with a QUIC
- * hint for the target host, so the very first request races QUIC against TCP instead
- * of waiting for an Alt-Svc advertisement. Sites without HTTP/3 fall back to Cronet's
- * genuine Chrome TLS/TCP transport — the outbound fingerprint IS real Chromium, which
- * is why this lives next to the fingerprint-spoofing feature instead of conflicting
- * with it.
- *
- * Cronet is a full HTTP client, not a byte relay, so both sides of the bridge speak
- * plain HTTP/1.1 while the upstream leg speaks whatever Chromium negotiates (h3
- * preferred, h2 fallback) — the WebView sees an ordinary proxy and never notices.
- */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 object CronetForwarder {
 
     private const val TAG = "CronetForwarder"
 
-    /**
-     * QUIC hints are engine-build-time only; beyond this many distinct hosts the
-     * engine stops being rebuilt and newer hosts rely on Alt-Svc discovery (their
-     * first request goes out on Chrome's TCP stack, subsequent ones on h3).
-     */
+    
+
+
+
+
     private const val MAX_HINTED_HOSTS = 24
 
     private const val READ_BUFFER_BYTES = 32 * 1024
@@ -60,48 +60,48 @@ object CronetForwarder {
     @Volatile private var engineRef: CronetEngine? = null
     private val hintedHosts: MutableSet<String> = ConcurrentHashMap.newKeySet()
 
-    /**
-     * ECH mode: builds engines with the built-in (Chromium async) resolver so HTTPS
-     * records are queried and ECH applied on the upstream handshakes. Fixed per
-     * bridge session; the bridge restarts (rebuilding the engine) when it changes.
-     */
+    
+
+
+
+
     @Volatile private var echMode = false
 
-    /** One-shot guard for the background self-heal download when the native lib is missing. */
+    
     private val downloadKick = AtomicBoolean(false)
     private val downloadScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    /** Callbacks run on these daemon threads; they write response bytes to the client sink. */
+    
     private val callbackExecutor = ThreadPoolExecutor(
         0, 32, 30L, TimeUnit.SECONDS,
         SynchronousQueue()
     ) { r -> Thread(r, "CronetForwarder-Cb").apply { isDaemon = true } }
         .also { it.allowCoreThreadTimeOut(true) }
 
-    /**
-     * Response headers that must not be relayed verbatim to the HTTP/1.1 client:
-     * hop-by-hop headers, plus the body-framing ones (the body is re-framed as
-     * chunked) and Content-Encoding — Chromium transparently decodes the body but
-     * still reports the original encoding header, so relaying it would make the
-     * WebView try to gunzip already-decoded bytes (ERR_CONTENT_DECODING_FAILED).
-     */
+    
+
+
+
+
+
+
     private val HOP_BY_HOP_RESPONSE_HEADERS = setOf(
         "content-length", "transfer-encoding", "connection", "keep-alive",
         "proxy-authenticate", "proxy-authorization", "upgrade",
         "content-encoding"
     )
 
-    /**
-     * Cheap gate for the bridge: an engine is already live, or the native library is
-     * available (embedded in generated APKs / downloaded for host preview) so one could
-     * be built. Until then the bridge stays on the classic raw relay.
-     */
+    
+
+
+
+
     fun isReady(context: Context): Boolean =
         engineRef != null || CronetDependencyManager.isCronetReady(context)
 
-    /** Called by the bridge when the Cronet upstream activates; warms the engine and,
-     *  when the native library is missing, kicks a one-shot background download so the
-     *  app self-heals. */
+    
+
+
     fun start(appContext: Context, echUpstream: Boolean = false) {
         echMode = echUpstream
         try {
@@ -123,18 +123,18 @@ object CronetForwarder {
         }
     }
 
-    /** shutdown() blocks until in-flight requests drain; keep it off the caller's thread. */
+    
     private fun retireAsync(engine: CronetEngine) {
         Thread({
             try { engine.shutdown() } catch (_: Throwable) {}
         }, "CronetForwarder-Retire").apply { isDaemon = true }.start()
     }
 
-    /**
-     * Returns the shared engine, rebuilding it with a QUIC hint for [host] when that
-     * host has not been hinted yet (the rebuild keeps h3 available from the very
-     * first request; the retired engine drains on a background thread).
-     */
+    
+
+
+
+
     private fun ensureEngine(context: Context, host: String?, port: Int): CronetEngine? {
         val existing = engineRef
         if (existing != null && (host == null || hintedHosts.contains(host))) return existing
@@ -168,12 +168,12 @@ object CronetForwarder {
             .setLibraryLoader(object : CronetEngine.Builder.LibraryLoader() {
                 override fun loadLibrary(libName: String) {
                     try {
-                        // Generated APKs (and any host that bundles it): nativeLibraryDir.
+                        
                         System.loadLibrary(libName)
                         return
                     } catch (_: Throwable) {
                     }
-                    // Host preview: the .so is downloaded on demand (packaging excludes it).
+                    
                     val downloaded = File(depsDir, "lib$libName.so")
                     if (downloaded.isFile && downloaded.length() > 0L) {
                         System.load(downloaded.absolutePath)
@@ -185,8 +185,8 @@ object CronetForwarder {
         val hintPort = if (port in 1..65535) port else 443
         hosts.forEach { builder.addQuicHint(it, hintPort, hintPort) }
         if (echMode) {
-            // The built-in resolver is what queries HTTPS (type 65) records; without it
-            // Cronet falls back to getaddrinfo and ECH never sees an ECHConfig to use.
+            
+            
             builder.setDnsOptions(
                 DnsOptions.builder().useBuiltInDnsResolver(true).build()
             )

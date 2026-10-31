@@ -40,7 +40,7 @@ class BootReceiver : BroadcastReceiver() {
         val autoStartManager = AutoStartManager(context)
         val bootDelay = autoStartManager.getBootDelay()
 
-        // Null when WAKE_LOCK is missing/revoked — work proceeds unlocked (#1034).
+        
         val wakeLock = WakeLockCompat.acquire(context, WAKELOCK_TAG, WAKELOCK_TIMEOUT_MS)
 
         try {
