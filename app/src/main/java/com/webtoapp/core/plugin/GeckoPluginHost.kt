@@ -2,12 +2,12 @@ package com.webtoapp.core.plugin
 
 import org.json.JSONObject
 
-/**
- * Page plugins on GeckoView. The engine has no `addJavascriptInterface`, so
- * HCJ talks to the host through `prompt()` tokens that [handlePrompt] claims
- * before a dialog is shown. Config, badges, and panel messages use that
- * channel. Chrome extensions and the Greasemonkey bridge stay on System WebView.
- */
+
+
+
+
+
+
 object GeckoPluginHost {
     const val CONFIG_PROMPT = "__wta_hcj_cfg__"
     const val BADGE_PROMPT = "__wta_hcj_badge__"
@@ -71,11 +71,11 @@ object GeckoPluginHost {
         return parts.joinToString("\n")
     }
 
-    /**
-     * @return true when [message] is a plugin channel and the prompt must not
-     * be shown. Config writes land in [store]. Badge and panel calls update
-     * the host surface through [session].
-     */
+    
+
+
+
+
     fun handlePrompt(
         message: String?,
         value: String?,
