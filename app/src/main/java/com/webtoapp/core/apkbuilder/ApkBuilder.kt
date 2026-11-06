@@ -67,14 +67,14 @@ class ApkBuilder(private val context: Context) {
         private val CHARSET_REGEX = AppConstants.CHARSET_REGEX
         private const val FLOATING_WINDOW_MINIMIZED_ICON_ASSET = "floating_window_minimized_icon.png"
 
-        
-
-
-
-
-
-
-
+        /**
+         * Per-package build locks, shared by every [ApkBuilder] instance. Multiple entry
+         * points (export screen, home share button, agent tools, batch export) can start
+         * builds concurrently, and a build writes to deterministic temp paths keyed by
+         * package name — without serialization two builds of the same package interleave
+         * (one build's cleanup deletes the other's in-flight template copy / aligned ELF /
+         * unsigned APK mid-sign).
+         */
         private val buildLocks = java.util.concurrent.ConcurrentHashMap<String, Mutex>()
 
         private fun lockFor(packageName: String): Mutex =
@@ -82,7 +82,7 @@ class ApkBuilder(private val context: Context) {
                 Mutex()
             }
 
-        
+        /** Adaptive icon canvas size (108dp @ xxxhdpi) used for foreground/background layers. */
         private const val ADAPTIVE_ICON_PX = 432
         private val GECKOVIEW_RUNTIME_COMPONENTS = (0..39)
             .map { "org.mozilla.gecko.process.GeckoChildProcessServices\$tab$it" }
@@ -95,22 +95,22 @@ class ApkBuilder(private val context: Context) {
             "org.mozilla.gecko.process.GeckoChildProcessServices\$ipdlunittest"
         )
 
-        
-
-
-
-
-
+        /**
+         * Zip entry names (lib/<deviceAbi>/<lib>.so) that the per-app-type native-lib injection
+         * step writes for the device ABI. The template-copy phase skips these so the injection
+         * (16KB-aligned) is the single source and no duplicate entry is emitted — fixes the
+         * GO_APP / NODEJS_APP "duplicate entry: lib/<abi>/<lib>.so" build failure.
+         */
         internal fun injectedDeviceLibEntries(appType: String, deviceAbi: String): Set<String> =
             injectedNativeLibNames(appType).mapTo(mutableSetOf()) { "lib/$deviceAbi/$it" }
 
-        
-
-
-
-
-
-
+        /**
+         * Additional lib/ entries the injection step writes for selected ABIs OTHER than the
+         * device ABI. The template ships the bridge/launcher libs for every ABI already (they
+         * are 16KB-aligned), so only libnode.so — never in the template, downloaded on demand —
+         * is injected per extra ABI. Skipping these during the copy pass keeps CONTENT_OVERLAY
+         * builds from duplicating entries already present in the cached base APK.
+         */
         internal fun injectedMultiAbiLibEntries(
             appType: String,
             deviceAbi: String,
@@ -135,11 +135,11 @@ class ApkBuilder(private val context: Context) {
             add("assets/omni.ja")
         }
 
-        
-
-
-
-
+        /**
+         * Whether the exported APK needs the Cronet native lib: the h3 toggle or ECH on
+         * the system engine activates the Cronet upstream. Mirrors
+         * TlsMitmBridge.Config.cronetActive (SOCKS upstream wins and disables both).
+         */
         internal fun cronetNeededForExport(config: ApkConfig): Boolean {
             if (!(config.tlsFingerprint.forceHttp3 || config.dns.config.echEffective)) return false
             val socksUpstream = config.proxyMode == "STATIC" &&
@@ -157,15 +157,15 @@ class ApkBuilder(private val context: Context) {
 
         private const val DEFAULT_VERSION_NAME = "1.0.0"
 
-        
-
-
-
-
-
-
-
-
+        /**
+         * The package name this app will actually ship with: an explicit custom
+         * package when it is set and well-formed, otherwise the name-derived one.
+         *
+         * This rule used to be copy-pasted in three places (here, the build
+         * pipeline and the export screen). That drift is the root cause of
+         * issue #672: the screen could not reproduce a derived package name, so
+         * it never found the already-installed app and never bumped the version.
+         */
         fun resolvePackageName(webApp: WebApp): String {
             val custom = webApp.apkExportConfig?.customPackageName?.takeIf {
                 it.isNotBlank() && it.matches(PACKAGE_NAME_REGEX)
@@ -197,7 +197,7 @@ class ApkBuilder(private val context: Context) {
             return String(chars)
         }
 
-        
+        /** Installed versionCode for [packageName], or null when not installed. */
         fun findInstalledVersionCode(context: Context, packageName: String): Long? {
             if (packageName.isBlank()) return null
             return try {
@@ -221,10 +221,10 @@ class ApkBuilder(private val context: Context) {
             }
         }
 
-        
-
-
-
+        /**
+         * Opens the installed app for [packageName]. Returns false when the
+         * package is missing, has no launcher activity, or the start fails.
+         */
         fun launchInstalledPackage(context: Context, packageName: String): Boolean {
             if (packageName.isBlank()) return false
             val launch = context.packageManager.getLaunchIntentForPackage(packageName)
@@ -239,14 +239,14 @@ class ApkBuilder(private val context: Context) {
             }
         }
 
-        
-
-
-
-
-
-
-
+        /**
+         * Android refuses to install over an existing package when versionCode
+         * is lower, so rebuilds that would land as a downgrade get their
+         * version bumped. Equal-or-higher versions set by the user are left
+         * alone — reinstalling the same versionCode is a valid update — and
+         * [ApkExportConfig.autoVersionBump] = false pins the configured
+         * version exactly, downgrade or not.
+         */
         internal fun withInstallAwareVersion(context: Context, webApp: WebApp): WebApp {
             val (code, name) = suggestedVersionForInstall(context, webApp) ?: return webApp
             val config = webApp.apkExportConfig
@@ -259,13 +259,13 @@ class ApkBuilder(private val context: Context) {
             )
         }
 
-        
-
-
-
-
-
-
+        /**
+         * The version this build should ship with when the target package is
+         * already installed, or null when nothing has to change. Shared by the
+         * export screen (so the suggested version matches what the build will
+         * actually use) and by the build itself (so agent tools and batch export
+         * bump identically).
+         */
         fun suggestedVersionForInstall(context: Context, webApp: WebApp): Pair<Int, String>? {
             val config = webApp.apkExportConfig
             if (config?.autoVersionBump == false) return null
@@ -280,11 +280,11 @@ class ApkBuilder(private val context: Context) {
             return bumpedCode to bumpVersionName(currentName)
         }
 
-        
-
-
-
-
+        /**
+         * Bumps the last numeric segment ("1.0.0" -> "1.0.1", "v2.1" -> "v2.2").
+         * Anything not ending in digits (for example "1.0.0-beta") is returned
+         * untouched rather than mangled into a version nobody asked for.
+         */
         internal fun bumpVersionName(current: String): String {
             val match = Regex("""^(.*?)(\d+)$""").find(current.trim()) ?: return current
             val (prefix, number) = match.destructured
@@ -307,12 +307,12 @@ class ApkBuilder(private val context: Context) {
     private val outputDir = resolveOutputDir(context)
     private val tempDir = File(context.cacheDir, "apk_build_temp").apply { mkdirs() }
 
-    
-
-
-
-
-
+    /**
+     * Working directory of the in-flight build (per package). Same-package builds are
+     * serialized by the companion [buildLocks], so the deterministic paths inside it
+     * (unsigned APK, template copy, aligned-ELF outputs) can never be touched by a
+     * concurrent build; different packages get different directories.
+     */
     @Volatile
     private var activeWorkDir: File? = null
 
@@ -370,12 +370,12 @@ class ApkBuilder(private val context: Context) {
         }
     }
 
-    
-
-
-
-
-
+    /**
+     * Every build goes through here, so version bumping lives here too. Doing it
+     * at the entry point means the agent tools and batch export get the same
+     * behaviour as the export screen, and the incremental cache fingerprints the
+     * final version rather than the pre-bump one.
+     */
     suspend fun buildApk(
         webApp: WebApp,
         forceFullRebuild: Boolean = false,
@@ -390,11 +390,11 @@ class ApkBuilder(private val context: Context) {
             return BuildResult.Error(Strings.adMobAppIdInvalid)
         }
         return withContext(Dispatchers.IO) {
-        
-        
-        
-        
-        
+        // Serialize builds of the same package across all entry points (export screen,
+        // home share, agent tools): the build writes deterministic temp paths keyed by
+        // package name, so two overlapping builds would corrupt each other's files.
+        // The foreground service + wake lock covers the whole section — a long build must
+        // survive the app being backgrounded, and progress updates ride the same channel.
         ApkBuildService.start(context, webApp.name)
         try {
             lockFor(resolvePackageName(webApp)).withLock {
@@ -440,11 +440,11 @@ class ApkBuilder(private val context: Context) {
             val encryptionExportConfig = webApp.apkExportConfig?.encryptionConfig
                 ?: com.webtoapp.data.model.ApkEncryptionConfig()
 
-            
-            
-            
-            
-            
+            // Per-app signing (opt-in). Resolved before the encryption-key derivation
+            // below: password-less encrypted builds mix the signing certificate hash into
+            // the key, so the hash must be the identity that will actually sign the APK.
+            // Failing to produce it fails the build — silently falling back to the global
+            // key would mint an APK the per-app identity can never update.
             val perAppIdentity = if (webApp.apkExportConfig?.perAppSigningEnabled == true) {
                 try {
                     PerAppSigningIdentity.identityFor(context, resolvePackageName(webApp))
@@ -939,6 +939,12 @@ class ApkBuilder(private val context: Context) {
                 htmlFiles = htmlFiles,
                 galleryItems = galleryItems,
                 errorPageMediaPath = errorPageMediaPath,
+                extensionDirs = config.embeddedPlugins
+                    .filter { it.kind == "CHROME_EXTENSION" }
+                    .mapNotNull { plugin ->
+                        com.webtoapp.core.extension.ExtensionFileManager(context)
+                            .findChromeExtensionRoot(plugin.chromeExtId)
+                    },
                 nativeLibsFingerprint = runtimeAssetsFingerprint(
                     webApp.appType,
                     config.engineType,
@@ -1899,6 +1905,13 @@ class ApkBuilder(private val context: Context) {
 
                 addCustomCaCertsToAssets(zipOut, config.networkTrustConfig.customCaCertificates)
 
+                addChromeExtensionAssetsToApk(
+                    zipOut = zipOut,
+                    config = config,
+                    encryptor = assetEncryptor,
+                    encryptionConfig = encryptionConfig
+                )
+
                 val projectDir = when (config.appType) {
                     "WORDPRESS" -> wordPressProjectDir
                     "NODEJS_APP" -> nodejsProjectDir
@@ -1968,8 +1981,14 @@ class ApkBuilder(private val context: Context) {
                             fileHook = if (encryptionConfig.enabled && assetEncryptor != null) {
                                 { zo, assetPath, file ->
                                     val assetName = assetPath.removePrefix("assets/")
-                                    val encryptedData = assetEncryptor.encrypt(file.readBytes(), assetName)
-                                    ZipUtils.writeEntryDeflated(zo, "${assetPath}.enc", encryptedData)
+                                    val entry = java.util.zip.ZipEntry("${assetPath}.enc")
+                                    entry.method = java.util.zip.ZipEntry.DEFLATED
+                                    zo.putNextEntry(entry)
+                                    val written = file.inputStream().buffered().use { input ->
+                                        assetEncryptor.encryptStreaming(input, assetName, zo)
+                                    }
+                                    zo.closeEntry()
+                                    logger.log("File encrypted: ${assetPath}.enc ($written bytes)")
                                     true
                                 }
                             } else null
@@ -2103,9 +2122,10 @@ class ApkBuilder(private val context: Context) {
 
                 if (isVideo && fileSize > largeFileThreshold) {
                     AppLogger.d("ApkBuilder", "Splash large video encryption mode: ${fileSize / 1024 / 1024} MB")
-                    val encryptedData = encryptLargeFile(mediaFile, assetPath, encryptor)
-                    writeEntryDeflated(zipOut, "assets/${assetPath}.enc", encryptedData)
-                    AppLogger.d("ApkBuilder", "Splash media encrypted and embedded: assets/${assetPath}.enc (${encryptedData.size} bytes)")
+                    val written = writeEncryptedFileEntry(
+                        zipOut, "assets/${assetPath}.enc", mediaFile, assetPath, encryptor
+                    )
+                    AppLogger.d("ApkBuilder", "Splash media encrypted and embedded: assets/${assetPath}.enc ($written bytes)")
                 } else {
                     val mediaBytes = mediaFile.readBytes()
                     val encryptedData = encryptor.encrypt(mediaBytes, assetPath)
@@ -2229,6 +2249,60 @@ class ApkBuilder(private val context: Context) {
         } catch (e: Exception) {
             AppLogger.e("ApkBuilder", "Failed to embed status bar background: ${e.message}", e)
         }
+    }
+
+    private fun addChromeExtensionAssetsToApk(
+        zipOut: ZipOutputStream,
+        config: ApkConfig,
+        encryptor: com.webtoapp.core.crypto.AssetEncryptor?,
+        encryptionConfig: com.webtoapp.core.crypto.EncryptionConfig
+    ) {
+        val extensions = config.embeddedPlugins.filter {
+            it.kind == "CHROME_EXTENSION" && it.chromeExtId.isNotBlank()
+        }
+        if (extensions.isEmpty()) return
+
+        val fileManager = com.webtoapp.core.extension.ExtensionFileManager(context)
+        val writtenEntries = HashSet<String>()
+        var fileCount = 0
+        var totalBytes = 0L
+        extensions.forEach { plugin ->
+            val root = fileManager.findChromeExtensionRoot(plugin.chromeExtId)
+            if (root == null) {
+                AppLogger.w(
+                    "ApkBuilder",
+                    "Chrome extension files not found for ${plugin.chromeExtId}; popup/background will be empty"
+                )
+                logger.log("Chrome extension files missing: ${plugin.chromeExtId}")
+                return@forEach
+            }
+            root.walkTopDown()
+                .filter { it.isFile }
+                .forEach { file ->
+                    val relative = file.relativeTo(root).path.replace(File.separatorChar, '/')
+                    if (relative.isBlank() || relative.split('/').any { it.startsWith(".") }) {
+                        return@forEach
+                    }
+                    val assetName = "extensions/${plugin.chromeExtId}/$relative"
+                    val entryEncryptor = if (encryptionConfig.enabled) encryptor else null
+                    val entryName = "assets/$assetName" + if (entryEncryptor != null) ".enc" else ""
+                    if (!writtenEntries.add(entryName)) return@forEach
+                    if (entryEncryptor != null) {
+                        val entry = java.util.zip.ZipEntry(entryName)
+                        entry.method = java.util.zip.ZipEntry.DEFLATED
+                        zipOut.putNextEntry(entry)
+                        file.inputStream().buffered().use { input ->
+                            entryEncryptor.encryptStreaming(input, assetName, zipOut)
+                        }
+                        zipOut.closeEntry()
+                    } else {
+                        ZipUtils.writeEntryDeflatedStreaming(zipOut, entryName, file)
+                    }
+                    fileCount++
+                    totalBytes += file.length()
+                }
+        }
+        logger.log("Chrome extension assets embedded: $fileCount files, ${totalBytes / 1024} KB")
     }
 
     /**
@@ -2380,9 +2454,10 @@ class ApkBuilder(private val context: Context) {
                 if (fileSize > largeFileThreshold) {
                     AppLogger.d("ApkBuilder", "Large file encryption mode: ${fileSize / 1024 / 1024} MB")
 
-                    val encryptedData = encryptLargeFile(mediaFile, assetName, encryptor)
-                    writeEntryDeflated(zipOut, "assets/${assetName}.enc", encryptedData)
-                    AppLogger.d("ApkBuilder", "Media content encrypted and embedded: assets/${assetName}.enc (${encryptedData.size} bytes)")
+                    val written = writeEncryptedFileEntry(
+                        zipOut, "assets/${assetName}.enc", mediaFile, assetName, encryptor
+                    )
+                    AppLogger.d("ApkBuilder", "Media content encrypted and embedded: assets/${assetName}.enc ($written bytes)")
                 } else {
                     val mediaBytes = mediaFile.readBytes()
                     val encryptedData = encryptor.encrypt(mediaBytes, assetName)
@@ -2436,8 +2511,9 @@ class ApkBuilder(private val context: Context) {
 
                 if (encryptionConfig.enabled && encryptor != null) {
                     if (isVideo && fileSize > largeFileThreshold) {
-                        val encryptedData = encryptLargeFile(mediaFile, assetName, encryptor)
-                        writeEntryDeflated(zipOut, "assets/${assetName}.enc", encryptedData)
+                        writeEncryptedFileEntry(
+                            zipOut, "assets/${assetName}.enc", mediaFile, assetName, encryptor
+                        )
                     } else {
                         val data = mediaFile.readBytes()
                         val encrypted = encryptor.encrypt(data, assetName)
@@ -3103,15 +3179,32 @@ builtins.__import__ = _w2a_import
         RuntimeAssetEmbedder.embedProjectFiles(zipOut, projectDir, RuntimeAssetEmbedder.frontendConfig(), logger)
     }
 
-    private fun encryptLargeFile(file: File, assetName: String, encryptor: AssetEncryptor): ByteArray {
-        val fileSize = file.length()
-        val maxEncryptSize = 100L * 1024 * 1024
-        if (fileSize > maxEncryptSize) {
-            AppLogger.w("ApkBuilder", "WARNING: Encrypting very large file ($assetName, ${fileSize / 1024 / 1024}MB). " +
-                "May cause high memory usage. Consider disabling encryption for large media files.")
+    /**
+     * Encrypts [file] straight into a deflated zip entry, header and GCM tag
+     * included. The previous whole-buffer helper allocated roughly four times
+     * the file size (bytes, header copy, IV-stripped copy, ciphertext), so a
+     * 200 MB video export could OOM the builder. This streams through a 64 KB
+     * window instead.
+     */
+    private fun writeEncryptedFileEntry(
+        zipOut: ZipOutputStream,
+        entryName: String,
+        file: File,
+        assetName: String,
+        encryptor: AssetEncryptor,
+    ): Long {
+        val entry = java.util.zip.ZipEntry(entryName)
+        entry.method = java.util.zip.ZipEntry.DEFLATED
+        zipOut.putNextEntry(entry)
+        val written = try {
+            file.inputStream().buffered().use { input ->
+                encryptor.encryptStreaming(input, assetName, zipOut)
+            }
+        } finally {
+            // Never let a close failure mask the real encryption error.
+            runCatching { zipOut.closeEntry() }
         }
-        val mediaBytes = file.readBytes()
-        return encryptor.encrypt(mediaBytes, assetName)
+        return written
     }
 
     private fun isTextFile(fileName: String): Boolean {
@@ -3356,22 +3449,22 @@ builtins.__import__ = _w2a_import
         otherFiles.forEach { otherFile ->
             try {
                 val sourceFile = File(otherFile.path)
-                if (sourceFile.exists() && sourceFile.canRead()) {
-                    val fileBytes = sourceFile.readBytes()
-                    if (fileBytes.isNotEmpty()) {
-                        val assetPath = "assets/html/${otherFile.name}"
-                        val assetName = "html/${otherFile.name}"
+                if (sourceFile.exists() && sourceFile.canRead() && sourceFile.length() > 0L) {
+                    val assetPath = "assets/html/${otherFile.name}"
+                    val assetName = "html/${otherFile.name}"
 
-                        if (encryptionConfig.enabled && encryptor != null) {
-                            val encryptedData = encryptor.encrypt(fileBytes, assetName)
-                            writeEntryDeflated(zipOut, "${assetPath}.enc", encryptedData)
-                            AppLogger.d("ApkBuilder", "Other file encrypted and embedded: ${assetPath}.enc (${encryptedData.size} bytes)")
-                        } else {
-                            writeEntryDeflated(zipOut, assetPath, fileBytes)
-                            AppLogger.d("ApkBuilder", "Other file embedded: $assetPath (${fileBytes.size} bytes)")
-                        }
-                        successCount++
+                    if (encryptionConfig.enabled && encryptor != null) {
+                        // "Other files" are images, fonts and models — they can be
+                        // arbitrarily large, so never buffer them whole.
+                        val written = writeEncryptedFileEntry(
+                            zipOut, "${assetPath}.enc", sourceFile, assetName, encryptor
+                        )
+                        AppLogger.d("ApkBuilder", "Other file encrypted and embedded: ${assetPath}.enc ($written bytes)")
+                    } else {
+                        ZipUtils.writeEntryDeflatedStreaming(zipOut, assetPath, sourceFile)
+                        AppLogger.d("ApkBuilder", "Other file embedded: $assetPath (${sourceFile.length()} bytes)")
                     }
+                    successCount++
                 }
             } catch (e: Exception) {
                 AppLogger.e("ApkBuilder", "Failed to embed other file: ${otherFile.path}", e)

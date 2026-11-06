@@ -107,6 +107,7 @@ class ApkBuildCache(private val context: Context) {
         htmlFiles: List<com.webtoapp.data.model.HtmlFile>,
         galleryItems: List<com.webtoapp.data.model.GalleryItem>,
         errorPageMediaPath: String?,
+        extensionDirs: List<File?> = emptyList(),
         nativeLibsFingerprint: String? = null,
         hostVersionCode: Int = 0,
         forceFullRebuild: Boolean,
@@ -140,6 +141,7 @@ class ApkBuildCache(private val context: Context) {
             htmlFiles = htmlFiles,
             galleryItems = galleryItems,
             errorPageMediaPath = errorPageMediaPath,
+            extensionDirs = extensionDirs,
             statusBarImage = config.statusBarBackgroundImage,
             statusBarImageDark = config.statusBarBackgroundImageDark,
             floatingIcon = config.floatingWindowMinimizedIconPath,
@@ -275,7 +277,7 @@ class ApkBuildCache(private val context: Context) {
         }
     }
 
-    
+    /** Disk bytes the [clear] call for this app would free; 0 when nothing is cached. */
     fun entrySizeBytes(webApp: WebApp, packageName: String): Long {
         val dir = File(rootDir, cacheKeyFor(webApp, packageName))
         if (!dir.exists()) return 0L
@@ -310,9 +312,9 @@ class ApkBuildCache(private val context: Context) {
         if (entryName.startsWith("assets/php_app/")) return true
         if (entryName.startsWith("assets/python/")) return true
         if (entryName.startsWith("assets/python_app/")) return true
-        
-        
-        
+        // Re-embedded by RuntimeAssetEmbedder.embedPythonStdlib on every build in both
+        // modes; without this entry CONTENT_OVERLAY copies the cached stdlib AND the
+        // embedder writes it again — duplicate entries accumulating on every rebuild.
         if (entryName.startsWith("assets/python_runtime/")) return true
         if (entryName.startsWith("assets/go_app/")) return true
         if (entryName.startsWith("assets/frontend_app/")) return true
@@ -321,6 +323,7 @@ class ApkBuildCache(private val context: Context) {
         if (entryName.startsWith("assets/wta_custom_ca/")) return true
         if (entryName.startsWith("assets/multiweb_sites/")) return true
         if (entryName.startsWith("assets/multi_web/")) return true
+        if (entryName.startsWith("assets/extensions/")) return true
         return false
     }
 
@@ -375,12 +378,12 @@ class ApkBuildCache(private val context: Context) {
         parts += "pkg=${config.packageName}"
         parts += "vc=${config.versionCode}"
         parts += "vn=${config.versionName}"
-        
-        
-        
-        
-        
-        
+        // Host app versionCode participates so a host upgrade (which may ship improved
+        // packaging/alignment/export logic) invalidates every cached unsigned APK, forcing a
+        // FULL rebuild that re-applies the latest logic. Without this, a user who built a
+        // NODEJS_APP on an older host and upgrades without re-downloading libnode.so would
+        // keep hitting REUSE_UNSIGNED and serving a stale APK (e.g. one with an unaligned
+        // libnode.so that dlopen rejects on Android 15+/16KB-page devices).
         parts += "hostVc=$hostVersionCode"
         parts += "name=${config.appName}"
         parts += "type=${config.appType}"
@@ -436,6 +439,7 @@ class ApkBuildCache(private val context: Context) {
         htmlFiles: List<com.webtoapp.data.model.HtmlFile>,
         galleryItems: List<com.webtoapp.data.model.GalleryItem>,
         errorPageMediaPath: String?,
+        extensionDirs: List<File?> = emptyList(),
         statusBarImage: String?,
         statusBarImageDark: String?,
         floatingIcon: String?,
@@ -446,6 +450,9 @@ class ApkBuildCache(private val context: Context) {
         parts += "configJson=${ApkConfigJsonFactory.create(config)}"
         projectDirs.filterNotNull().forEach { dir ->
             parts += "dir=${dir.absolutePath}|${treeFingerprint(dir)}"
+        }
+        extensionDirs.filterNotNull().forEach { dir ->
+            parts += "extensions=${dir.absolutePath}|${treeFingerprint(dir)}"
         }
         parts += "media=${fileFingerprint(mediaContentPath)}"
         parts += "splash=${fileFingerprint(splashMediaPath)}"
