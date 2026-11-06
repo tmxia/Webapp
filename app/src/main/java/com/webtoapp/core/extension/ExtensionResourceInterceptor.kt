@@ -206,4 +206,15 @@ object ExtensionResourceInterceptor {
             ByteArrayInputStream(ByteArray(0))
         )
     }
+
+
+fun readAssetText(context: Context, assetPath: String): String? {
+        val stream = openAssetStream(context, assetPath) ?: return null
+        return try {
+            stream.bufferedReader(Charsets.UTF_8).use { it.readText() }
+        } catch (e: Exception) {
+            AppLogger.w(TAG, "Error reading extension asset: $assetPath", e)
+            null
+        }
+    }
 }

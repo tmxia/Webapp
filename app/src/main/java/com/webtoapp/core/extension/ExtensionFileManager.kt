@@ -546,4 +546,28 @@ class ExtensionFileManager(private val context: Context) {
             null
         }
     }
+
+
+fun findChromeExtensionRoot(extensionId: String): File? {
+        val clean = extensionId.trim()
+        if (clean.isEmpty()) return null
+        rootCache[rootCacheKey(clean)]?.takeIf { it.isDirectory }?.let { return it }
+        findManifestDirectory(File(extensionsDir, clean))?.let {
+            rootCache[rootCacheKey(clean)] = it
+            return it
+        }
+        extensionsDir.listFiles()
+            ?.filter { it.isDirectory && it.name != clean && it.isUsableExtensionDirName() }
+            ?.forEach { dir ->
+                val manifestDir = findManifestDirectory(dir) ?: return@forEach
+                val manifest = runCatching {
+                    org.json.JSONObject(File(manifestDir, "manifest.json").readText())
+                }.getOrNull() ?: return@forEach
+                if (ChromeExtensionParser.computeExtensionId(manifest) == clean) {
+                    rootCache[rootCacheKey(clean)] = manifestDir
+                    return manifestDir
+                }
+            }
+        return null
+    }
 }
