@@ -3,10 +3,10 @@ package com.webtoapp.core.home
 import android.content.Context
 import com.webtoapp.data.home.AppListSort
 
-
-
-
-
+/**
+ * Home-list sort mode. Independent of the category filter: the choice is
+ * always restored, including on a fresh install (recently updated).
+ */
 class AppListSortStore(context: Context) {
 
     private val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)

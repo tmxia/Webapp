@@ -360,7 +360,7 @@ private fun ExportAppCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             } else {
-                
+                // Selected app doubles as the picker toggle when alternatives exist
                 Surface(
                     onClick = onTogglePicker,
                     enabled = totalCount > 1,

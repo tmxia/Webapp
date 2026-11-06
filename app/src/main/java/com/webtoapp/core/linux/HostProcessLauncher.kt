@@ -3,14 +3,14 @@ package com.webtoapp.core.linux
 import java.io.File
 import kotlin.jvm.functions.Function1
 
-
-
-
-
-
-
-
-
+/**
+ * Launch fork+exec runtimes with the right channel for the current build:
+ * plain ProcessBuilder when execve works (server-runtime exports pinned to
+ * targetSdk 28), or the user-mode exec loader under host W^X (targetSdk>=29).
+ *
+ * The loader class stays host-only. This file is shell-synced, so the W^X
+ * path looks it up by name and degrades when the loader is not in the APK.
+ */
 object HostProcessLauncher {
 
     data class Result(
@@ -36,8 +36,8 @@ object HostProcessLauncher {
         if (!RuntimeExecPolicy.hasStaticExecBridge(context)) {
             return Result(null, RuntimeExecPolicy.hostPreviewBlockedMessage(runtimeLabel))
         }
-        
-        
+        // Match ProcessBuilder.environment() semantics: the caller's vars are
+        // an overlay on the parent environment, not a replacement for it.
         val fullEnv = System.getenv().toMutableMap()
         fullEnv.putAll(env)
         var spawnError: String? = null
@@ -45,10 +45,10 @@ object HostProcessLauncher {
         return Result(proc, spawnError)
     }
 
-    
-
-
-
+    /**
+     * Host preview only. [com.webtoapp.core.linux.StaticExecProcess] is excluded
+     * from the shell sync, and generated APKs do not carry libstatic_exec.so.
+     */
     private fun startStaticExec(
         command: List<String>,
         env: Map<String, String>,

@@ -10,10 +10,10 @@ import org.mozilla.geckoview.GeckoRuntime
 import org.mozilla.geckoview.GeckoSession
 import org.mozilla.geckoview.WebExtension
 
-
-
-
-
+/**
+ * Gecko has no JavascriptInterface. This built-in extension installs the same
+ * page share behavior at document start and forwards the chunks to [ShareBridge].
+ */
 object GeckoShareExtension {
     private const val LOCATION = "resource://android/assets/web_extensions/wta_share/"
     private const val NATIVE_APP = "wta_share"

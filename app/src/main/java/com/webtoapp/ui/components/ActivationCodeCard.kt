@@ -128,10 +128,10 @@ fun ActivationCodeCard(
                 Column {
                     WtaSectionDivider()
 
-                    
-                    
-                    
-                    
+                    // Verification mode: exactly one scheme is active at a time; runtime
+                    // treats remoteConfig.enabled as "online verification wins", so these
+                    // radios write that single flag and gate the scheme blocks below.
+                    // Same radio-group pattern as the PWA offline strategy selector.
                     Column(
                         modifier = Modifier.padding(
                             horizontal = WtaSpacing.RowHorizontal,
@@ -450,8 +450,8 @@ private fun RemoteActivationSection(
     onRemoteConfigChange: (com.webtoapp.data.model.RemoteActivationConfig) -> Unit,
     onShowGuide: () -> Unit
 ) {
-    
-    
+    // Same padded expanded-zone pattern as the proxy / PWA-strategy blocks in the
+    // browser advanced card: labelMedium primary group labels + radio rows.
     Column(
         modifier = Modifier.padding(
             horizontal = WtaSpacing.RowHorizontal,
@@ -692,7 +692,7 @@ private fun RemoteActivationGuideDialog(
     )
 }
 
-
+/** The full server-integration guide as Markdown — used by "copy all" and "save as document". */
 private fun buildRemoteGuideMarkdown(): String = buildString {
     appendLine("# ${Strings.remoteActivationGuideTitle}")
     appendLine()

@@ -124,8 +124,8 @@ fun EncryptionConfigCard(
                             label = Strings.encryptionKeyModeEmbedded
                         )
                     }
-                    
-                    
+                    // Signature-bound keys silently stop decrypting after any re-sign;
+                    // surface the warning only while that risky mode is selected.
                     if (keyMode == ApkEncryptionConfig.KEY_MODE_SIGNATURE) {
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(6.dp),

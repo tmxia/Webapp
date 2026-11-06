@@ -12,15 +12,15 @@ import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 
-
-
-
-
-
-
-
-
-
+/**
+ * Machine-readable release metadata, written as a `<name>.build.json` sidecar next to every
+ * successfully built APK.
+ *
+ * The human-readable build log already records the same facts; the sidecar exists for
+ * tooling — a script (or a future "verify an APK" screen) can answer "which host version /
+ * certificate / config produced this file" without parsing log text. The file is a pure
+ * sidecar: nothing in the build reads it back, so a write failure is logged and ignored.
+ */
 object BuildMetadataWriter {
 
     private const val TAG = "BuildMetadata"

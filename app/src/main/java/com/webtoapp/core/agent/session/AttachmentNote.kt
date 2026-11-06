@@ -2,20 +2,20 @@ package com.webtoapp.core.agent.session
 
 import java.io.File
 
-
-
-
-
-
-
-
+/**
+ * Builds the `<user-attachments>` block appended to a user message before it
+ * goes to the model. Attachments are PATH REFERENCES, never inlined content:
+ * the note lists where each file landed in the session sandbox (with size /
+ * entry count) and leaves the model to inspect them with its own tools — a
+ * 1GB upload must cost one line of context, not 1GB of prompt.
+ */
 object AttachmentNote {
 
-    
-
-
-
-
+    /**
+     * @param statFile resolves a sandbox-relative path to a real file, used only
+     *   as a fallback for attachments persisted before [UserAttachment.sizeBytes]
+     *   existed. May return null for missing paths.
+     */
     fun build(attachments: List<UserAttachment>, statFile: (String) -> File?): String {
         if (attachments.isEmpty()) return ""
         val sb = StringBuilder("\n\n<user-attachments>\n")

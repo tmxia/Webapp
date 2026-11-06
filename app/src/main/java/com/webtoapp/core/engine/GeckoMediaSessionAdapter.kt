@@ -7,18 +7,18 @@ import com.webtoapp.core.webview.MediaSessionCore
 import org.mozilla.geckoview.GeckoSession
 import org.mozilla.geckoview.MediaSession as GeckoMediaSession
 
-
-
-
-
-
-
-
-
-
-
-
-
+/**
+ * Feeds GeckoView's native Web Media Session events into the shared
+ * [MediaSessionCore] and routes native media commands back to the page (#593).
+ *
+ * GeckoView implements the web Media Session API itself (no JS polyfill
+ * needed, no frame arbitration — the engine reports the page-level session),
+ * so this adapter is a pure event/command translation: onPlay/onPause/onStop
+ * map to native playback states, `Metadata`/`PositionState` map to core
+ * metadata/position (which interpolates progress between position reports),
+ * `Feature` flags gate optional actions, and commands map to
+ * [GeckoMediaSession] controller calls.
+ */
 class GeckoMediaSessionAdapter(
     activity: Activity,
     private val engine: GeckoViewEngine
@@ -26,7 +26,7 @@ class GeckoMediaSessionAdapter(
 
     private val core = MediaSessionCore(activity, ::dispatchCommand)
 
-    
+    /** Controller handle from delegate callbacks; null while inactive. */
     private var controller: GeckoMediaSession? = null
 
     private val delegate = object : GeckoMediaSession.Delegate {
@@ -53,7 +53,7 @@ class GeckoMediaSessionAdapter(
             controller = mediaSession
             core.updateMetadata(meta.title, meta.artist, meta.album, "")
 
-            
+            // Image.getBitmap decodes asynchronously off the main thread.
             meta.artwork?.getBitmap(ARTWORK_SIZE)?.accept(
                 { bitmap -> core.updateArtwork(bitmap) },
                 { error ->
@@ -160,7 +160,7 @@ class GeckoMediaSessionAdapter(
     private companion object {
         const val TAG = "GeckoMediaSession"
 
-        
+        /** Lock-screen artwork target; SystemUI scales as needed. */
         const val ARTWORK_SIZE = 512
     }
 }

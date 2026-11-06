@@ -35,10 +35,10 @@ fun ShellContentRouter(
     when {
         appType == "IMAGE" || appType == "VIDEO" -> {
 
-            
-            
-            
-            
+            // Multi-web embedded sites keep their media under a per-site
+            // prefix (see MultiWebContentEmbedder); host-run preview instead
+            // carries an absolute host path on the site shell config. Null
+            // preserves the legacy hardcoded root asset (standalone export).
             val isSiteVideo = appType == "VIDEO"
             MediaContentDisplay(
                 isVideo = isSiteVideo,

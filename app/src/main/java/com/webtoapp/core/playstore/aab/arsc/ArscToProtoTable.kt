@@ -82,10 +82,10 @@ object ArscToProtoTable {
 
             val entryName = canonicalName[entryIndex] ?: continue
 
-            
-            
-            
-            
+            // Drop config values whose resource file was excluded (plaintext res XML skipped
+            // from the bundle; see ApkToAabAssembler, issue #293). If nothing remains, drop the
+            // whole entry so the resource table doesn't reference a non-existing file
+            // (bundletool rejects the AAB otherwise).
             val keptConfigValues = if (excludedResFiles.isEmpty()) {
                 configValues
             } else {
@@ -126,7 +126,7 @@ object ArscToProtoTable {
         return typeBuilder.build()
     }
 
-    
+    /** True if any value of this entry references a res file in [excludedResFiles]. */
     private fun entryReferencesExcludedFile(
         entry: ArscEntry,
         valuePool: List<String>,

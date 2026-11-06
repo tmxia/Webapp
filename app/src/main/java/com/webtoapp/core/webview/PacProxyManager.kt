@@ -55,8 +55,8 @@ class PacProxyManager(private val context: Context) {
             .filter { it.isNotBlank() }
             .distinct()
         if (!isProxyOverrideSupported()) {
-            
-            
+            // Pre-67 WebView: ProxyController is a no-op. Arm the in-app fetch
+            // fallback (same settings) instead of silently doing nothing.
             AppLogger.w(TAG, "PROXY_OVERRIDE not supported, arming legacy fetch fallback")
             applyLegacyFallback(proxyMode, staticProxyHost, staticProxyPort, staticProxyType, pacUrl, bypass, username, password)
             return
@@ -155,8 +155,8 @@ class PacProxyManager(private val context: Context) {
                     AppLogger.e(TAG, "Local SOCKS5 bridge failed to start; aborting proxy apply")
                     return
                 }
-                
-                
+                // The bridge speaks HTTP CONNECT. Translation requests use the same hop
+                // because HttpURLConnection does not see ProxyController.
                 TranslateProxyRoute.useHttp("127.0.0.1", bridgePort)
                 AppLogger.i(
                     TAG,
@@ -168,7 +168,7 @@ class PacProxyManager(private val context: Context) {
                 LocalHttpToSocksBridge.stop()
                 when (upperType) {
                     "HTTPS" -> {
-                        
+                        // java.net.Proxy cannot speak an HTTPS upstream proxy.
                         TranslateProxyRoute.clear()
                         "https://$host:$port"
                     }
@@ -285,11 +285,11 @@ class PacProxyManager(private val context: Context) {
         }
     }
 
-    
-
-
-
-
+    /**
+     * Point translation requests at the same first hop the WebView just got.
+     * DIRECT and HTTPS-upstream entries stay direct: [java.net.Proxy] cannot speak
+     * an HTTPS proxy, and DIRECT must not be forced through a dead hop.
+     */
     private fun publishTranslationRoute(entries: List<String>) {
         for (entry in entries) {
             val trimmed = entry.trim()
@@ -320,11 +320,11 @@ class PacProxyManager(private val context: Context) {
         TranslateProxyRoute.clear()
     }
 
-    
-
-
-
-
+    /**
+     * Same settings as [applyProxy], routed to [LegacyProxyFetchBridge] for
+     * WebViews without PROXY_OVERRIDE. Reuses the PAC download/parse below so
+     * both paths resolve identical upstreams.
+     */
     private suspend fun applyLegacyFallback(
         proxyMode: String,
         staticProxyHost: String,

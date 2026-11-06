@@ -17,13 +17,13 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import java.io.File
 
-
-
-
-
-
-
-
+/**
+ * Loads a status-bar background image bounded to a drawable-safe size (#779).
+ * The file comes from user storage and can be arbitrarily large (panoramas,
+ * full-resolution crops); decoding it raw once crashed MainActivity screens
+ * with "Canvas: trying to draw too large" at DRAW time — past any decode
+ * try/catch. Returns null when the file is missing, oversized, or unreadable.
+ */
 private fun loadStatusBarImageBitmap(context: Context, backgroundImagePath: String): android.graphics.Bitmap? {
     return try {
         val file = File(backgroundImagePath)
@@ -54,10 +54,10 @@ fun StatusBarBackground(
     val context = LocalContext.current
     val density = LocalDensity.current
 
-    
-    
-    
-    
+    // Never guess a status-bar height when the insets report 0: on the classic pre-API-30
+    // path the value is 0 because the decor fits system windows, and a fabricated 24dp band
+    // shows up as a blank strip over the content (issue #683). The callers skip rendering on
+    // that path; the fallback below only covers transient first-frame inset dispatch.
     val topInsetPx = WindowInsets.statusBars.getTop(density)
     val systemStatusBarHeight = if (topInsetPx > 0) {
         with(density) { topInsetPx.toDp() }
@@ -96,9 +96,9 @@ fun StatusBarBackground(
             }
             else -> {
 
-                
-                
-                
+                // A null color means TRANSPARENT mode (the only resolver path that
+                // yields null). It must stay see-through: falling back to black
+                // painted an opaque band over the content (issue #762).
                 val bgColor = if (backgroundColor == null) {
                     Color.Transparent
                 } else try {
@@ -136,10 +136,10 @@ fun StatusBarOverlay(
     val context = LocalContext.current
     val density = LocalDensity.current
 
-    
-    
-    
-    
+    // Never guess a status-bar height when the insets report 0: on the classic pre-API-30
+    // path the value is 0 because the decor fits system windows, and a fabricated 24dp band
+    // shows up as a blank strip over the content (issue #683). The callers skip rendering on
+    // that path; the fallback below only covers transient first-frame inset dispatch.
     val topInsetPx = WindowInsets.statusBars.getTop(density)
     val systemStatusBarHeight = if (topInsetPx > 0) {
         with(density) { topInsetPx.toDp() }
@@ -176,8 +176,8 @@ fun StatusBarOverlay(
             }
             else -> {
 
-                
-                
+                // Same TRANSPARENT rule as StatusBarBackground above: null stays
+                // see-through instead of degrading to a black band (issue #762).
                 val bgColor = if (backgroundColor == null) {
                     Color.Transparent
                 } else try {

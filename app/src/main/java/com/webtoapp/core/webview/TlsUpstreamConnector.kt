@@ -52,10 +52,10 @@ object TlsUpstreamConnector {
             }
         }
 
-        
-        
-        
-        
+        // The bridge only spoofs the ClientHello (cipher/ALPN ordering); the trust decision
+        // stays with the platform: system CAs plus any anchors the user imported via the
+        // editor's custom-CA panel (corporate proxies). An accept-all manager here would
+        // turn the fingerprint feature into silent full MITM exposure.
         val sslContext = SSLContext.getInstance("TLS")
         sslContext.init(null, arrayOf<TrustManager>(buildUpstreamTrustManager(customCaAnchors)), null)
 
@@ -67,9 +67,9 @@ object TlsUpstreamConnector {
 
         val sslSocket = factory.createSocket(rawSocket, host, port, true) as SSLSocket
         if (restrictAlpnTo != null) {
-            
-            
-            
+            // The MITM socket already negotiated with the WebView; offering more
+            // protocols upstream than the client side speaks would let the two ends
+            // disagree (h2 into an http/1.1 server) and break the whole host.
             try {
                 val params = sslSocket.sslParameters
                 params.applicationProtocols = arrayOf(restrictAlpnTo)
@@ -79,8 +79,8 @@ object TlsUpstreamConnector {
         }
         sslSocket.startHandshake()
 
-        
-        
+        // SSLSocket handshakes validate the chain but never the hostname — verify that the
+        // upstream certificate actually covers the host we dialed before tunneling anything.
         val peerCert = sslSocket.session.peerCertificates
             .firstOrNull { it is X509Certificate } as? X509Certificate
         if (peerCert == null || !CertificateHostnameMatcher.matches(host, peerCert)) {
@@ -88,8 +88,8 @@ object TlsUpstreamConnector {
             throw IOException("TLS fingerprint bridge: upstream certificate does not match host '$host'")
         }
 
-        
-        
+        // The raw socket's connect-phase SO_TIMEOUT must not survive into tunnel
+        // mode: an idle SSE/WebSocket stream would otherwise be dropped after 60s.
         try { sslSocket.soTimeout = 0 } catch (_: Exception) {}
 
         val negotiatedProtocol = try {
@@ -125,7 +125,7 @@ object TlsUpstreamConnector {
             tmf.trustManagers.filterIsInstance<X509TrustManager>().first()
         }.getOrNull()
 
-    
+    /** Tries each delegate in order; the first one that accepts the chain wins. */
     private class CompositeTrustManager(private val delegates: List<X509TrustManager>) : X509TrustManager {
         override fun checkClientTrusted(chain: Array<out X509Certificate>?, authType: String?) {
             delegates.first().checkClientTrusted(chain, authType)

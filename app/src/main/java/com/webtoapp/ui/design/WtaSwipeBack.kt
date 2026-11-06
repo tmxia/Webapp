@@ -52,19 +52,19 @@ fun WtaSwipeBackContainer(
     val swipeModifier = if (enabled && animSettings.enabled) {
         Modifier.pointerInput(Unit) {
             var thresholdHapticked = false
-            
-            
-            
-            
-            
+            // Set the moment a dismiss gesture commits: while the slide-out
+            // animation still runs, a second rapid edge swipe would otherwise
+            // cancel the in-flight animateTo (mutator mutex) and let BOTH
+            // coroutines reach onBack() — a double pop that can empty the nav
+            // back stack and strand the app on a blank screen.
             var dismissed = false
             val tracker = VelocityTracker()
 
-            
-            
-            
-            
-            
+            // Only a down inside the left edge is ours. detectHorizontalDragGestures
+            // consumes the pointer as soon as horizontal touch-slop is crossed,
+            // before it can tell the drag missed the edge, and that cancels the
+            // click under the finger. A slightly sliding tap on Build then does
+            // nothing, and the next steadier tap is the one that lands.
             awaitEachGesture {
                 val down = awaitFirstDown(requireUnconsumed = false)
                 if (!swipeBackClaimsDown(down.position.x, edgeWidthPx, dismissed)) {
@@ -164,9 +164,9 @@ fun WtaSwipeBackContainer(
     }
 }
 
-
-
-
-
+/**
+ * True only for a pointer-down that swipe-back is allowed to take. Anything else
+ * must stay unconsumed so the control under the finger still receives the click.
+ */
 internal fun swipeBackClaimsDown(downX: Float, edgeWidthPx: Float, dismissed: Boolean): Boolean =
     !dismissed && downX <= edgeWidthPx

@@ -46,11 +46,11 @@ import com.webtoapp.ui.design.WtaInfoChip
 import com.webtoapp.ui.design.WtaSize
 import com.webtoapp.ui.design.WtaSpacing
 
-
-
-
-
-
+/**
+ * Review card for apps created/updated by agent tools during a turn — the app-facing
+ * counterpart of [ChangesReviewCard]. Shows what changed (name, type, patched fields)
+ * and jumps to the app's editor on tap.
+ */
 @Composable
 fun AppChangesReviewCard(
     changes: List<PendingAppChange>,

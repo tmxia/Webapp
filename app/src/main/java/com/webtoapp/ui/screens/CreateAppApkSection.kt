@@ -542,8 +542,8 @@ private fun NetworkTrustConfigPanel(
     onImportCertificate: () -> Unit
 ) {
     val context = LocalContext.current
-    
-    
+    // Load presets off the composition thread (#1095): getSharedPreferences + Gson
+    // parse on the main thread used to ride inside the first expand frame.
     var presets by remember { mutableStateOf<List<SavedNetworkTrustPreset>>(emptyList()) }
     LaunchedEffect(Unit) {
         presets = withContext(Dispatchers.IO) { ConfigPresetStorage.loadNetworkTrust(context) }

@@ -7,22 +7,22 @@ import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
-
-
-
-
-
-
-
-
-
+/**
+ * At-rest wrapping for the TLS-MITM CA private key. The key blob used to be written as raw
+ * PKCS#8; anyone with file access (rooted device, extracted backup) got a CA trusted by the
+ * app for ten years. The blob is now AES-256-GCM encrypted with a device-local random key
+ * stored next to it in a separate file — still app-private storage (the Android Keystore
+ * cannot sign arbitrary leaf certs at the required rate here), but no longer a
+ * single-file-ready-to-use CA key. Legacy plaintext files are read transparently and
+ * rewritten wrapped on next generation.
+ */
 internal object MitmCaKeyStore {
 
     private const val MAGIC = "WTAMITM1"
     private const val GCM_TAG_BITS = 128
     private const val KEY_FILE_HEADER = "WTA-CAWRAP1\n"
 
-    
+    /** Reads a wrapped key, falling back to legacy raw PKCS#8 blobs. */
     fun readKey(keyFile: File): ByteArray {
         val bytes = keyFile.readBytes()
         if (bytes.size > KEY_FILE_HEADER.length && bytes.copyOfRange(0, KEY_FILE_HEADER.length).contentEquals(KEY_FILE_HEADER.toByteArray())) {
@@ -35,7 +35,7 @@ internal object MitmCaKeyStore {
             cipher.init(Cipher.DECRYPT_MODE, wrapKey, GCMParameterSpec(GCM_TAG_BITS, iv))
             return cipher.doFinal(wrapped)
         }
-        
+        // Legacy plaintext PKCS#8 (or anything else): try raw DER first.
         return bytes
     }
 

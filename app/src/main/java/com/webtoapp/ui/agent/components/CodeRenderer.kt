@@ -87,8 +87,8 @@ fun RichAssistantText(
     modifier: Modifier = Modifier
 ) {
     val segments = remember(text) { parseTextSegments(text) }
-    
-    
+    // Breathing caret while streaming — a static ▋ reads as frozen, a pulsing
+    // one reads as "still writing".
     val caretAlpha = if (streamingCaret) {
         val transition = rememberInfiniteTransition(label = "stream-caret")
         transition.animateFloat(
@@ -179,8 +179,8 @@ fun CodeBlock(
             }
             Box(modifier = bodyModifier) {
                 SelectionContainer {
-                    
-                    
+                    // Highlight only settled blocks: while streaming, plain text
+                    // avoids re-tokenizing the buffer on every delta.
                     val highlighted = remember(code, language, showCaret) {
                         if (showCaret) null else SyntaxHighlight.highlight(code, language)
                     }

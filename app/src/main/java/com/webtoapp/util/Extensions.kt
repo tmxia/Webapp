@@ -26,7 +26,7 @@ fun Context.isNetworkAvailable(): Boolean {
         val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
         capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     } catch (e: SecurityException) {
-        
+        // File-scheme HTML exports omit ACCESS_NETWORK_STATE (#1254 / #1294).
         false
     } catch (e: Exception) {
         AppLogger.w("Network", "isNetworkAvailable failed: ${e.message}")

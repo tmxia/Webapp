@@ -28,11 +28,11 @@ import org.koin.java.KoinJavaComponent
 import java.net.URI
 import java.security.MessageDigest
 
-
-
-
-
-
+/**
+ * Loopback MCP in front of the same host tools the in-app agent runs.
+ * Write tools still go through [prompter], which [com.webtoapp.ui.MainActivity]
+ * shows no matter which screen is open.
+ */
 object HostMcpController {
     private const val TAG = "HostMcp"
 

@@ -13,12 +13,12 @@ import com.webtoapp.data.model.WebViewConfig
 
 object ShellActivityInit {
 
-    
-
-
-
-
-
+    /**
+     * Floating window and fullscreen mode both want the launch window.
+     * The floating window wins: the activity is only a trampoline into the
+     * overlay. Fullscreen mode still applies inside that overlay as hidden
+     * browser chrome, not as a second full-screen activity.
+     */
     fun opensAsFloatingWindow(config: ShellConfig): Boolean =
         config.webViewConfig.floatingWindowConfig.enabled
 
@@ -194,9 +194,9 @@ object ShellActivityInit {
                     else -> {
 
                         val wv = getWebView()
-                        
-                        
-                        
+                        // "Exit app" (#151) leaves immediately. "Exit at first page"
+                        // (#1329) still walks history, then leaves on one press.
+                        // Fullscreen-close above still takes precedence.
                         val backBehavior = getShellConfig()?.webViewConfig?.backButtonBehavior
                             ?: WebViewConfig.BACK_GO_BACK
                         if (backBehavior == WebViewConfig.BACK_EXIT) {
@@ -251,10 +251,10 @@ object ShellActivityInit {
                                 )
                             }
                         } else {
-                            
-                            
-                            
-                            
+                            // GeckoView kernel: no WebView handle — walk the engine's own
+                            // history through the surface instead of exiting the app on every
+                            // back press. The Escape-key JS probe is skipped: Gecko's
+                            // javascript: URI eval cannot return a result to consult.
                             ShellWebViewNavigation.goBackOrFinish(
                                 activity,
                                 getBrowserSurface(),

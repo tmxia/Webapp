@@ -9,34 +9,34 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 
+/**
+ * HCJ plugin platform — unified model for the three plugin kinds:
+ *
+ *  - [PluginKind.HCJ]: first-party packages. A directory with `plugin.json`
+ *    and a single `plugin.html` — the document doubles as the panel UI, and
+ *    the page-side script lives in an inert `<script type="hcj/page">` block.
+ *    Legacy `main.js` / `panel.html` / `style.css` files still load for
+ *    compatibility (migrated/older packages).
+ *  - [PluginKind.USERSCRIPT]: Greasemonkey/Tampermonkey scripts. Imported into the
+ *    same package layout (metadata block -> plugin.json); the GM_* polyfill is
+ *    injected by the runtime, not stored.
+ *  - [PluginKind.CHROME_EXTENSION]: MV3 extensions. The unpacked extension tree
+ *    keeps its own directory; this model carries only the normalized entry data
+ *    (action/popup, host permissions live in the extension engine).
+ *
+ * The model deliberately knows nothing about *how* a plugin is presented — that
+ * is the user's choice via [PluginEntryStyle] / [PluginPanelStyle].
+ */
 
+// ---------------------------------------------------------------------------
+// plugin.html — single-document package format
+// ---------------------------------------------------------------------------
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+/**
+ * Inert script type carrying the page-side code inside plugin.html. Unknown
+ * script types never execute — the standard HTML data-block idiom — so the
+ * same file can also serve as the panel document.
+ */
 const val PAGE_SCRIPT_TYPE = "hcj/page"
 
 private val PAGE_SCRIPT_RE = Regex(
@@ -50,18 +50,18 @@ private val BODY_RE = Regex(
 )
 private val SCRIPT_CLOSE_RE = Regex("</script", RegexOption.IGNORE_CASE)
 
-
+/** All page-side script bodies inside a plugin.html document. */
 fun extractPageJs(pluginHtml: String): String =
     PAGE_SCRIPT_RE.findAll(pluginHtml)
         .map { it.groupValues[1].trim() }
         .filter { it.isNotEmpty() }
         .joinToString("\n")
 
-
-
-
-
-
+/**
+ * Whether the plugin.html document renders an actual panel — i.e. it carries
+ * markup beyond the inert page-script block. A file that only holds
+ * `<script type="hcj/page">` is a page-only plugin.
+ */
 fun hasPanelMarkup(pluginHtml: String): Boolean {
     if (pluginHtml.isBlank()) return false
     val region = BODY_RE.find(pluginHtml)?.groupValues?.get(1) ?: pluginHtml
@@ -71,13 +71,13 @@ fun hasPanelMarkup(pluginHtml: String): Boolean {
         .isNotBlank()
 }
 
-
-
-
-
-
-
-
+/**
+ * Assemble the canonical plugin.html document: page JS rides in an inert
+ * `hcj/page` script block, the panel document follows it. A literal `</script`
+ * in the page source is escaped to `<\/script` (identical value inside JS
+ * strings/regexes) so neither the HTML parser nor [PAGE_SCRIPT_RE] can end
+ * the block early.
+ */
 fun buildPluginHtml(pageJs: String, panelDoc: String): String = buildString {
     if (pageJs.isNotBlank()) {
         append("<script type=\"").append(PAGE_SCRIPT_TYPE).append("\">\n")
@@ -90,9 +90,9 @@ fun buildPluginHtml(pageJs: String, panelDoc: String): String = buildString {
     }
 }
 
-
-
-
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
 
 enum class PluginKind {
     HCJ,
@@ -117,16 +117,16 @@ enum class PluginRunAt(val jsEvent: String) {
     }
 }
 
-
-
-
-
+/**
+ * Where the plugin entry point lives. User-selectable per app; plugins may hint
+ * a preference through [PluginManifest.preferredEntry] but the app setting wins.
+ */
 enum class PluginEntryStyle {
-    
+    /** Plugins button + optional pinned icons inside the native browser toolbar. */
     TOOLBAR,
-    
+    /** Native floating handle (draggable, auto-collapses). Never page-DOM. */
     FLOATING_HANDLE,
-    
+    /** Entry inside the runtime overflow menu only. */
     MENU;
 
     companion object {
@@ -135,13 +135,13 @@ enum class PluginEntryStyle {
     }
 }
 
-
+/** How a plugin's `panel.html` (or a Chrome popup) is hosted. */
 enum class PluginPanelStyle {
-    
+    /** Modal bottom sheet hosting a WebView. */
     BOTTOM_SHEET,
-    
+    /** Draggable floating window. */
     FLOATING_WINDOW,
-    
+    /** Fullscreen dialog. */
     FULLSCREEN;
 
     companion object {
@@ -150,30 +150,30 @@ enum class PluginPanelStyle {
     }
 }
 
-
-
-
-
+/**
+ * Capability gates for the `hcj` bridge. Page DOM access is implicit — a plugin
+ * *is* page JavaScript — so only elevated abilities are declared here.
+ */
 enum class PluginPermission {
-    
+    /** `hcj.config.*` persistent KV storage. */
     STORAGE,
-    
+    /** `hcj.fetch` cross-origin requests through the host. */
     FETCH,
-    
+    /** `hcj.notify` Android notifications. */
     NOTIFY,
-    
+    /** `hcj.badge` toolbar badge. */
     BADGE,
-    
+    /** `hcj.clipboard.*` clipboard access. */
     CLIPBOARD,
-    
+    /** `hcj.download` file downloads. */
     DOWNLOAD,
-    
+    /** `hcj.share` system share sheet. */
     SHARE,
-    
+    /** `hcj.openExternal` opens a URL in an external app/browser. */
     OPEN_EXTERNAL,
-    
+    /** `hcj.clearData` wipes browsing data (cookies, storage, cache, history). */
     CLEAR_DATA,
-    
+    /** `hcj.exitApp` finishes the host activity. */
     EXIT_APP;
 
     companion object {
@@ -182,9 +182,9 @@ enum class PluginPermission {
     }
 }
 
-
-
-
+// ---------------------------------------------------------------------------
+// URL matching (Chrome match-pattern semantics, same as the old module system)
+// ---------------------------------------------------------------------------
 
 data class PluginMatchRule(
     @SerializedName("pattern")
@@ -219,8 +219,8 @@ internal fun pluginSafeRegexMatch(pattern: String, input: String): Boolean {
     return try {
         future.get(REGEX_TIMEOUT_MS, TimeUnit.MILLISECONDS)
     } catch (e: TimeoutException) {
-        
-        
+        // Kill the runaway task — the executor is single-threaded, so an
+        // un-cancelled catastrophic regex would stall every later match.
         future.cancel(true)
         false
     } catch (e: Exception) {
@@ -271,15 +271,15 @@ internal fun pluginGlobMatches(url: String, rule: PluginMatchRule): Boolean {
     }
 }
 
+// ---------------------------------------------------------------------------
+// plugin.json — the only authored contract
+// ---------------------------------------------------------------------------
 
-
-
-
-
-
-
-
-
+/**
+ * `plugin.json` manifest. Every field except [name] is optional; the package
+ * directory supplies `main.js` / `style.css` / `panel.html` / icon by
+ * convention so the manifest stays declarative only.
+ */
 data class PluginManifest(
     @SerializedName("id")
     val id: String = "",
@@ -293,7 +293,7 @@ data class PluginManifest(
     val author: String = "",
     @SerializedName("homepage")
     val homepage: String = "",
-    
+    /** Material icon name (e.g. "dark_mode") or a package icon filename. */
     @SerializedName("icon")
     val icon: String = "extension",
     @SerializedName("matches")
@@ -304,32 +304,32 @@ data class PluginManifest(
     val runAt: String = "document_end",
     @SerializedName("permissions")
     val permissions: List<String> = emptyList(),
-    
+    /** Show an entry for this plugin in the plugin surface. */
     @SerializedName("toolbar")
     val toolbar: Boolean = true,
-    
+    /** Plugin's suggested entry style; a per-plugin user override wins. */
     @SerializedName("preferredEntry")
     val preferredEntry: String = "",
-    
+    /** Plugin's suggested panel host style; a per-plugin user override wins. */
     @SerializedName("preferredPanel")
     val preferredPanel: String = "",
-    
+    /** Greasemonkey grants carried over for USERSCRIPT packages. */
     @SerializedName("gmGrants")
     val gmGrants: List<String> = emptyList(),
-    
+    /** `@require` dependency URLs — fetched/cached by the host, injected before main.js. */
     @SerializedName("requireUrls")
     val requireUrls: List<String> = emptyList(),
-    
+    /** `@resource` name -> URL map for `GM_getResourceText/URL`. */
     @SerializedName("resources")
     val resources: Map<String, String> = emptyMap(),
     @SerializedName("noframes")
     val noframes: Boolean = false,
-    
-
-
-
-
-
+    /**
+     * Packages converted from the retired self-developed module format. The
+     * injector prepends a small prelude that maps the old globals
+     * (`getConfig`, `__MODULE_INFO__`, `__WTA_MODULE_UI__`) onto `hcj.*` so
+     * already-published content keeps working without the old DSL runtime.
+     */
     @SerializedName("legacyCompat")
     val legacyCompat: Boolean = false
 ) {
@@ -344,7 +344,7 @@ data class PluginManifest(
         matches.map { toRule(it, exclude = false) } +
             excludeMatches.map { toRule(it, exclude = true) }
 
-    
+    /** `/pattern/` denotes a regex (Tampermonkey @include convention). */
     private fun toRule(raw: String, exclude: Boolean): PluginMatchRule {
         val t = raw.trim()
         return if (t.length > 2 && t.startsWith("/") && t.endsWith("/")) {
@@ -374,11 +374,11 @@ data class PluginManifest(
                     v.takeIf { it.isJsonPrimitive }?.asString?.let { k to it }
                 }?.toMap() ?: emptyMap()
 
-        
-
-
-
-
+        /**
+         * Hand-written parser: hand-authored manifests omit optional fields, and
+         * Gson's Unsafe path would leave absent fields JVM-null despite the
+         * non-null Kotlin types — every accessor below applies its own default.
+         */
         fun fromJson(json: String): PluginManifest? = try {
             val obj = JsonParser.parseString(json).asJsonObject
             PluginManifest(
@@ -408,16 +408,16 @@ data class PluginManifest(
     }
 }
 
+// ---------------------------------------------------------------------------
+// Plugin — the normalized runtime record (index.json + shell embedding)
+// ---------------------------------------------------------------------------
 
-
-
-
-
-
-
-
-
-
+/**
+ * One installed plugin. For HCJ / USERSCRIPT kinds, `packageDir` names a
+ * directory under `files/plugins/` holding `plugin.json`, `plugin.html`,
+ * optional `style.css` / `files/…` / `config.json`. For CHROME_EXTENSION,
+ * [chromeExtId] points into the extension engine's own storage.
+ */
 data class Plugin(
     @SerializedName("id")
     val id: String = UUID.randomUUID().toString(),
@@ -450,7 +450,7 @@ data class Plugin(
     @SerializedName("showInToolbar")
     val showInToolbar: Boolean = true,
 
-    
+    /** Resolved per-plugin host styles — manifest preference or user override. */
     @SerializedName("entryStyle")
     val entryStyle: PluginEntryStyle = PluginEntryStyle.TOOLBAR,
     @SerializedName("panelStyle")
@@ -461,7 +461,7 @@ data class Plugin(
     @SerializedName("hasCss")
     val hasCss: Boolean = false,
 
-    
+    // --- userscript extras ---
     @SerializedName("gmGrants")
     val gmGrants: List<String> = emptyList(),
     @SerializedName("requireUrls")
@@ -471,11 +471,11 @@ data class Plugin(
     @SerializedName("noframes")
     val noframes: Boolean = false,
 
-    
+    /** See [PluginManifest.legacyCompat]. */
     @SerializedName("legacyCompat")
     val legacyCompat: Boolean = false,
 
-    
+    // --- chrome extension extras (kind == CHROME_EXTENSION only) ---
     @SerializedName("chromeExtId")
     val chromeExtId: String = "",
     @SerializedName("manifestJson")
@@ -514,7 +514,7 @@ data class Plugin(
     fun hasPermission(permission: PluginPermission): Boolean =
         permission in permissions
 
-    
+    /** Page-context injection happens for script kinds only. */
     val isScriptPlugin: Boolean
         get() = kind == PluginKind.HCJ || kind == PluginKind.USERSCRIPT
 
@@ -527,11 +527,11 @@ data class Plugin(
             null
         }
 
-        
-
-
-
-
+        /**
+         * Build a record from a parsed manifest. `packageDir`/`hasPanel`/`hasCss`
+         * describe what is actually on disk, so stale manifests can't claim files
+         * that were deleted.
+         */
         fun fromManifest(
             manifest: PluginManifest,
             packageDir: String,
@@ -567,11 +567,11 @@ data class Plugin(
     }
 }
 
-
-
-
-
-
+/**
+ * Injection-ready payload for one plugin. The host builds these from
+ * [PluginStore] packages; generated APKs build them from embedded config data.
+ * Keeping payloads self-contained means the runtime never touches the store.
+ */
 data class PluginPayload(
     val plugin: Plugin,
     val mainJs: String = "",

@@ -87,7 +87,7 @@ class GeckoEngineDownloader(
 
                     var lastSampleTime = 0L
                     var lastSampleBytes = 0L
-                    var smoothedSpeed = 0.0  
+                    var smoothedSpeed = 0.0  // bytes/sec, EMA-smoothed
                     var lastEmitTime = 0L
 
                     val downloadSuccess = downloadFile(aarUrl, tempAar) { progress, downloaded, total ->
@@ -103,8 +103,8 @@ class GeckoEngineDownloader(
                             }
                             lastSampleTime = now
                             lastSampleBytes = downloaded
-                            
-                            
+                            // Throttle state emissions: the read loop fires per 8KB
+                            // chunk, far faster than the UI needs.
                             if (now - lastEmitTime >= 200_000_000L || progress >= 1f) {
                                 lastEmitTime = now
                                 _downloadState.value = DownloadState.Downloading(

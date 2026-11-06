@@ -8,17 +8,17 @@ import android.net.Uri
 import android.provider.MediaStore
 import com.webtoapp.core.logging.AppLogger
 
-
-
-
-
-
-
-
-
-
-
-
+/**
+ * Hands a camera app a FileProvider uri it can actually write.
+ *
+ * From targetSdk 30 the platform drops [Intent.FLAG_GRANT_WRITE_URI_PERMISSION]
+ * on an implicit intent unless the uri is also the intent's [Intent.getClipData].
+ * Generated apps ship targetSdk 35, so a flag-only `EXTRA_OUTPUT` makes the
+ * camera app exit immediately (and some OEM builds throw [SecurityException]
+ * back into the result callback). A chooser's `EXTRA_INITIAL_INTENTS` does not
+ * forward that flag grant either, so each resolved camera package is granted
+ * explicitly.
+ */
 object CameraCaptureIntents {
 
     private const val TAG = "CameraCapture"

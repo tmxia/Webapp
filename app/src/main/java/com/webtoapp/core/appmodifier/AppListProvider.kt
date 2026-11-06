@@ -124,10 +124,10 @@ class AppListProvider(private val context: Context) {
             }
             installed.forEach { byName[it.packageName] = it }
         }
-        
-        
-        
-        
+        // Union with the launcher query: with QUERY_ALL_PACKAGES (standard flavor)
+        // the set above already covers every package; without it (gplay flavor) the
+        // manifest <queries> block still surfaces launchable apps, and the union
+        // keeps coverage identical if a store/OEM strips the permission.
         launcherPackageNames()
             .filter { it !in byName }
             .forEach { name -> getPackageInfoSafely(name)?.let { byName[name] = it } }

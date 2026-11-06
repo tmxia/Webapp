@@ -110,7 +110,7 @@ class WebAppRepository(private val webAppDao: WebAppDao) {
             createdAt = now,
             updatedAt = now,
             isActivated = false,
-            
+            // Match a newly created app so custom order shows the copy first.
             homeSortIndex = 0,
         )
         return webAppDao.insert(copy)
@@ -128,7 +128,7 @@ class WebAppRepository(private val webAppDao: WebAppDao) {
         webAppDao.clearCategoryId(categoryId)
     }
 
-    
+    /** Persists custom home order. Does not bump `updatedAt`. */
     suspend fun setHomeSortOrder(idsInOrder: List<Long>) {
         if (idsInOrder.isEmpty()) return
         webAppDao.setHomeSortOrder(idsInOrder)

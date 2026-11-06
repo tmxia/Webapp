@@ -246,9 +246,9 @@ fun HtmlFrontendShellMode(
                 )
 
                 val assetBase = config.siteAssetBase.ifBlank { "html" }
-                
-                
-                
+                // Multi-web per-site projects are embedded under assets/multiweb_sites/<siteId>/<assetBase>
+                // (AppContentEmbedder.MultiWebContentEmbedder); plain HTML/FRONTEND shells embed at
+                // the top-level assets/<assetBase>.
                 val embeddedAssetRoot = if (config.siteId.isNotBlank()) "multiweb_sites/${config.siteId}/$assetBase" else assetBase
                 val catalog = catalogAssetTree(embeddedAssetRoot) { path ->
                     try {
@@ -258,20 +258,33 @@ fun HtmlFrontendShellMode(
                     }
                 }
                 if (catalog.encrypted) {
-                    
+                    // A previous build may have left the decrypted tree here.
                     siteDir.deleteRecursively()
                     encryptedSite = true
                     val decryptor = com.webtoapp.core.crypto.AssetDecryptor(context)
                     val memorySite = com.webtoapp.core.webview.LocalHttpServer.MemorySite(
-                        readFile = { logical ->
-                            val assetPath = catalog.files[logical] ?: return@MemorySite null
-                            context.assets.open(assetPath).use { input ->
-                                val bytes = input.readBytes()
-                                if (assetPath.endsWith(com.webtoapp.core.crypto.CryptoConstants.ENCRYPTED_EXTENSION)) {
-                                    decryptor.decrypt(bytes)
-                                } else {
-                                    bytes
+                        openFile = openFile@{ logical ->
+                            val assetPath = catalog.files[logical] ?: return@openFile null
+                            if (assetPath.endsWith(com.webtoapp.core.crypto.CryptoConstants.ENCRYPTED_EXTENSION)) {
+                                val asset = decryptor.openEncryptedAsset(assetPath) ?: return@openFile null
+                                com.webtoapp.core.webview.LocalHttpServer.MemorySite.MemoryEntry(
+                                    asset.length,
+                                ) { asset.stream }
+                            } else {
+                                val stream = try {
+                                    context.assets.open(assetPath)
+                                } catch (e: Exception) {
+                                    AppLogger.w("HtmlShell", "读取资源失败: $assetPath (${e.message})")
+                                    return@openFile null
                                 }
+                                val length = try {
+                                    stream.available().toLong()
+                                } catch (e: Exception) {
+                                    -1L
+                                }
+                                com.webtoapp.core.webview.LocalHttpServer.MemorySite.MemoryEntry(
+                                    length,
+                                ) { stream }
                             }
                         },
                         directories = catalog.directories,

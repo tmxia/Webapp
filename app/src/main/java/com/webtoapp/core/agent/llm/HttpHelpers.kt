@@ -23,8 +23,8 @@ internal object HttpHelpers {
 
     fun applyAuth(builder: Request.Builder, apiKey: ApiKeyConfig) {
         val key = apiKey.apiKey.trim().replace("\n", "").replace("\r", "")
-        
-        
+        // A CUSTOM endpoint speaking the Anthropic Messages protocol authenticates with
+        // x-api-key + anthropic-version, not a Bearer header.
         val anthropicProtocol = apiKey.provider == AiProvider.ANTHROPIC ||
             (apiKey.provider == AiProvider.CUSTOM && apiKey.apiFormat == ApiFormat.ANTHROPIC)
         when {

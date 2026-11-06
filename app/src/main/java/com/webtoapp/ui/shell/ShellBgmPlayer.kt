@@ -53,10 +53,10 @@ class BgmPlayerState internal constructor(
     fun previous() = transport.previous()
 }
 
-
-
-
-
+/**
+ * Shuffle order state. Mirrors the host [com.webtoapp.core.bgm.BgmPlayer]
+ * semantics: a full permutation per cycle (no repeats), reshuffled on wrap.
+ */
 internal data class BgmShuffleOrder(
     val order: List<Int> = emptyList(),
     val pos: Int = 0
@@ -281,12 +281,19 @@ private class ShellBgmSession(
                 return
             }
 
-            val decryptedData = secureAssetLoader.loadAsset(normalizedPath)
+            // Decrypt straight into the temp file: a long lossless track buffered
+            // whole is the same OOM that hit media and gallery video.
             val tempFile = File(context.cacheDir, "shell_bgm_${normalizedPath.hashCode()}.mp3")
-            tempFile.writeBytes(decryptedData)
+            val stream = secureAssetLoader.openAssetStream(normalizedPath)
+                ?: throw java.io.IOException("BGM 资源不可读: $normalizedPath")
+            stream.use { input ->
+                tempFile.outputStream().use { output ->
+                    input.copyTo(output, 64 * 1024)
+                }
+            }
             tempFiles[normalizedPath] = tempFile
             player.setDataSource(tempFile.absolutePath)
-            AppLogger.d("ShellActivity", "BGM 解密加载成功: $normalizedPath (${decryptedData.size} bytes)")
+            AppLogger.d("ShellActivity", "BGM 解密加载成功: $normalizedPath (${tempFile.length()} bytes)")
             return
         }
 

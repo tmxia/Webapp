@@ -14,12 +14,12 @@ class WebSwipeRefreshLayout @JvmOverloads constructor(
     attrs: AttributeSet? = null
 ) : SwipeRefreshLayout(context, attrs) {
 
-    
-
-
-
-
-
+    /**
+     * Where a touch may start a pull. [SwipeRefreshZone.TOP_EDGE] arms the
+     * gesture only inside a narrow band below the status-bar exclusion (the
+     * pre-#515 EdgeSwipeRefreshLayout behaviour); [SwipeRefreshZone.ANYWHERE]
+     * arms it across the whole content area (#515 behaviour).
+     */
     var gestureZone: SwipeRefreshZone = SwipeRefreshZone.TOP_EDGE
 
     var topExclusionDp: Float = 12f
@@ -75,10 +75,10 @@ class WebSwipeRefreshLayout @JvmOverloads constructor(
     }
 
     override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
-        
-        
-        
-        
+        // Pull-to-refresh is a finger gesture only (#1031): a mouse or stylus
+        // press inside the armed zone belongs to the page. Intercepting it
+        // would cancel the WebView's click and pop the refresh spinner on any
+        // press-drag (text selection, drag-scroll, click jitter).
         if (ev.getToolType(0) != MotionEvent.TOOL_TYPE_FINGER) {
             pullArmed = false
             return false

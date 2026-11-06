@@ -14,21 +14,21 @@ import androidx.core.content.ContextCompat
 import com.webtoapp.core.logging.AppLogger
 import org.json.JSONObject
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+/**
+ * Native navigator.geolocation backend for the System WebView engine (#581).
+ *
+ * Chromium's WebView implements navigator.geolocation exclusively through Google
+ * Play Services' fused location provider, with no fallback: on devices where
+ * Google location services are missing or unreachable (de-Googled ROMs, sanctioned
+ * networks) every fix silently times out even with all permissions granted.
+ * This bridge replaces navigator.geolocation with a LocationManager-backed
+ * implementation (GPS / network / passive providers, no Google services involved).
+ *
+ * The shim script is injected at document start whenever webViewConfig.geolocationEnabled
+ * is on; the permission flow is delegated to the host Activity through
+ * [permissionRequester], which shows the same system dialog + location-services
+ * dialog used by the Chromium prompt path.
+ */
 class GeolocationBridge(
     context: Context,
     private val policy: String,

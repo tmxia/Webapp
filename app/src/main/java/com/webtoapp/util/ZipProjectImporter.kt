@@ -143,8 +143,8 @@ object ZipProjectImporter {
                             continue
                         }
 
-                        
-                        
+                        // safeChild = separator-anchored canonical containment; a bare
+                        // startsWith would let sibling dirs (tempEvil vs temp) through.
                         val targetFile = SafeZip.safeChild(tempDir, entryName)
                         if (targetFile == null) {
                             AppLogger.w(TAG, "跳过不安全的 ZIP 条目: $entryName")

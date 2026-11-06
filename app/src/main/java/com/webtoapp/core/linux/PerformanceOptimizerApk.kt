@@ -9,11 +9,11 @@ import kotlinx.coroutines.withContext
 import java.io.*
 import java.util.zip.*
 
-
-
-
-
-
+/**
+ * Host-side export optimizer: recompresses/minifies project assets while the APK
+ * stream is being written. Uses the esbuild toolchain when present, so it stays
+ * host-only and is excluded from the shell source sync.
+ */
 object PerformanceOptimizerApk {
 
     private const val TAG = "PerformanceOptimizerApk"
@@ -88,8 +88,8 @@ object PerformanceOptimizerApk {
     }
 
     private fun compressImageBytes(data: ByteArray, ext: String, config: PerformanceOptimizer.OptimizeConfig): ByteArray? {
-        
-        
+        // Full resolution is the point here (recompression); contain OOM instead:
+        // a hostile image skips optimization rather than killing the export (#779).
         val bitmap = try {
             BitmapFactory.decodeByteArray(data, 0, data.size)
         } catch (t: Throwable) {

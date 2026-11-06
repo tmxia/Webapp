@@ -4,13 +4,13 @@ import android.webkit.WebView
 import com.webtoapp.core.engine.BrowserSurface
 import com.webtoapp.core.engine.GeckoMediaSessionAdapter
 
-
-
-
-
-
-
-
+/**
+ * Ties [BackgroundMediaKeepAlive] to the live WebView or Gecko session.
+ *
+ * Call [onFocusLost] before the page can observe the leave, [onHostPause]
+ * from the activity, and [onHostResume] when it returns. [bind] watches the
+ * media session so a pause from the notification drops the keep-alive.
+ */
 class BackgroundMediaRuntime(
     private val webView: () -> WebView?,
     private val surface: () -> BrowserSurface?,
@@ -48,7 +48,7 @@ class BackgroundMediaRuntime(
         if (!keepAlive.isHostPaused) releasePageHold()
     }
 
-    
+    /** @return true when the activity must not pause the engine. */
     fun onHostPause(allow: Boolean): Boolean {
         if (!allow || !keepAlive.enabled) {
             releasePageHold()
@@ -65,7 +65,7 @@ class BackgroundMediaRuntime(
         releasePageHold()
     }
 
-    
+    /** Drop the listener before the media session is released. */
     fun close() {
         applying = true
         bridge?.setPlaybackActiveListener(null)

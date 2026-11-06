@@ -112,8 +112,8 @@ class MainActivity : ComponentActivity() {
 
         AppLogger.i("MainActivity", "Normal mode, showing main UI")
 
-        
-        
+        // targetSdk 33+: notifications (build progress, runtime downloads) are
+        // runtime-gated and silently off unless requested once up front.
         if (android.os.Build.VERSION.SDK_INT >= 33) {
             try {
                 if (androidx.core.content.ContextCompat.checkSelfPermission(
@@ -172,8 +172,8 @@ class MainActivity : ComponentActivity() {
 
                 val context = LocalContext.current
                 val languageManager = remember { LanguageManager.getInstance(context) }
-                
-                
+                // Nullable gate: a `true` initial would paint AppNavigation for
+                // one frame, then flip to the language picker on first launch.
                 val hasSelectedLanguage by remember {
                     languageManager.hasSelectedLanguageFlow.map<Boolean, Boolean?> { it }
                 }.collectAsState(initial = null)

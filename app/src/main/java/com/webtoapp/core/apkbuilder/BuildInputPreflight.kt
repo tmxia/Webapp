@@ -217,8 +217,8 @@ object BuildInputPreflight {
         }
 
         htmlFiles.forEachIndexed { index, file ->
-            
-            
+            // Skip internal change-tracking markers (Agent's ".changes/" dir) — they
+            // are not real project files and would spuriously fail the empty-file check.
             val name = file.name
             if (name.startsWith(".changes/") || name.contains("/.changes/") ||
                 name.endsWith(".__deleted__")) return@forEachIndexed

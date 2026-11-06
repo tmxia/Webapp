@@ -28,22 +28,22 @@ data class ActivationCode(
     @SerializedName("createdAt")
     val createdAt: Long = System.currentTimeMillis(),
 
-    
-
-
-
-
-
-
-
+    /**
+     * Absolute expiry (epoch millis) baked into the code itself.
+     *
+     * A relative [timeLimitMs] is measured from first activation and lives only
+     * in local state, so clearing app data resets the clock. This field travels
+     * with the code, so it survives a wipe and is the one offline anchor a user
+     * cannot reset. Null means no absolute limit; older codes simply omit it.
+     */
     @SerializedName("expiresAt")
     val expiresAt: Long? = null,
 
-    
-
-
-
-
+    /**
+     * When true, a successful local launch of this card shows how many days
+     * are left. Only meaningful for [ActivationCodeType.TIME_LIMITED] and
+     * [ActivationCodeType.COMBINED]. Older codes omit it, so they stay quiet.
+     */
     @SerializedName("showRemainingDays")
     val showRemainingDays: Boolean = false
 ) {
@@ -57,9 +57,9 @@ data class ActivationCode(
         fun fromJson(json: String): ActivationCode? {
             return try {
                 if (json.trimStart().startsWith("{")) {
-                    
-                    
-                    
+                    // Legacy configs may still carry a removed type value (e.g. the old
+                    // DEVICE_BOUND); Gson maps unknown enum names to null, so fall back
+                    // to PERMANENT instead of leaking a null type into callers.
                     val parsed = gson.fromJson(json, ActivationCode::class.java)
                     if (parsed?.type == null) parsed?.copy(type = ActivationCodeType.PERMANENT) else parsed
                 } else {

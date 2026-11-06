@@ -11,36 +11,36 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 
-
-
-
-
-
-
-
-
+/**
+ * Native side of the `hcj` bridge (`window.__hcjBridge`).
+ *
+ * Every call carries (pluginId, token); the token is issued per WebView by
+ * [issueToken] and woven into the plugin's injected code, so a page script can
+ * only use capabilities for the plugin instance it was injected as. Declared
+ * [PluginPermission]s are enforced per call.
+ */
 class PluginBridge(
     private val configStore: PluginConfigStore,
     private val host: Host
 ) {
 
     interface Host {
-        
+        /** Run JS in the page WebView (used for fetch callbacks + events). */
         fun evaluatePageJs(js: String)
         fun pluginFor(pluginId: String): Plugin?
         fun onBadge(pluginId: String, text: String, color: String)
         fun onPanelOpen(pluginId: String)
         fun onPanelClose(pluginId: String)
-        
+        /** A message from the page script towards this plugin's panel. */
         fun onPanelMessage(pluginId: String, json: String)
         fun onNotify(pluginId: String, title: String, body: String)
-        
+        /** `hcj.share` — host fires a share sheet. */
         fun onShare(pluginId: String, title: String, text: String, url: String) {}
-        
+        /** `hcj.openExternal` — host opens the URL in an external handler. */
         fun onOpenExternal(pluginId: String, url: String) {}
-        
+        /** `hcj.clearData` — host wipes browsing data for the page. */
         fun onClearData(pluginId: String) {}
-        
+        /** `hcj.exitApp` — host finishes the activity. */
         fun onExitApp(pluginId: String) {}
     }
 
@@ -53,7 +53,7 @@ class PluginBridge(
         }
     }
 
-    private val tokens = ConcurrentHashMap<String, String>() 
+    private val tokens = ConcurrentHashMap<String, String>() // token -> pluginId
 
     fun issueToken(pluginId: String): String =
         PluginInjection.newToken().also { tokens[it] = pluginId }
@@ -72,7 +72,7 @@ class PluginBridge(
         return if (plugin.hasPermission(permission)) plugin else null
     }
 
-    
+    // -- hcj.config -----------------------------------------------------------
 
     @JavascriptInterface
     fun configGet(pluginId: String, token: String, key: String): String? {
@@ -98,7 +98,7 @@ class PluginBridge(
         return configStore.all(pluginId)
     }
 
-    
+    // -- hcj.fetch ------------------------------------------------------------
 
     @JavascriptInterface
     fun fetch(pluginId: String, token: String, url: String, optsJson: String, cbId: String) {
@@ -157,7 +157,7 @@ class PluginBridge(
         }
     }
 
-    
+    // -- presentation events --------------------------------------------------
 
     @JavascriptInterface
     fun notify(pluginId: String, token: String, title: String, body: String) {
@@ -190,7 +190,7 @@ class PluginBridge(
         host.onPanelMessage(pluginId, json)
     }
 
-    
+    // -- host actions ---------------------------------------------------------
 
     @JavascriptInterface
     fun share(pluginId: String, token: String, title: String, text: String, url: String) {
@@ -223,10 +223,10 @@ class PluginBridge(
     }
 }
 
-
-
-
-
+/**
+ * Bridge for the panel WebView (`window.__hcjPanelBridge`). Bound to exactly
+ * one plugin — the pid argument is validated, never trusted.
+ */
 class PluginPanelBridge(
     private val pluginId: String,
     private val configStore: PluginConfigStore,
@@ -235,7 +235,7 @@ class PluginPanelBridge(
 ) {
 
     interface Host {
-        
+        /** Deliver a panel -> page message (`hcjPanel.send`). */
         fun onPanelSend(pluginId: String, json: String)
         fun onPanelClose(pluginId: String)
     }

@@ -398,9 +398,9 @@ object WordPressManager {
                 appendLine("if (function_exists('flush_rewrite_rules')) { flush_rewrite_rules(false); }")
             }
             script.writeText(phpScript)
-            
-            
-            
+            // Route through HostProcessLauncher (W^X hosts degrade instead of throwing)
+            // with a hard timeout: a hung PHP CLI (bad plugin script) must not park the
+            // calling coroutine forever.
             val launch = com.webtoapp.core.linux.HostProcessLauncher.start(
                 context,
                 listOf(phpBinary, script.absolutePath),
@@ -640,8 +640,8 @@ require_once ABSPATH . 'wp-settings.php';
 
         context.contentResolver.openInputStream(uri)?.use { inputStream ->
             ZipInputStream(inputStream.buffered()).use { zipInputStream ->
-                
-                
+                // User-picked archive: safeChild rejects traversal, the caps stop
+                // zip-bombs; observe captures the first top-level directory name.
                 com.webtoapp.util.SafeZip.extractAll(
                     zipInputStream,
                     destDir,

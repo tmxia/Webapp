@@ -8,7 +8,7 @@ import com.google.gson.Gson
 import java.io.File
 import java.util.zip.ZipFile
 
-
+/** Packaging-only opt-in; neither the host nor the unexported template declares SAEP. */
 internal object SaepPolicy {
     const val TEMPLATE_METADATA = "com.webtoapp.SAEP_POLICY_TEMPLATE"
     const val POLICY_METADATA = "com.obric.agentrobots.POLICY_JSON"
@@ -18,11 +18,11 @@ internal object SaepPolicy {
 
     data class TemplateResource(val id: Int, val path: String, val activity: String? = null)
 
-    
-
-
-
-
+    /**
+     * Locate the template's compiled policy resource, tolerating resource paths
+     * renamed by aapt/R8. Returns null only when the template predates the
+     * marker entirely — every other anomaly still fails loudly.
+     */
     @Suppress("DEPRECATION")
     fun findTemplateResource(context: Context, apk: File): TemplateResource? {
         val pm = context.packageManager
@@ -51,7 +51,7 @@ internal object SaepPolicy {
         return TemplateResource(id, path)
     }
 
-    
+    /** Enabled exports additionally require the real enabled shell Activity. */
     @Suppress("DEPRECATION")
     fun resolveTemplate(context: Context, apk: File): TemplateResource {
         val resource = checkNotNull(findTemplateResource(context, apk)) {

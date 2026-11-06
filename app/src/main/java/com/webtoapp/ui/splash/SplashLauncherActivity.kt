@@ -51,10 +51,10 @@ class SplashLauncherActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        
-        
-        
-        
+        // This activity is exported because pinned shortcuts are replayed by the
+        // launcher app — so the payload is caller-controlled input. Verify the
+        // host-issued HMAC before trusting targetPackage / verifyUrl / dialog text
+        // / mediaPath; a forged payload must never reach activation or splash IO.
         val payloadJson = intent.getStringExtra(EXTRA_PAYLOAD_JSON)
         if (!com.webtoapp.core.appmodifier.PayloadIntegrity.verify(
                 this, payloadJson, intent.getStringExtra(EXTRA_PAYLOAD_SIGNATURE)
@@ -141,9 +141,9 @@ fun SplashLauncherScreen(
 
     LaunchedEffect(Unit) {
         if (activationEnabled) {
-            
-            
-            
+            // Same gate as shell/preview: remote re-verifies the remembered code
+            // (always under "every launch", else only when the cached result can't
+            // carry this launch); local codes re-check the remembered card.
             val ok = if (remoteConfig.enabled) {
                 activation.resolveRemoteStartup(
                     activationAppId,
@@ -181,8 +181,8 @@ fun SplashLauncherScreen(
     ) }
 
     suspend fun continueAfterActivationGate() {
-        
-        
+        // Respect showOnce/version pinning like the in-app announcement paths; without
+        // this gate the dialog re-appeared on every clone launch.
         val announceNow = announcementEnabled && announcement.title.isNotEmpty() &&
             com.webtoapp.WebToAppApplication.announcement.shouldShowAnnouncement(activationAppId, announcement)
         if (announceNow) {
@@ -440,8 +440,8 @@ fun SplashContent(
                 LaunchedEffect(isPlayerReady) {
                     if (!isPlayerReady) return@LaunchedEffect
                     while (true) {
-                        
-                        
+                        // Re-read the live player each iteration: a back press during the
+                        // splash releases it and nulls the state mid-poll (issue #612).
                         val mp = mediaPlayer ?: return@LaunchedEffect
                         try {
                             if (!mp.isPlaying) {
@@ -457,7 +457,7 @@ fun SplashContent(
                                 break
                             }
                         } catch (e: IllegalStateException) {
-                            
+                            // Player released between iterations; the splash is going away.
                             return@LaunchedEffect
                         }
                         delay(100)
@@ -478,10 +478,10 @@ fun SplashContent(
                                             setVolume(volume, volume)
                                             isLooping = false
                                             setOnPreparedListener { mp ->
-                                                
-                                                
-                                                
-                                                
+                                                // prepareAsync may still be in flight when a
+                                                // back press releases the player; skip stale
+                                                // callbacks instead of touching a released
+                                                // instance (issue #612).
                                                 if (mediaPlayer !== mp) return@setOnPreparedListener
                                                 try {
                                                     seekTo(videoStartMs.toInt())
@@ -503,9 +503,9 @@ fun SplashContent(
                                 }
                                 override fun surfaceChanged(h: android.view.SurfaceHolder, f: Int, w: Int, ht: Int) {}
                                 override fun surfaceDestroyed(h: android.view.SurfaceHolder) {
-                                    
-                                    
-                                    
+                                    // Detach callbacks before releasing so in-flight
+                                    // prepare/completion notifications cannot touch a
+                                    // released player.
                                     mediaPlayer?.setOnPreparedListener(null)
                                     mediaPlayer?.setOnCompletionListener(null)
                                     mediaPlayer?.release()

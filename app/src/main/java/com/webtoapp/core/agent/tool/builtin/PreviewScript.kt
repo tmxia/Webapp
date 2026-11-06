@@ -2,11 +2,11 @@ package com.webtoapp.core.agent.tool.builtin
 
 import com.google.gson.JsonParser
 
-
-
-
-
-
+/**
+ * Page script and snapshot used by [PreviewTool]. Pure so the wrapping rules
+ * can be tested without a WebView. The script is a function body: the model
+ * returns the value it needs, and the page stays the session.
+ */
 internal object PreviewScript {
     const val MAX_SCRIPT_CHARS = 12_000
     const val MAX_RESULT_CHARS = 16_000
@@ -30,10 +30,10 @@ internal object PreviewScript {
         })()
     """.trimIndent()
 
-    
-
-
-
+    /**
+     * Tags visible controls with data-wta-n so a later script can target
+     * document.querySelector('[data-wta-n="3"]') without guessing a selector.
+     */
     fun snapshot(): String = """
         (function(){
           var nodes = [];
@@ -52,7 +52,7 @@ internal object PreviewScript {
         })()
     """.trimIndent()
 
-    
+    /** WebView returns a JSON literal. A string result is wrapped in quotes. */
     fun unwrap(raw: String?): String {
         if (raw.isNullOrBlank() || raw == "null") return ""
         return try {

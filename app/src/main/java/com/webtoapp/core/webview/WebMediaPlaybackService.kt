@@ -15,16 +15,16 @@ import androidx.core.content.ContextCompat
 import com.webtoapp.util.SafeNotificationChannels
 import com.webtoapp.util.WakeLockCompat
 
-
-
-
-
-
-
-
-
-
-
+/**
+ * Foreground service backing WebView media playback.
+ *
+ * The audio itself keeps playing inside the WebView; this service keeps the app
+ * eligible for ongoing media playback, holds a wake lock while playing, and owns
+ * the media notification lifecycle (start while playing, detach on pause, remove
+ * on stop). Notification controls dispatch explicit commands back to the active
+ * [MediaSessionCore] (WebView bridge or GeckoView adapter) — they do NOT depend
+ * on a generic ACTION_MEDIA_BUTTON broadcast receiver.
+ */
 class WebMediaPlaybackService : Service() {
 
     private var wakeLock: PowerManager.WakeLock? = null
@@ -57,11 +57,11 @@ class WebMediaPlaybackService : Service() {
             }
 
             ACTION_MEDIA_COMMAND -> {
-                
-
-
-
-
+                /*
+                 * A foreground-service PendingIntent is used for notification
+                 * controls on Android 8+. We must enter the foreground before
+                 * dispatching the command.
+                 */
                 startAsForeground()
 
                 val command = intent.getStringExtra(EXTRA_COMMAND)
@@ -71,11 +71,11 @@ class WebMediaPlaybackService : Service() {
                     MediaSessionCore.dispatchFromService(command, value)
                 }
 
-                
-
-
-
-
+                /*
+                 * A play command will immediately synchronize the service again
+                 * as PLAYING. Other commands do not need to keep this temporary
+                 * service instance in the foreground.
+                 */
                 if (command != "play") {
                     stopForegroundCompat(STOP_FOREGROUND_DETACH)
 
@@ -110,9 +110,9 @@ class WebMediaPlaybackService : Service() {
                 startForeground(NOTIFICATION_ID, notification)
             }
         } catch (e: Exception) {
-            
-            
-            
+            // This service is driven from media-session PendingIntents and WebView JS, which
+            // can race the app going to the background — an Android 12+ background-start
+            // rejection must degrade to "no foreground notification", not crash the app.
             com.webtoapp.core.logging.AppLogger.w("WebMediaPlaybackService", "startForeground failed: ${e.message}")
             stopSelf()
         }
@@ -128,20 +128,20 @@ class WebMediaPlaybackService : Service() {
     }
 
     private fun acquireWakeLock() {
-        
-
-
-
-
-
-
-
-
-
-
-
-
-
+        /*
+         * A timeout prevents an accidental permanent wake lock. PLAYING is
+         * reported on every media sync, so each report renews the timeout by
+         * rotating to a fresh lock: acquire(timeout) on an already-held,
+         * non-reference-counted WakeLock is treated as a no-op by the
+         * platform and would NOT restart the timeout.
+         *
+         * The new lock is taken before the old one is released so coverage
+         * never lapses mid-rotation.
+         *
+         * WakeLockCompat returns null when the generated APK lacks WAKE_LOCK
+         * (or an OEM permission manager revoked it) — playback continues
+         * without the lock instead of crashing (#1034).
+         */
         val previous = wakeLock
         wakeLock = WakeLockCompat.acquire(
             this,
@@ -210,24 +210,24 @@ class WebMediaPlaybackService : Service() {
             try {
                 ContextCompat.startForegroundService(context, intent)
             } catch (e: Exception) {
-                
-                
+                // targetSdk 34+ may reject background FGS start with
+                // ForegroundServiceStartNotAllowedException; fail soft rather than crash.
                 android.util.Log.w("WebMediaPlayback", "startForegroundService rejected for media playback", e)
             }
         }
 
-        
-
-
-
-
-
-
-
-
-
-
-
+        /**
+         * Stops the media playback service if it is running.
+         *
+         * This deliberately uses [Context.stopService] instead of
+         * [ContextCompat.startForegroundService] with a stop action: starting a
+         * foreground service only to stop it violates the foreground-service
+         * contract (the service must call [android.app.Service.startForeground]
+         * within the startup deadline), which crashed generated apps on launch
+         * when the initial Media Session state was `none`. [Context.stopService]
+         * is a no-op when the service is not running and creates no such
+         * obligation.
+         */
         fun stop(context: Context) {
             val appContext = context.applicationContext
 

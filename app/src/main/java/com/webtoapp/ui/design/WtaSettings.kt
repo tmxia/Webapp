@@ -810,11 +810,11 @@ fun WtaBadge(
     }
 }
 
-
-
-
-
-
+/**
+ * Text clipped to [collapsedMaxLines] with an ellipsis. When the content
+ * actually overflows, an inline expand/collapse affordance reveals the rest,
+ * so long descriptions stay reachable without loosening dense row layouts.
+ */
 @Composable
 fun WtaExpandableText(
     text: String,

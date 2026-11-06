@@ -116,13 +116,13 @@ private fun Announcement.linkUrlOrNull(): String? = linkUrl?.takeIf { it.isNotBl
 private fun Announcement.linkTextOrDefault(defaultText: String = Strings.viewDetails): String =
     linkText?.ifEmpty { defaultText } ?: defaultText
 
-
-
-
-
-
-
-
+/**
+ * 公告内容区。根据 [Announcement.contentIsHtml] 决定渲染方式：
+ *  - false（默认）：纯文本 [Text]，保持原有模板样式行为。
+ *  - true：把 content 作为 HTML 嵌入一个轻量 WebView（禁用 JS，仅富文本展示），
+ *    背景透明以贴合弹窗模板配色，文字默认色跟随当前模板 [textColor]。
+ * 外框（标题、关闭按钮、底部按钮）由各 Dialog 自行负责，本组件只渲染"内容"。
+ */
 @Composable
 private fun AnnouncementContent(
     announcement: Announcement,

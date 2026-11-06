@@ -34,12 +34,12 @@ data class ToolResult(
     }
 }
 
-
-
-
-
-
-
+/**
+ * Metadata about an APK produced by [com.webtoapp.core.agent.tool.builtin.BuildApkTool].
+ * Surfaced as a virtual entry in the Files sidebar and previewed via an info card
+ * (install / share) rather than a WebView, since the APK lives in the external
+ * `built_apks/` directory and is a binary artifact.
+ */
 data class BuiltApkInfo(
     val appId: Long,
     val apkName: String,
@@ -85,18 +85,18 @@ data class FileChange(
     enum class Kind { WRITE, EDIT, DELETE }
 }
 
-
-
-
-
-
-
+/**
+ * Metadata about an app created or modified by [com.webtoapp.core.agent.tool.builtin.CreateAppTool]
+ * or [com.webtoapp.core.agent.tool.builtin.UpdateAppTool]. Surfaced as an "app changes" review
+ * card below the conversation so the user sees WHAT changed after a turn and can jump straight
+ * to the app's editor — mirroring how [FileChange] powers the file-changes review card.
+ */
 data class AppChange(
     val appId: Long,
     val appName: String,
     val appType: String,
     val kind: Kind,
-    
+    /** For UPDATE: the top-level manifest keys the patch touched, in patch order. */
     val changedFields: List<String> = emptyList()
 ) {
     enum class Kind { CREATE, UPDATE }

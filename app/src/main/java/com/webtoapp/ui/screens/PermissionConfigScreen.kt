@@ -98,12 +98,12 @@ import com.webtoapp.ui.theme.ifDescriptionsShown
 import com.webtoapp.util.PermissionPresetStorage
 import com.webtoapp.util.SavedPermissionPreset
 
-
-
-
-
-
-
+/**
+ * Checkbox approximation of what export will treat as already required.
+ * Export itself uses [com.webtoapp.core.apkbuilder] network detection, so a
+ * file HTML page that still loads the network can differ until build time.
+ * An explicit off on the local-network row still wins at export.
+ */
 fun permissionFeatureDefaults(
     appType: AppType,
     htmlLoadMode: HtmlLoadMode?,

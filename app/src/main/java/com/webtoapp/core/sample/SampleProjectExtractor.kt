@@ -180,15 +180,15 @@ object SampleProjectExtractor {
         }
     }
 
-    
-
-
-
-
-
-
-
-
+    /**
+     * Shared dependency packs (python `.pypackages`, go `vendor`) are too heavy
+     * to ship inside the APK (~30MB raw). Bundled assets still win when present
+     * — a fork can re-embed `sample_projects/<pack>/` and skip downloads
+     * entirely — otherwise they are fetched on first use via
+     * [SampleSharedPackManager]. When the pack is unavailable the sample is
+     * extracted without it and the runtime falls back to online dependency
+     * installation (pip), matching the previous fail-soft behavior.
+     */
     private suspend fun ensureSharedSampleAssets(
         context: Context,
         projectId: String,
@@ -222,10 +222,10 @@ object SampleProjectExtractor {
         }
     }
 
-    
-
-
-
+    /**
+     * AssetManager.list() never reports dot-children like `.pypackages`, so a
+     * bundled pack is detected by scanning the host APK entries directly.
+     */
     private fun bundledPackExists(context: Context, packName: String): Boolean {
         val sourceApk = context.applicationInfo?.sourceDir?.takeIf { it.isNotBlank() }
             ?.let { File(it) } ?: return false

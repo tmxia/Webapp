@@ -98,8 +98,8 @@ fun ShellSplashOverlay(
                 LaunchedEffect(isPlayerReady) {
                     if (!isPlayerReady) return@LaunchedEffect
                     while (true) {
-                        
-                        
+                        // Re-read the live player each iteration: a back press during the
+                        // splash releases it and nulls the state mid-poll.
                         val mp = mediaPlayer ?: return@LaunchedEffect
                         try {
                             if (!mp.isPlaying) {
@@ -116,7 +116,7 @@ fun ShellSplashOverlay(
                                 break
                             }
                         } catch (e: IllegalStateException) {
-                            
+                            // Player released between iterations; the splash is going away.
                             return@LaunchedEffect
                         }
                         delay(100)
@@ -139,9 +139,9 @@ fun ShellSplashOverlay(
                                                 setVolume(volume, volume)
                                                 isLooping = false
                                                 setOnPreparedListener { mp ->
-                                                    
-                                                    
-                                                    
+                                                    // prepareAsync may still be in flight when a
+                                                    // back press releases the player; skip stale
+                                                    // callbacks (issue #612).
                                                     if (mediaPlayer !== mp) return@setOnPreparedListener
                                                     try {
                                                         seekTo(videoStartMs.toInt())
@@ -168,9 +168,16 @@ fun ShellSplashOverlay(
 
                                             AppLogger.d("ShellSplash", "检测到加密启动画面视频")
                                             val decryptor = com.webtoapp.core.crypto.AssetDecryptor(ctx)
-                                            val decryptedData = decryptor.loadAsset(assetPath)
+                                            // Stream into the temp file; buffering a splash
+                                            // video whole is the same OOM that hit media/video.
+                                            val decrypted = decryptor.openEncryptedAsset(encryptedPath)
+                                                ?: throw java.io.IOException("加密启动视频不可读: $encryptedPath")
                                             val tempFile = java.io.File(ctx.cacheDir, "splash_video_${System.currentTimeMillis()}.mp4")
-                                            tempFile.writeBytes(decryptedData)
+                                            decrypted.stream.use { input ->
+                                                tempFile.outputStream().use { output ->
+                                                    input.copyTo(output, 64 * 1024)
+                                                }
+                                            }
                                             tempVideoFile = tempFile
 
                                             mediaPlayer = android.media.MediaPlayer().apply {
@@ -227,9 +234,9 @@ fun ShellSplashOverlay(
                                 }
                                 override fun surfaceChanged(h: android.view.SurfaceHolder, f: Int, w: Int, ht: Int) {}
                                 override fun surfaceDestroyed(h: android.view.SurfaceHolder) {
-                                    
-                                    
-                                    
+                                    // Detach callbacks before releasing so in-flight
+                                    // prepare/completion notifications cannot touch a
+                                    // released player (issue #612).
                                     mediaPlayer?.setOnPreparedListener(null)
                                     mediaPlayer?.setOnCompletionListener(null)
                                     mediaPlayer?.release()
@@ -307,16 +314,16 @@ fun MediaContentDisplay(
 ) {
     val context = LocalContext.current
 
-    
-    
-    
-    
-    
+    // mediaPath carries either an absolute host file (host-run preview) or a
+    // site-prefixed asset path (multi-web embedded site,
+    // multiweb_sites/<id>/media_content.*). Null preserves the legacy
+    // hardcoded root asset (standalone export). Same rule as the splash
+    // previewFile pattern: existing host files always win over assets.
     val previewFile = remember(mediaPath) {
         mediaPath?.let { java.io.File(it) }?.takeIf { it.isFile && it.canRead() }
     }
-    
-    
+    // Unused when previewFile hits; otherwise the asset to open (site-prefixed
+    // for multi-web sites, legacy root asset for standalone exports).
     val assetPath = remember(mediaPath, isVideo) {
         mediaPath?.takeIf { it.isNotBlank() }
             ?: if (isVideo) "media_content.mp4" else "media_content.png"
@@ -330,8 +337,8 @@ fun MediaContentDisplay(
         }
     }
 
-    
-    
+    // Mirror host MediaAppActivity: keep the screen awake for the lifetime of
+    // this screen when configured. Add-only like the host (no explicit clear).
     LaunchedEffect(mediaConfig.keepScreenOn) {
         if (mediaConfig.keepScreenOn) {
             try {
@@ -364,8 +371,8 @@ fun MediaContentDisplay(
             modifier = Modifier.fillMaxSize(),
             onSurfaceCreated = { holder ->
                 try {
-                    
-                    
+                    // Host-run preview points at a real file: play it directly
+                    // (mirrors the splash previewFile branch).
                     val hostFile = previewFile
                     if (hostFile != null) {
                         mediaPlayer = android.media.MediaPlayer().apply {
@@ -394,9 +401,16 @@ fun MediaContentDisplay(
                     if (hasEncrypted) {
                         AppLogger.d("MediaContent", "检测到加密媒体视频")
                         val decryptor = com.webtoapp.core.crypto.AssetDecryptor(context)
-                        val decryptedData = decryptor.loadAsset(assetPath)
+                        // Decrypt straight into the temp file: a whole-buffer
+                        // decrypt of a long video is what OOM-killed the shell.
+                        val decrypted = decryptor.openEncryptedAsset(encryptedPath)
+                            ?: throw java.io.IOException("加密视频不可读: $encryptedPath")
                         val tempFile = java.io.File(context.cacheDir, "media_video_${System.currentTimeMillis()}.mp4")
-                        tempFile.writeBytes(decryptedData)
+                        decrypted.stream.use { input ->
+                            tempFile.outputStream().use { output ->
+                                input.copyTo(output, 64 * 1024)
+                            }
+                        }
                         tempVideoFile = tempFile
 
                         mediaPlayer = android.media.MediaPlayer().apply {

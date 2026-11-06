@@ -31,21 +31,21 @@ object DependencyDownloadEngine {
 
     private const val PAUSE_CHECK_MS = 200L
 
-    
-    
-    
-    
-    
+    // Slow-source watchdog: a throttling mirror never errors — it trickles at
+    // a few KB/s forever, holding the download hostage. Below this sustained
+    // speed (after the grace window, past the minimum byte floor, only for
+    // files big enough to matter) the call is cancelled so the caller can
+    // switch to the next mirror; partial bytes stay in .tmp for resume.
     private const val SLOW_THRESHOLD_BYTES_PER_SEC = 64L * 1024
     private const val SLOW_GRACE_MS = 15_000L
     private const val SLOW_MIN_TOTAL_BYTES = 2L * 1024 * 1024
     private const val SLOW_POLL_MS = 2_000L
 
-    
-    
-    
-    
-    
+    // Stall watchdog: no bytes for this long means the source is dead even if
+    // the socket stays open — deliberately far below the OkHttp read timeout
+    // (120s) so a hung mirror fails over to the next source instead of
+    // freezing the call. The speed-window check alone cannot see this: with no
+    // new samples the window keeps reporting the pre-stall rate.
     private const val STALL_TIMEOUT_MS = 30_000L
 
     enum class Outcome { SUCCESS, FAILED, SLOW, CORRUPT }
@@ -132,8 +132,8 @@ object DependencyDownloadEngine {
             .build()
     }
 
-    
-    
+    // Read by the watchdog thread while the copy loop mutates it — deque keeps
+    // both sides safe without locking the hot path.
     private class SpeedTracker {
         private val samples = java.util.concurrent.ConcurrentLinkedDeque<Pair<Long, Long>>()
 
@@ -204,7 +204,7 @@ object DependencyDownloadEngine {
         displayName: String,
         context: Context? = null,
         taskId: TaskId = DEFAULT_TASK,
-        
+        /** When set, the completed temp file must hash to this SHA-256 or the result is [Outcome.CORRUPT]. */
         expectedSha256: String? = null,
     ): Outcome = withContext(Dispatchers.IO) {
         downloadMutex.withLock {
@@ -289,11 +289,11 @@ object DependencyDownloadEngine {
                     body.use { responseBody ->
                         val contentLength = responseBody.contentLength()
                         val totalBytes = if (response.code == 206) {
-                            
-                            
-                            
-                            
-                            
+                            // A mirror may reply 206 without Content-Length (-1): the sum
+                            // would then read as downloadedBytes - 1, the final size check
+                            // would mismatch, and the resume temp would be deleted — turning
+                            // a resumable download into a from-zero restart. Keep the hint
+                            // unknown in that case instead.
                             if (contentLength >= 0) downloadedBytes + contentLength else -1
                         } else {
                             contentLength
@@ -320,8 +320,8 @@ object DependencyDownloadEngine {
                                         if (_cancelled.get()) {
                                             throw kotlinx.coroutines.CancellationException("cancelled by user [task=$taskId]")
                                         }
-                                        
-                                        
+                                        // Keep the stall clock alive while paused so a
+                                        // long pause doesn't read as a dead source on resume.
                                         lastProgressAt.set(System.currentTimeMillis())
                                         delay(PAUSE_CHECK_MS)
                                         if (!isActive) return@withLock Outcome.FAILED

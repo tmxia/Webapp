@@ -62,11 +62,11 @@ object EngineViewFactory {
         expectLatePluginPayloads: Boolean = false,
         browserDisguiseConfig: com.webtoapp.core.appearance.BrowserDisguiseConfig? = null,
         deviceDisguiseConfig: com.webtoapp.core.appearance.DeviceDisguiseConfig? = null,
-        
-
-
-
-
+        /**
+         * The app's own origin URL (target URL / local base). Only consumed by the GeckoView
+         * path, which builds its NativeBridge inside the engine; the System WebView path gets
+         * the same value from the host's own bridge construction sites.
+         */
         appOriginUrl: String = ""
     ): BrowserSurface {
         val engineType = resolveEngineType(engineTypeName, config, context)

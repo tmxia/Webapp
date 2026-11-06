@@ -9,11 +9,11 @@ class AxmlEditor {
         private const val ORIGINAL_PACKAGE = "com.webtoapp"
     }
 
-    
-
-
-
-
+    /**
+     * FAIL-LOUD: throws when neither the UTF-8 nor the UTF-16 package string
+     * could be replaced — returning unmodified bytes would silently keep the
+     * original app identity.
+     */
     fun modifyPackageName(axmlData: ByteArray, newPackageName: String): ByteArray {
         val result = axmlData.copyOf()
 

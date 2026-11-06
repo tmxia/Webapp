@@ -47,7 +47,7 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 
-
+/** Bounded console buffer: page console spam must not grow state without limit. */
 private const val CONSOLE_LOG_CAP = 500
 
 class HtmlPreviewActivity : ComponentActivity() {
@@ -347,9 +347,9 @@ private fun WebView.setupWebView(
 
         databaseEnabled = true
 
-        
-        
-        
+        // Local HTML preview: allow gesture-free media playback so <audio>/<video>
+        // (including data: sources and scripted play()) behaves like the app
+        // preview in WebViewActivity, which forces this off for HTML apps.
         mediaPlaybackRequiresUserGesture = false
     }
 

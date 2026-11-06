@@ -37,14 +37,14 @@ object LocalDnsBridgeProxy {
 
     @Volatile private var refCount: Int = 0
 
-    
-
-
-
-
-
-
-
+    /**
+     * Per-session credential. Any app on the device can reach a loopback
+     * socket, so the proxy would otherwise be an unauthenticated forward
+     * proxy: callers could borrow this app's network identity for arbitrary
+     * egress or CONNECT into our own loopback runtime ports. The token is
+     * handed to runtimes as proxy-URL userinfo via [proxyEnvFor] and verified
+     * on every request; it rotates each time the proxy starts.
+     */
     @Volatile private var authToken: String = ""
 
     @Synchronized
@@ -102,8 +102,8 @@ object LocalDnsBridgeProxy {
 
     fun proxyEnvFor(port: Int): Map<String, String> {
         if (port <= 0) return emptyMap()
-        
-        
+        // Standard proxy env semantics: clients derive
+        // "Proxy-Authorization: Basic base64(user:token)" from the userinfo.
         val userInfo = if (authToken.isNotBlank()) "wta:$authToken@" else ""
         val url = "http://${userInfo}127.0.0.1:$port"
         return mapOf(
@@ -203,9 +203,9 @@ object LocalDnsBridgeProxy {
             val target = parts[1]
             val version = parts[2]
 
-            
-            
-            
+            // The socket is loopback-only, but loopback is shared with every
+            // other app on the device — require the per-session token before
+            // forwarding anything (CONNECT tunnels and plain HTTP alike).
             if (!isProxyAuthorized(headerLines)) {
                 sendProxyAuthRequired(output)
                 safeClose(client)
@@ -223,12 +223,12 @@ object LocalDnsBridgeProxy {
         }
     }
 
-    
-
-
-
-
-
+    /**
+     * Validate `Proxy-Authorization: Basic base64(user:token)` against the
+     * per-session token. Fails closed: no token configured (proxy not running)
+     * means nothing may forward. The password half is compared in constant
+     * time; the username is free-form.
+     */
     private fun isProxyAuthorized(headers: List<String>): Boolean {
         val expected = authToken
         if (expected.isBlank()) return false

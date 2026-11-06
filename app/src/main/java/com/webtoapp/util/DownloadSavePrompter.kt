@@ -9,11 +9,11 @@ import androidx.activity.result.contract.ActivityResultContract
 import com.webtoapp.core.logging.AppLogger
 import com.webtoapp.ui.shell.DownloadSaveActivity
 
-
-
-
-
-
+/**
+ * Shows the system save dialog (ACTION_CREATE_DOCUMENT) once per download and
+ * returns the document the user created. Prompts are queued so a second
+ * download waits until the first dialog closes.
+ */
 object DownloadSavePrompter {
 
     private const val TAG = "DownloadSavePrompter"
@@ -90,7 +90,7 @@ object DownloadSavePrompter {
     }
 }
 
-
+/** Suggested title is [Pair.second]; MIME type is [Pair.first]. */
 class CreateDownloadDocument : ActivityResultContract<Pair<String, String>, Uri?>() {
     override fun createIntent(context: Context, input: Pair<String, String>): Intent {
         return Intent(Intent.ACTION_CREATE_DOCUMENT).apply {

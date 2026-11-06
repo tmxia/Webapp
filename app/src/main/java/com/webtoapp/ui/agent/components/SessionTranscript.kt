@@ -7,11 +7,11 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-
-
-
-
-
+/**
+ * Renders a session to a Markdown transcript for the drawer's Export action.
+ * Pure formatting: reads the persisted session model only (with the safe
+ * accessors used everywhere else), so legacy sessions export identically.
+ */
 object SessionTranscript {
 
     private val TIME = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())

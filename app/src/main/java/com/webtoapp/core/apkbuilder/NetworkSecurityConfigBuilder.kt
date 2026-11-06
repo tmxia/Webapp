@@ -6,11 +6,11 @@ import java.io.File
 
 object NetworkSecurityConfigBuilder {
     fun build(config: NetworkTrustConfig): String {
-        
-        
-        
-        
-        
+        // Filter unreadable certs once and re-index sequentially, so the trust anchors and the
+        // res/raw entries we emit always reference the SAME resource names. Previously
+        // buildAnchors emitted @raw/wta_custom_ca_N for every cert by original index while
+        // customRawEntries dropped the unreadable ones — a missing middle cert then produced
+        // a <certificates src="@raw/..."> with no matching res/raw file and aapt failed.
         val entries = customRawEntries(config)
         val anchors = buildAnchors(config, entries)
         val cleartext = config.cleartextTrafficPermitted.toString()

@@ -61,8 +61,8 @@ class ActivationManager(private val context: Context) {
             clearFailedAttempts(appId)
             saveActivationStatus(appId, true)
         } else if (result is ActivationResult.Invalid && !result.offline) {
-            
-            
+            // Offline failures are "couldn't ask the server", not a wrong code —
+            // they must not burn the brute-force lockout budget.
             recordFailedAttempt(appId)
         }
         return result
@@ -190,9 +190,9 @@ class ActivationManager(private val context: Context) {
         }
 
         val currentStatus = getActivationStatus(appId)
-        
-        
-        
+        // "Already activated" only answers "this exact card is already redeemed". A
+        // different listed code is a card switch and must fall through to a fresh
+        // activation, otherwise a live grant would trap the user on the old card.
         if (currentStatus.isActivated && currentStatus.isValid &&
             isGrantCode(appId, matchedCode)
         ) {
@@ -219,9 +219,9 @@ class ActivationManager(private val context: Context) {
         appId: Long,
         deviceId: String
     ): ActivationResult {
-        
-        
-        
+        // An absolute expiry travels with the code, so it still holds after the
+        // local state was wiped. Check it before anything that reads that state,
+        // otherwise clearing data would reset the clock.
         if (code.isExpiredAt()) {
             AppLogger.w(TAG, "Activation rejected: code expired (absolute), app=$appId")
             return ActivationResult.Expired
@@ -229,9 +229,9 @@ class ActivationManager(private val context: Context) {
 
         val currentStatus = getActivationStatus(appId)
 
-        
-        
-        
+        // A lapsed grant must only block re-entering the SAME card that backs it;
+        // rejecting every new code here would brick re-activation forever once a
+        // grant expired or ran out of uses.
         if (currentStatus.isActivated && isGrantCode(appId, code)) {
             if (currentStatus.isExpired) {
                 return ActivationResult.Expired
@@ -284,20 +284,20 @@ class ActivationManager(private val context: Context) {
         return true
     }
 
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
+    /**
+     * Startup gate for local codes with "verify every launch" enabled.
+     *
+     * The grant is re-validated instead of blindly trusted: it must still be
+     * valid AND the code that created it must still be listed in the config, so
+     * removing a card revokes existing activations on the next launch. When the
+     * remembered card still checks out the launch passes silently — the user
+     * never retypes it. The stored code is the config-side string, so no
+     * plaintext credential is persisted that the config itself doesn't carry.
+     *
+     * Deliberately does NOT reset state first: wiping expire/usage/lockout on
+     * every launch made time- and usage-limited cards effectively infinite and
+     * reset the brute-force lockout on each restart.
+     */
     suspend fun resolveRelaunchActivation(
         appId: Long,
         validCodes: List<ActivationCode>
@@ -314,16 +314,16 @@ class ActivationManager(private val context: Context) {
         return resolveStartupActivation(appId)
     }
 
-    
-
-
-
-
-
-
-
-
-
+    /**
+     * Unified startup gate for remote activation.
+     *
+     * [reverifyEveryLaunch] = "verify every launch": always re-verify the
+     * remembered code against the server (offline behaviour still follows the
+     * configured offlinePolicy). Otherwise a locally-valid grant plus a valid
+     * cached server result is enough; only when the cache cannot carry the
+     * launch (e.g. DENY policy, expired cache) is the remembered code re-verified.
+     * The dialog is only needed when this returns false.
+     */
     suspend fun resolveRemoteStartup(
         appId: Long,
         request: RemoteActivationVerifier.RemoteRequest,
@@ -346,13 +346,13 @@ class ActivationManager(private val context: Context) {
             .let { it[stringPreferencesKey("used_code_$appId")] }
     }
 
-    
+    /** True when [code] is the card that backs the current grant. */
     private suspend fun isGrantCode(appId: Long, code: ActivationCode): Boolean {
         val used = getUsedCode(appId) ?: return false
         return constantTimeEquals(normalizeCode(used), normalizeCode(code.code))
     }
 
-    
+    /** True when the remembered code string still appears in the configured list. */
     private fun isCodeListed(usedCode: String, validCodes: List<ActivationCode>): Boolean {
         val normalizedUsed = normalizeCode(usedCode)
         return validCodes.any { candidate ->
@@ -393,10 +393,10 @@ class ActivationManager(private val context: Context) {
         )
     }
 
-    
-
-
-
+    /**
+     * Remaining-days notice for the local card that created the current grant.
+     * Remote grants forget the local card, so they return null.
+     */
     suspend fun remainingDaysNoticeForLaunch(
         appId: Long,
         codes: List<ActivationCode>,
@@ -418,16 +418,16 @@ class ActivationManager(private val context: Context) {
             }
             else -> null
         }
-        
-        
-        
+        // Whichever limit comes first wins, so an absolute expiry also caps a
+        // relative one. Writing it into local state is what makes the startup
+        // check (ActivationStatus.isExpired) honour it without a re-activation.
         val expireTime = listOfNotNull(relativeExpiry, code.expiresAt).minOrNull()
 
         context.activationDataStore.edit { preferences ->
             preferences[booleanPreferencesKey("activated_$appId")] = true
             preferences[longPreferencesKey("activated_time_$appId")] = currentTime
-            
-            
+            // Write-through, not write-only-when-set: a card switch must not let a
+            // previous grant's expiry or usage budget leak onto the new card.
             if (expireTime != null) {
                 preferences[longPreferencesKey("expire_time_$appId")] = expireTime
             } else {
@@ -441,15 +441,15 @@ class ActivationManager(private val context: Context) {
                 preferences.remove(intPreferencesKey("usage_count_$appId"))
             }
             preferences[stringPreferencesKey("code_type_$appId")] = code.type.name
-            
-            
-            
-            
+            // The config-side code string that created this grant. Recorded so a
+            // relaunch can re-check the card is still configured ("verify every
+            // launch") and so "enter the same card again" can be told apart from
+            // "switch to a different card".
             preferences[stringPreferencesKey("used_code_$appId")] = code.code
-            
-            
-            
-            
+            // Recorded so state is complete and callers can audit where a code
+            // was redeemed. Deliberately NOT enforced: a changed device id
+            // (new phone, reflash, factory reset) would lock out paying users,
+            // while enforcement would only ever stop a partial-state wipe.
             preferences[stringPreferencesKey("device_id_$appId")] = deviceId
         }
         AppLogger.i(
@@ -466,8 +466,8 @@ class ActivationManager(private val context: Context) {
                 preferences[longPreferencesKey("activated_time_$appId")] =
                     System.currentTimeMillis()
             }
-            
-            
+            // A remote grant isn't backed by a local card — drop any remembered
+            // code so relaunch checks never attribute this grant to a stale card.
             preferences.remove(stringPreferencesKey("used_code_$appId"))
         }
     }
@@ -492,8 +492,8 @@ class ActivationManager(private val context: Context) {
             preferences.remove(stringPreferencesKey("used_code_$appId"))
             preferences.remove(intPreferencesKey("failed_attempts_$appId"))
             preferences.remove(longPreferencesKey("lockout_until_$appId"))
-            
-            
+            // Remote verification cache — a full reset must not leave a cached
+            // server grant that could silently re-activate the app next launch.
             preferences.remove(stringPreferencesKey("remote_code_$appId"))
             preferences.remove(longPreferencesKey("remote_expires_$appId"))
             preferences.remove(longPreferencesKey("remote_verified_at_$appId"))

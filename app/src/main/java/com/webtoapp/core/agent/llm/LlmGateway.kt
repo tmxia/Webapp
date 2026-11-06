@@ -11,10 +11,10 @@ interface LlmGateway {
 internal interface LlmProvider {
     fun supports(provider: AiProvider): Boolean
 
-    
-
-
-
+    /**
+     * Format-aware match: a CUSTOM endpoint is routed by its declared [com.webtoapp.data.model.ApiFormat]
+     * (Anthropic Messages / Chat Completions / Responses), not by the enum alone.
+     */
     fun supports(req: ChatRequest): Boolean = supports(req.apiKey.provider)
     fun chatStream(req: ChatRequest): Flow<LlmEvent>
 }

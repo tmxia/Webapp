@@ -32,9 +32,9 @@ class EmbedContext(
     val fnAddPythonAppFiles: (ZipOutputStream, File) -> Unit,
     val fnAddGoAppFiles: (ZipOutputStream, File) -> Unit,
     val multiWebSiteSourceDirs: Map<String, File> = emptyMap(),
-    
+    /** Multi-web GALLERY site id -> source host-path items (embedded under the site prefix). */
     val multiWebSiteGalleryItems: Map<String, List<com.webtoapp.data.model.GalleryItem>> = emptyMap(),
-    
+    /** Multi-web IMAGE/VIDEO site id -> source host media path. */
     val multiWebSiteMediaPaths: Map<String, String> = emptyMap()
 )
 
@@ -91,9 +91,14 @@ class HtmlContentEmbedder : AppContentEmbedder {
                     fileHook = if (ctx.encryptionConfig.enabled && ctx.encryptor != null) {
                         { zipOut, assetPath, file ->
                             val assetName = assetPath.removePrefix("assets/")
-                            val encryptedData = ctx.encryptor!!.encrypt(file.readBytes(), assetName)
-                            ZipUtils.writeEntryDeflated(zipOut, "${assetPath}.enc", encryptedData)
-                            ctx.logger.log("File encrypted: ${assetPath}.enc (${encryptedData.size} bytes)")
+                            val entry = java.util.zip.ZipEntry("${assetPath}.enc")
+                            entry.method = java.util.zip.ZipEntry.DEFLATED
+                            zipOut.putNextEntry(entry)
+                            val written = file.inputStream().buffered().use { input ->
+                                ctx.encryptor!!.encryptStreaming(input, assetName, zipOut)
+                            }
+                            zipOut.closeEntry()
+                            ctx.logger.log("File encrypted: ${assetPath}.enc ($written bytes)")
                             true
                         }
                     } else null

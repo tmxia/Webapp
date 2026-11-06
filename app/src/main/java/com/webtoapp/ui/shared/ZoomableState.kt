@@ -21,17 +21,17 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.util.fastAny
 import androidx.compose.ui.util.fastForEach
 
-
-
-
-
-
-
-
-
-
-
-
+/**
+ * Pinch-to-zoom + pan + double-tap-toggle state for full-screen image
+ * viewers, designed to coexist with [androidx.compose.foundation.pager.HorizontalPager]:
+ * single-finger drags at 1x are never consumed (the pager keeps them), while
+ * pinches and zoomed pans are.
+ *
+ * Transform math (viewport pixels, scale about the viewport center, which is
+ * what [graphicsLayer] does with the default transform origin):
+ * a content point p (viewport coords at scale 1) lands at
+ * `center + (p - center) * scale + offset`.
+ */
 @Stable
 class ZoomableState(
     val minScale: Float = 1f,
@@ -44,11 +44,11 @@ class ZoomableState(
     var offset by mutableStateOf(Offset.Zero)
         private set
 
-    
+    /** Viewport size in pixels. Set from layout; needed for clamping. */
     var viewportSize: Size = Size.Zero
         private set
 
-    
+    /** Content size in pixels at scale 1 (already fitted). */
     var contentSize: Size = Size.Zero
         private set
 
@@ -63,10 +63,10 @@ class ZoomableState(
         offset = Offset.Zero
     }
 
-    
-
-
-
+    /**
+     * Apply a pinch step, keeping [centroid] (viewport coords) stationary.
+     * Returns true when anything changed.
+     */
     fun applyZoom(zoomChange: Float, centroid: Offset): Boolean {
         if (zoomChange == 1f) return false
         val newScale = (scale * zoomChange).coerceIn(minScale, maxScale)
@@ -80,7 +80,7 @@ class ZoomableState(
         return true
     }
 
-    
+    /** Apply a pan step (viewport pixels). Returns true when anything changed. */
     fun applyPan(panChange: Offset): Boolean {
         if (panChange == Offset.Zero || scale <= minScale) return false
         val next = clampOffset(offset + panChange, scale, viewportSize, contentSize)
@@ -89,10 +89,10 @@ class ZoomableState(
         return true
     }
 
-    
-
-
-
+    /**
+     * Double-tap toggle. Returns the tap point (for callers that need it);
+     * mutates state directly (snap, no animation).
+     */
     fun toggleZoom(tap: Offset) {
         if (scale > zoomToggleThreshold) {
             reset()
@@ -132,11 +132,11 @@ class ZoomableState(
     }
 }
 
-
-
-
-
-
+/**
+ * Gesture wiring for [ZoomableState]: pinch zoom (focal-aware), pan while
+ * zoomed, and pass-through of single-finger drags at 1x so an enclosing
+ * pager keeps working. Rotation is intentionally locked.
+ */
 fun Modifier.zoomableGesture(
     state: ZoomableState,
     enabled: Boolean = true
@@ -152,8 +152,8 @@ fun Modifier.zoomableGesture(
             while (true) {
                 val event = awaitPointerEvent()
                 val pressed = event.changes.fastAny { it.pressed }
-                
-                
+                // Another consumer (e.g. the pager mid-drag) claimed the
+                // stream: never fight it.
                 val claimed = event.changes.fastAny { it.isConsumed }
                 if (claimed) {
                     if (!pressed) break
@@ -205,7 +205,7 @@ private fun consumePositionChange(change: PointerInputChange) {
     }
 }
 
-
+/** Modifier shorthand: [zoomableGesture] + [graphicsLayer] in one. */
 fun Modifier.zoomable(
     state: ZoomableState,
     enabled: Boolean = true
@@ -220,6 +220,6 @@ fun Modifier.zoomable(
         )
 )
 
-
+/** Touch slop in pixels for gesture detection. */
 private val PointerInputScope.touchSlop: Float
     get() = viewConfiguration.touchSlop

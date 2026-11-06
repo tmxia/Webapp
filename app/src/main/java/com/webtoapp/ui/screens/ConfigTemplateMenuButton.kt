@@ -38,7 +38,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
 
-
+/** "3 days ago"-style stamp; the platform formatter localizes it for free. */
 private fun relativeCreatedAt(createdAt: Long): String =
     android.text.format.DateUtils.getRelativeTimeSpanString(
         createdAt,
@@ -46,13 +46,13 @@ private fun relativeCreatedAt(createdAt: Long): String =
         TimeUnit.MINUTES.toMillis(1)
     ).toString()
 
-
-
-
-
-
-
-
+/**
+ * Top-bar action for common-config templates: save the current WebViewConfig as a named
+ * snapshot, apply one to the app (a template is a full snapshot — applying replaces the
+ * whole WebViewConfig), import or export a JSON file, and manage saved templates.
+ * Lives in the editor's fixed top bar instead of the scrolling config list, since it
+ * applies to the config as a whole.
+ */
 @Composable
 fun ConfigTemplateMenuButton(
     config: WebViewConfig,

@@ -375,12 +375,12 @@ internal object ApkArtifactVerifier {
         localSites.forEachIndexed { index, site ->
             val relativePath = normalizeAssetPath(site.localFilePath)
 
-            
-            
-            
-            
-            
-            
+            // Mirror MultiWebContentEmbedder: HTML/FRONTEND sites embed a whole
+            // project directory under assets/multiweb_sites/<siteId>/html/ —
+            // the site's own source project wins over the shared multi-web
+            // project dir. The flat assets/html_projects/ layout is only
+            // written by the legacy fallback when no site takes a per-site
+            // embed.
             val siteType = site.appType.uppercase()
             if (siteType == "HTML" || siteType == "FRONTEND") {
                 val siteDir = siteSourceDirs[site.id]
@@ -396,9 +396,9 @@ internal object ApkArtifactVerifier {
                     return@forEachIndexed
                 }
 
-                
-                
-                
+                // A site embedded from its own source project lands at the
+                // project root — the site-id prefix in localFilePath only
+                // exists inside the shared multi-web project directory.
                 val entryRelative = if (siteDir != null) {
                     relativePath.substringAfter('/', relativePath)
                 } else {
