@@ -228,56 +228,47 @@ class WindowHelperKeyboardModeApi30Test {
     }
 
     @Test
-    fun `nothing mode keeps the keyboard inset away from the page`() {
+    fun `resize mode gives the keyboard height back to the content view`() {
         val activity = Robolectric.setupActivity(Activity::class.java)
-        WindowHelper.applyImmersiveFullscreen(
-            activity,
-            enabled = false,
-            keyboardAdjustMode = KeyboardAdjustMode.NOTHING
-        )
-        val contentView = activity.findViewById<View>(android.R.id.content)
-        val ime = WindowInsetsCompat.Builder()
-            .setInsets(WindowInsetsCompat.Type.ime(), Insets.of(0, 0, 0, 320))
-            .build()
-
-        val result = ViewCompat.dispatchApplyWindowInsets(contentView, ime)
-
-        assertThat(result.getInsets(WindowInsetsCompat.Type.ime()).bottom).isEqualTo(0)
-    }
-
-    @Test
-    fun `switching to resize mode removes the overlay isolation`() {
-        val activity = Robolectric.setupActivity(Activity::class.java)
-        WindowHelper.applyImmersiveFullscreen(
-            activity,
-            enabled = false,
-            keyboardAdjustMode = KeyboardAdjustMode.NOTHING
-        )
         WindowHelper.applyImmersiveFullscreen(
             activity,
             enabled = false,
             keyboardAdjustMode = KeyboardAdjustMode.RESIZE
         )
         val contentView = activity.findViewById<View>(android.R.id.content)
-        val ime = WindowInsetsCompat.Builder()
+        val shown = WindowInsetsCompat.Builder()
             .setInsets(WindowInsetsCompat.Type.ime(), Insets.of(0, 0, 0, 320))
             .build()
 
-        val result = ViewCompat.dispatchApplyWindowInsets(contentView, ime)
+        ViewCompat.dispatchApplyWindowInsets(contentView, shown)
+        assertThat(contentView.paddingBottom).isEqualTo(320)
 
+        ViewCompat.dispatchApplyWindowInsets(contentView, WindowInsetsCompat.Builder().build())
+        assertThat(contentView.paddingBottom).isEqualTo(0)
+    }
+
+    @Test
+    fun `overlay mode leaves the IME inset for compose panels`() {
+        val activity = Robolectric.setupActivity(Activity::class.java)
+        WindowHelper.applyImmersiveFullscreen(
+            activity,
+            enabled = false,
+            keyboardAdjustMode = KeyboardAdjustMode.NOTHING
+        )
+        val contentView = activity.findViewById<View>(android.R.id.content)
+        val shown = WindowInsetsCompat.Builder()
+            .setInsets(WindowInsetsCompat.Type.ime(), Insets.of(0, 0, 0, 320))
+            .build()
+
+        val result = ViewCompat.dispatchApplyWindowInsets(contentView, shown)
+        assertThat(contentView.paddingBottom).isEqualTo(0)
         assertThat(result.getInsets(WindowInsetsCompat.Type.ime()).bottom).isEqualTo(320)
     }
 
     @Test
-    fun `stripImeInsets preserves non-ime insets`() {
-        val source = WindowInsetsCompat.Builder()
-            .setInsets(WindowInsetsCompat.Type.ime(), Insets.of(0, 0, 0, 320))
-            .setInsets(WindowInsetsCompat.Type.navigationBars(), Insets.of(0, 0, 0, 48))
-            .build()
-
-        val stripped = stripImeInsets(source)
-
-        assertThat(stripped.getInsets(WindowInsetsCompat.Type.ime()).bottom).isEqualTo(0)
-        assertThat(stripped.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom).isEqualTo(48)
+    fun `host input panels own the IME padding when the window does not resize`() {
+        assertThat(needsPanelImePadding(KeyboardAdjustMode.NOTHING)).isTrue()
+        assertThat(needsPanelImePadding(null)).isTrue()
+        assertThat(needsPanelImePadding(KeyboardAdjustMode.RESIZE)).isFalse()
     }
 }
