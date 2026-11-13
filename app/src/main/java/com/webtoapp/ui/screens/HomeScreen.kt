@@ -6,6 +6,7 @@ import com.webtoapp.ui.components.PremiumButton
 import com.webtoapp.ui.components.SettingsSwitch
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.scrollBy
@@ -82,7 +83,6 @@ import com.webtoapp.ui.theme.LocalAnimationSettings
 import com.webtoapp.ui.theme.AppColors
 import com.webtoapp.ui.theme.ThemeManager
 import com.webtoapp.ui.theme.LocalAppTheme
-import com.webtoapp.ui.theme.LocalThemeRevealState
 import com.webtoapp.ui.viewmodel.MainViewModel
 import com.webtoapp.ui.viewmodel.UiState
 import kotlinx.coroutines.Dispatchers
@@ -106,9 +106,6 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.foundation.Canvas
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.layout.boundsInRoot
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.ui.graphics.graphicsLayer
@@ -123,7 +120,7 @@ import com.webtoapp.ui.design.WtaBadge
 import com.webtoapp.ui.design.WtaInfoChip
 import com.webtoapp.ui.theme.LocalShowDescriptions
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun HomeScreen(
     viewModel: MainViewModel,
@@ -238,83 +235,16 @@ fun HomeScreen(
             ExtendedFloatingActionButton(
                 onClick = { showFabMenu = true },
                 icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                text = { Text(Strings.createApp) },
+                text = { Text(Strings.createApp, style = MaterialTheme.typography.labelLargeEmphasized) },
                 containerColor = MaterialTheme.colorScheme.primaryContainer,
                 contentColor = MaterialTheme.colorScheme.onPrimaryContainer
             )
         },
 
         actions = {
-                    val context = LocalContext.current
-                    val themeManager = remember { ThemeManager.getInstance(context) }
-                    val darkModeState by themeManager.darkModeFlow.collectAsStateWithLifecycle()
-                    val isDarkNow = darkModeState == ThemeManager.DarkModeSettings.DARK
-
-                    val revealState = LocalThemeRevealState.current
-                    val view = LocalView.current
-                    val activity = context as? android.app.Activity
-
-                    var buttonCenter by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
-
-                    IconButton(
-                        onClick = {
-                            val switchToDark = !isDarkNow
-
-                            if (revealState != null) {
-
-                                revealState.triggerReveal(
-                                    center = buttonCenter,
-                                    switchToDark = switchToDark,
-                                    view = view,
-                                    window = activity?.window
-                                ) {
-
-                                    scope.launch {
-                                        val newMode = if (switchToDark) {
-                                            ThemeManager.DarkModeSettings.DARK
-                                        } else {
-                                            ThemeManager.DarkModeSettings.LIGHT
-                                        }
-                                        themeManager.setDarkMode(newMode)
-                                    }
-                                }
-                            } else {
-
-                                scope.launch {
-                                    val newMode = if (switchToDark) {
-                                        ThemeManager.DarkModeSettings.DARK
-                                    } else {
-                                        ThemeManager.DarkModeSettings.LIGHT
-                                    }
-                                    themeManager.setDarkMode(newMode)
-                                }
-                            }
-                        },
-                        modifier = Modifier
-                            .size(44.dp)
-                            .onGloballyPositioned { coords ->
-                                val bounds = coords.boundsInRoot()
-                                buttonCenter = androidx.compose.ui.geometry.Offset(
-                                    bounds.left + bounds.width / 2,
-                                    bounds.top + bounds.height / 2
-                                )
-                            }
-                    ) {
-                        Icon(
-                            imageVector = if (isDarkNow) Icons.Outlined.DarkMode else Icons.Outlined.LightMode,
-                            contentDescription = if (isDarkNow) {
-                                Strings.statusBarDarkModeLabel
-                            } else {
-                                Strings.statusBarLightModeLabel
-                            },
-                            modifier = Modifier.size(22.dp),
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
-                    }
-
                     LanguageSelectorButton(
+                        buttonSize = 40.dp,
                         onLanguageChanged = {
-
                             scope.launch {
                                 snackbarHostState.showSnackbar(Strings.msgLanguageChanged)
                             }
@@ -330,28 +260,34 @@ fun HomeScreen(
                             }
                             scope.launch { homeThemeManager.setHomeViewMode(next) }
                         },
-                        modifier = Modifier.size(44.dp)
+                        modifier = Modifier.size(40.dp)
                     ) {
-                        Icon(
-                            imageVector = if (homeViewMode == ThemeManager.HomeViewMode.GRID) {
-                                Icons.AutoMirrored.Outlined.ViewList
-                            } else {
-                                Icons.Outlined.GridView
-                            },
-                            contentDescription = if (homeViewMode == ThemeManager.HomeViewMode.GRID) {
-                                Strings.homeViewList
-                            } else {
-                                Strings.homeViewGrid
-                            },
-                            modifier = Modifier.size(22.dp),
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
+                        Crossfade(
+                            targetState = homeViewMode,
+                            animationSpec = com.webtoapp.ui.design.WtaMotion.standardTween(),
+                            label = "homeViewModeIcon"
+                        ) { mode ->
+                            Icon(
+                                imageVector = if (mode == ThemeManager.HomeViewMode.GRID) {
+                                    Icons.AutoMirrored.Outlined.ViewList
+                                } else {
+                                    Icons.Outlined.GridView
+                                },
+                                contentDescription = if (mode == ThemeManager.HomeViewMode.GRID) {
+                                    Strings.homeViewList
+                                } else {
+                                    Strings.homeViewGrid
+                                },
+                                modifier = Modifier.size(22.dp),
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
                     }
 
                     Box {
                         IconButton(
                             onClick = { showSortMenu = true },
-                            modifier = Modifier.size(44.dp)
+                            modifier = Modifier.size(40.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Outlined.Sort,
@@ -392,7 +328,7 @@ fun HomeScreen(
                             isSearchActive = !isSearchActive
                             if (!isSearchActive) viewModel.search("")
                         },
-                        modifier = Modifier.size(44.dp)
+                        modifier = Modifier.size(40.dp)
                     ) {
                         Icon(
                             imageVector = if (isSearchActive) Icons.Default.Close else Icons.Default.Search,
@@ -406,11 +342,11 @@ fun HomeScreen(
                     Box {
                         IconButton(
                             onClick = { showMoreMenu = true },
-                            modifier = Modifier.size(44.dp)
+                            modifier = Modifier.size(40.dp)
                         ) {
                             Icon(
                                 imageVector = Icons.Outlined.MoreVert,
-                                contentDescription = null,
+                                contentDescription = Strings.more,
                                 modifier = Modifier.size(22.dp),
                                 tint = MaterialTheme.colorScheme.onSurface
                             )
@@ -501,7 +437,6 @@ fun HomeScreen(
                             )
                         }
                     }
-
         }
     ) {
         Column(
@@ -1115,7 +1050,7 @@ fun HomeScreen(
             ) {
                 Text(
                     text = Strings.createApp,
-                    style = MaterialTheme.typography.titleLarge,
+                    style = MaterialTheme.typography.titleLargeEmphasized,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
                 createActionItems.chunked(3).forEachIndexed { rowIndex, rowItems ->
@@ -1931,7 +1866,7 @@ fun EmptyState(
         Spacer(modifier = Modifier.height(24.dp))
         Text(
             text = Strings.msgNoApps,
-            style = MaterialTheme.typography.titleLarge,
+            style = MaterialTheme.typography.titleLargeEmphasized,
             color = colors.onSurface,
             textAlign = TextAlign.Center
         )
