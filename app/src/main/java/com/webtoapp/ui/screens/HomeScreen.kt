@@ -29,6 +29,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.Announcement
 import androidx.compose.material.icons.automirrored.outlined.ViewList
 import androidx.compose.material.icons.outlined.*
+import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
@@ -45,6 +46,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.res.painterResource
+import androidx.graphics.shapes.RoundedPolygon
 import com.webtoapp.R
 import com.webtoapp.core.host.HostRuntimePrefs
 import coil.ImageLoader
@@ -72,6 +74,7 @@ import com.webtoapp.ui.design.WtaLoadingIndicator
 import com.webtoapp.ui.design.WtaMaterialShape
 import com.webtoapp.ui.design.WtaMorphingShape
 import com.webtoapp.ui.design.WtaShapePlate
+import com.webtoapp.ui.design.WtaPolygonShape
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialShapes
 import com.webtoapp.ui.design.WtaScreen
@@ -229,12 +232,36 @@ fun HomeScreen(
 
     WtaScreen(
         title = Strings.myApps,
+        titleContent = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                WtaShapePlate(
+                    polygon = MaterialShapes.Cookie7Sided,
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    modifier = Modifier.size(30.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Apps,
+                        contentDescription = null,
+                        modifier = Modifier.size(17.dp),
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                }
+                Spacer(modifier = Modifier.width(10.dp))
+                Text(
+                    text = Strings.myApps,
+                    style = MaterialTheme.typography.titleLargeEmphasized,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        },
         snackbarHostState = snackbarHostState,
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = { showFabMenu = true },
                 icon = { Icon(Icons.Default.Add, contentDescription = null) },
                 text = { Text(Strings.createApp, style = MaterialTheme.typography.labelLargeEmphasized) },
+                shape = CreateFabShape,
                 containerColor = MaterialTheme.colorScheme.primaryContainer,
                 contentColor = MaterialTheme.colorScheme.onPrimaryContainer
             )
@@ -283,45 +310,6 @@ fun HomeScreen(
                         }
                     }
 
-                    Box {
-                        IconButton(
-                            onClick = { showSortMenu = true },
-                            modifier = Modifier.size(40.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Outlined.Sort,
-                                contentDescription = Strings.appListSort,
-                                modifier = Modifier.size(22.dp),
-                                tint = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                        DropdownMenu(
-                            expanded = showSortMenu,
-                            onDismissRequest = { showSortMenu = false }
-                        ) {
-                            AppListSort.entries.forEach { mode ->
-                                DropdownMenuItem(
-                                    text = { Text(mode.homeMenuLabel()) },
-                                    onClick = {
-                                        showSortMenu = false
-                                        viewModel.setAppListSort(mode)
-                                    },
-                                    leadingIcon = {
-                                        if (appListSort == mode) {
-                                            Icon(
-                                                Icons.Outlined.Check,
-                                                contentDescription = null,
-                                                modifier = Modifier.size(18.dp)
-                                            )
-                                        } else {
-                                            Spacer(Modifier.size(18.dp))
-                                        }
-                                    }
-                                )
-                            }
-                        }
-                    }
-
                     IconButton(
                         onClick = {
                             isSearchActive = !isSearchActive
@@ -357,82 +345,82 @@ fun HomeScreen(
                             DropdownMenuItem(
                                 text = { Text(Strings.menuAgent) },
                                 onClick = { showMoreMenu = false; onOpenAgent() },
-                                leadingIcon = { Icon(Icons.Outlined.Code, null, Modifier.size(20.dp)) }
+                                leadingIcon = { MoreMenuIcon(Icons.Rounded.SmartToy, MaterialShapes.Sunny, 0) }
                             )
                             DropdownMenuItem(
                                 text = { Text(Strings.menuAiSettings) },
                                 onClick = { showMoreMenu = false; onOpenAiSettings() },
-                                leadingIcon = { Icon(Icons.Outlined.AutoAwesome, null, Modifier.size(20.dp)) }
+                                leadingIcon = { MoreMenuIcon(Icons.Rounded.AutoAwesome, MaterialShapes.Cookie4Sided, 2) }
                             )
                             HorizontalDivider()
                             DropdownMenuItem(
                                 text = { Text(Strings.pluginsManageTitle) },
                                 onClick = { showMoreMenu = false; onOpenPlugins() },
-                                leadingIcon = { Icon(Icons.Outlined.Extension, null, Modifier.size(20.dp)) }
+                                leadingIcon = { MoreMenuIcon(Icons.Rounded.Extension, MaterialShapes.Clover4Leaf, 1) }
                             )
                             DropdownMenuItem(
                                 text = { Text(Strings.menuAppModifier) },
                                 onClick = { showMoreMenu = false; onOpenAppModifier() },
-                                leadingIcon = { Icon(Icons.Outlined.AppShortcut, null, Modifier.size(20.dp)) }
+                                leadingIcon = { MoreMenuIcon(Icons.Rounded.AppShortcut, MaterialShapes.Gem, 0) }
                             )
                             if (advancedFeatures) {
                                 DropdownMenuItem(
                                     text = { Text(Strings.menuLinuxEnvironment) },
                                     onClick = { showMoreMenu = false; onOpenLinuxEnvironment() },
-                                    leadingIcon = { Icon(Icons.Outlined.Terminal, null, Modifier.size(20.dp)) }
+                                    leadingIcon = { MoreMenuIcon(Icons.Rounded.Terminal, MaterialShapes.Fan, 1) }
                                 )
                                 DropdownMenuItem(
                                     text = { Text(Strings.menuRuntimeDeps) },
                                     onClick = { showMoreMenu = false; onOpenRuntimeDeps() },
-                                    leadingIcon = { Icon(Icons.Outlined.Memory, null, Modifier.size(20.dp)) }
+                                    leadingIcon = { MoreMenuIcon(Icons.Rounded.Memory, MaterialShapes.Cookie6Sided, 2) }
                                 )
                                 DropdownMenuItem(
                                     text = { Text(Strings.menuPortManager) },
                                     onClick = { showMoreMenu = false; onOpenPortManager() },
-                                    leadingIcon = { Icon(Icons.Outlined.Router, null, Modifier.size(20.dp)) }
+                                    leadingIcon = { MoreMenuIcon(Icons.Rounded.Router, MaterialShapes.Pentagon, 0) }
                                 )
                             }
                             HorizontalDivider()
                             DropdownMenuItem(
                                 text = { Text(Strings.menuBrowserKernel) },
                                 onClick = { showMoreMenu = false; onOpenBrowserKernel() },
-                                leadingIcon = { Icon(Icons.Outlined.Public, null, Modifier.size(20.dp)) }
+                                leadingIcon = { MoreMenuIcon(Icons.Rounded.Public, MaterialShapes.Cookie9Sided, 1) }
                             )
                             DropdownMenuItem(
                                 text = { Text(Strings.menuHostsAdBlock) },
                                 onClick = { showMoreMenu = false; onOpenHostsAdBlock() },
-                                leadingIcon = { Icon(Icons.Outlined.Shield, null, Modifier.size(20.dp)) }
+                                leadingIcon = { MoreMenuIcon(Icons.Rounded.Shield, MaterialShapes.Arch, 2) }
                             )
                             HorizontalDivider()
                             DropdownMenuItem(
                                 text = { Text(Strings.menuStats) },
                                 onClick = { showMoreMenu = false; onOpenStats() },
-                                leadingIcon = { Icon(Icons.Outlined.BarChart, null, Modifier.size(20.dp)) }
+                                leadingIcon = { MoreMenuIcon(Icons.Rounded.Analytics, MaterialShapes.Sunny, 0) }
                             )
                             DropdownMenuItem(
                                 text = { Text(Strings.menuGooglePlay) },
                                 onClick = { showMoreMenu = false; onOpenPlayStore() },
-                                leadingIcon = { Icon(Icons.Outlined.PlayCircleOutline, null, Modifier.size(20.dp)) }
+                                leadingIcon = { MoreMenuIcon(Icons.Rounded.Shop, MaterialShapes.Triangle, 1) }
                             )
                             DropdownMenuItem(
                                 text = { Text(Strings.menuFileManager) },
                                 onClick = { showMoreMenu = false; onOpenFileManager() },
-                                leadingIcon = { Icon(Icons.Outlined.Folder, null, Modifier.size(20.dp)) }
+                                leadingIcon = { MoreMenuIcon(Icons.Rounded.Folder, MaterialShapes.Pill, 2) }
                             )
                             DropdownMenuItem(
                                 text = { Text(Strings.dataBackupTitle) },
                                 onClick = { showMoreMenu = false; showDataBackupDialog = true },
-                                leadingIcon = { Icon(Icons.Outlined.Inventory2, null, Modifier.size(20.dp)) }
+                                leadingIcon = { MoreMenuIcon(Icons.Rounded.Backup, MaterialShapes.Ghostish, 0) }
                             )
                             DropdownMenuItem(
                                 text = { Text(Strings.uiConfig) },
                                 onClick = { showMoreMenu = false; onOpenSettings() },
-                                leadingIcon = { Icon(Icons.Outlined.Palette, null, Modifier.size(20.dp)) }
+                                leadingIcon = { MoreMenuIcon(Icons.Rounded.Palette, MaterialShapes.VerySunny, 1) }
                             )
                             DropdownMenuItem(
                                 text = { Text(Strings.menuAbout) },
                                 onClick = { showMoreMenu = false; onOpenAbout() },
-                                leadingIcon = { Icon(Icons.Outlined.Info, null, Modifier.size(20.dp)) }
+                                leadingIcon = { MoreMenuIcon(Icons.Rounded.Info, MaterialShapes.Clover4Leaf, 2) }
                             )
                         }
                     }
@@ -480,7 +468,47 @@ fun HomeScreen(
                 },
                 onDeleteCategory = { viewModel.deleteCategory(it) },
                 onMoveCategory = { category, delta -> viewModel.moveCategory(category, delta) },
-                onManageCategories = { showCategoryManager = true }
+                onManageCategories = { showCategoryManager = true },
+                trailingContent = {
+                    Box {
+                        IconButton(
+                            onClick = { showSortMenu = true },
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.Sort,
+                                contentDescription = Strings.appListSort,
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = showSortMenu,
+                            onDismissRequest = { showSortMenu = false }
+                        ) {
+                            AppListSort.entries.forEach { mode ->
+                                DropdownMenuItem(
+                                    text = { Text(mode.homeMenuLabel()) },
+                                    onClick = {
+                                        showSortMenu = false
+                                        viewModel.setAppListSort(mode)
+                                    },
+                                    leadingIcon = {
+                                        if (appListSort == mode) {
+                                            Icon(
+                                                Icons.Outlined.Check,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        } else {
+                                            Spacer(Modifier.size(18.dp))
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
             )
 
             Box(
@@ -1863,16 +1891,36 @@ fun EmptyState(
             )
         }
         Spacer(modifier = Modifier.height(24.dp))
-        Text(
-            text = Strings.msgNoApps,
-            style = MaterialTheme.typography.titleLargeEmphasized,
-            color = colors.onSurface,
-            textAlign = TextAlign.Center
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            WtaMaterialShape(
+                polygon = MaterialShapes.Sunny,
+                color = colors.tertiaryContainer,
+                modifier = Modifier
+                    .size(22.dp)
+                    .offset(y = (-1).dp)
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            Text(
+                text = Strings.msgNoApps,
+                style = MaterialTheme.typography.titleLargeEmphasized,
+                color = colors.onSurface,
+                textAlign = TextAlign.Center
+            )
+            Spacer(modifier = Modifier.width(12.dp))
+            WtaMaterialShape(
+                polygon = MaterialShapes.Sunny,
+                color = colors.tertiaryContainer,
+                modifier = Modifier
+                    .size(22.dp)
+                    .offset(y = (-1).dp)
+            )
+        }
     }
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
+private val CreateFabShape = WtaPolygonShape(MaterialShapes.Cookie12Sided)
+
 private val createActionTileShapes = listOf(
     MaterialShapes.Cookie4Sided,
     MaterialShapes.Sunny,
@@ -1930,6 +1978,43 @@ private fun CreateActionTile(
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center
+        )
+    }
+}
+
+@Composable
+private fun MoreMenuIcon(
+    icon: ImageVector,
+    polygon: RoundedPolygon,
+    tone: Int
+) {
+    val colors = MaterialTheme.colorScheme
+    val container: Color
+    val onContainer: Color
+    when (tone % 3) {
+        0 -> {
+            container = colors.primaryContainer
+            onContainer = colors.onPrimaryContainer
+        }
+        1 -> {
+            container = colors.secondaryContainer
+            onContainer = colors.onSecondaryContainer
+        }
+        else -> {
+            container = colors.tertiaryContainer
+            onContainer = colors.onTertiaryContainer
+        }
+    }
+    WtaShapePlate(
+        polygon = polygon,
+        containerColor = container,
+        modifier = Modifier.size(36.dp)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            modifier = Modifier.size(19.dp),
+            tint = onContainer
         )
     }
 }
