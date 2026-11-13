@@ -38,7 +38,6 @@ import androidx.compose.material.icons.outlined.GetApp
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Share
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -66,7 +65,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
-import com.webtoapp.core.apkbuilder.ApkBuilder
 import com.webtoapp.core.i18n.Strings
 import com.webtoapp.ui.components.formatFileSize
 import com.webtoapp.ui.design.WtaAlertDialog
@@ -77,6 +75,7 @@ import com.webtoapp.ui.design.WtaCard
 import com.webtoapp.ui.design.WtaCardTone
 import com.webtoapp.ui.design.WtaChip
 import com.webtoapp.ui.design.WtaFullEmptyState
+import com.webtoapp.ui.design.WtaLoadingIndicator
 import com.webtoapp.ui.design.WtaLoadingState
 import com.webtoapp.ui.design.WtaScreen
 import com.webtoapp.ui.design.WtaTextField
@@ -147,7 +146,6 @@ fun FileManagerScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
-    val apkBuilder = remember { ApkBuilder(context.applicationContext) }
 
     var snapshots by remember { mutableStateOf<List<SectionSnapshot>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
@@ -478,7 +476,7 @@ fun FileManagerScreen(onBack: () -> Unit) {
                                     shareFile(context, entry.file, snackbarHostState, scope)
                                 },
                                 onInstall = { entry ->
-                                    val started = apkBuilder.installApk(entry.file)
+                                    val started = com.webtoapp.core.apkbuilder.ApkInstaller.install(context.applicationContext, entry.file)
                                     scope.launch {
                                         snackbarHostState.showSnackbar(
                                             if (started) Strings.fileManagerInstallStarted else Strings.fileManagerInstallFailed
@@ -606,7 +604,7 @@ fun FileManagerScreen(onBack: () -> Unit) {
                     Spacer(Modifier.height(8.dp))
                     if (logLoading) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                            WtaLoadingIndicator(size = 16.dp)
                             Spacer(Modifier.width(8.dp))
                             Text(Strings.fileManagerView, style = MaterialTheme.typography.bodySmall)
                         }

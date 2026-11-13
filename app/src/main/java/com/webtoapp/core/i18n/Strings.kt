@@ -148,6 +148,8 @@ object Strings {
     val multiWebDragToReorder: String get() = StringsA.multiWebDragToReorder
     val multiWebSitesInheritConfig: String get() = StringsA.multiWebSitesInheritConfig
     val multiWebSitesInheritConfigHint: String get() = StringsA.multiWebSitesInheritConfigHint
+    val multiWebIndependentSessions: String get() = StringsA.multiWebIndependentSessions
+    val multiWebIndependentSessionsHint: String get() = StringsA.multiWebIndependentSessionsHint
     val multiWebStartTab: String get() = StringsA.multiWebStartTab
     val multiWebStartTabHint: String get() = StringsA.multiWebStartTabHint
     val multiWebStartLast: String get() = StringsA.multiWebStartLast
@@ -4581,6 +4583,8 @@ object Strings {
     val backupExportComplete: String get() = StringsE.backupExportComplete
     val backupInvalidFormat: String get() = StringsE.backupInvalidFormat
     val backupInvalidFormatSourceZip: String get() = StringsE.backupInvalidFormatSourceZip
+    val backupImportLegacySuccess: String get() = StringsE.backupImportLegacySuccess
+    val backupImportLegacyMissingFiles: String get() = StringsE.backupImportLegacyMissingFiles
     val backupUnreadableFile: String get() = StringsE.backupUnreadableFile
     val backupOutputFailed: String get() = StringsE.backupOutputFailed
     val backupReadingBackup: String get() = StringsE.backupReadingBackup
@@ -5138,6 +5142,9 @@ object Strings {
     val appListSortName: String get() = StringsE.appListSortName
     val appListSortCustom: String get() = StringsE.appListSortCustom
     val appListSortDragHint: String get() = StringsE.appListSortDragHint
+    val homeViewMode: String get() = StringsE.homeViewMode
+    val homeViewList: String get() = StringsE.homeViewList
+    val homeViewGrid: String get() = StringsE.homeViewGrid
     val shareApkReadyMode: String get() = StringsE.shareApkReadyMode
 
     // Agent UI rework additions

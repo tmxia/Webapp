@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import com.webtoapp.core.i18n.AppLanguage
 import com.webtoapp.core.i18n.LanguageManager
 import com.webtoapp.core.i18n.Strings
+import com.webtoapp.ui.design.WtaAlertDialog
 import com.webtoapp.util.isRunningOnTv
 import kotlinx.coroutines.launch
 
@@ -62,8 +63,7 @@ private fun LanguageDisplayNameWithBadge(
 
 @Composable
 fun LanguageSelectorButton(
-    onLanguageChanged: () -> Unit = {},
-    buttonSize: androidx.compose.ui.unit.Dp = 44.dp
+    onLanguageChanged: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val languageManager = remember { LanguageManager.getInstance(context) }
@@ -74,7 +74,7 @@ fun LanguageSelectorButton(
 
     IconButton(
         onClick = { showDialog = true },
-        modifier = Modifier.size(buttonSize)
+        modifier = Modifier.size(44.dp)
     ) {
         Icon(
             imageVector = Icons.Outlined.Language,
@@ -108,15 +108,10 @@ fun LanguageSelectionDialog(
     val scrollState = rememberScrollState()
     val maxListHeight = (LocalConfiguration.current.screenHeightDp * 0.55f).dp
 
-    AlertDialog(
+    WtaAlertDialog(
         onDismissRequest = onDismiss,
-        title = {
-            Text(
-                text = Strings.languageSettings,
-                style = MaterialTheme.typography.titleLarge
-            )
-        },
-        text = {
+        title = Strings.languageSettings,
+        content = {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -528,7 +523,12 @@ fun LanguageSettingsCard(
                             },
                             leadingIcon = {
                                 if (language == currentLanguage) {
-                                    RadioButton(selected = true, onClick = null)
+                                    Icon(
+                                        Icons.Default.Check,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(18.dp)
+                                    )
                                 }
                             }
                         )

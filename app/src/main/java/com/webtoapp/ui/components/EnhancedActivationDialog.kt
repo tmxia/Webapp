@@ -28,6 +28,8 @@ import com.webtoapp.core.activation.ActivationResult
 import com.webtoapp.core.activation.ActivationCodeType
 import com.webtoapp.core.activation.ActivationStatus
 import com.webtoapp.core.i18n.Strings
+import com.webtoapp.ui.design.WtaAlertDialog
+import com.webtoapp.ui.design.WtaLoadingIndicator
 import com.webtoapp.util.threadLocalCompat
 import java.text.SimpleDateFormat
 import java.util.*
@@ -47,11 +49,9 @@ fun EnhancedActivationDialog(
     var isLoading by remember { mutableStateOf(false) }
     var activationResult by remember { mutableStateOf<ActivationResult?>(null) }
 
-    AlertDialog(
+    WtaAlertDialog(
         onDismissRequest = onDismiss,
-        shape = RoundedCornerShape(24.dp),
-        title = null,
-        text = {
+        content = {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -130,10 +130,9 @@ fun EnhancedActivationDialog(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     if (isLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(18.dp),
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            strokeWidth = 2.dp
+                        WtaLoadingIndicator(
+                            size = 18.dp,
+                            color = MaterialTheme.colorScheme.onPrimary
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                     }
@@ -230,10 +229,9 @@ private fun ActivationDialogHeader(
             contentAlignment = Alignment.Center
         ) {
             if (isLoading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(40.dp),
-                    color = iconBgColor,
-                    strokeWidth = 3.dp
+                WtaLoadingIndicator(
+                    size = 40.dp,
+                    color = iconBgColor
                 )
             } else {
                 Icon(

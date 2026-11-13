@@ -58,6 +58,8 @@ import com.webtoapp.ui.components.PremiumTextField
 import com.webtoapp.ui.components.RuntimeIconPickerCard
 import com.webtoapp.ui.design.WtaAlertDialog
 import com.webtoapp.ui.design.WtaChip
+import com.webtoapp.ui.design.WtaSegmentedRow
+import com.webtoapp.ui.design.WtaSelectableRow
 import com.webtoapp.ui.design.WtaSpacing
 import com.webtoapp.util.ensureWebUrlScheme
 import com.webtoapp.ui.screens.create.WtaCreateFlowScaffold
@@ -110,6 +112,7 @@ fun CreateMultiWebAppScreen(
     var sitesInheritConfig by remember { mutableStateOf(true) }
     var startTab by remember { mutableStateOf(MULTI_WEB_START_LAST) }
     var startSiteId by remember { mutableStateOf("") }
+    var independentSessions by remember { mutableStateOf(false) }
 
     var selectedAppIds by remember { mutableStateOf<Set<Long>>(emptySet()) }
     var filterType by remember { mutableStateOf<String?>(null) }
@@ -163,6 +166,7 @@ fun CreateMultiWebAppScreen(
                     sitesInheritConfig = !config.sitesUseOwnConfig
                     startTab = if (config.startTab == MULTI_WEB_START_SITE) MULTI_WEB_START_SITE else MULTI_WEB_START_LAST
                     startSiteId = config.startSiteId
+                    independentSessions = config.independentSessions
                 }
                 injectScripts = app.webViewConfig.injectScripts
                 pluginsEnabled = app.pluginsEnabled
@@ -200,7 +204,8 @@ fun CreateMultiWebAppScreen(
                             sitesUseOwnConfig = !sitesInheritConfig,
                             projectId = "",
                             startTab = startTab,
-                            startSiteId = startSiteId
+                            startSiteId = startSiteId,
+                            independentSessions = independentSessions
                         ),
                         appIcon,
                         injectScripts,
@@ -274,9 +279,9 @@ fun CreateMultiWebAppScreen(
                             )
                             if (startTab == MULTI_WEB_START_SITE) {
                                 sites.filter { it.enabled }.forEach { site ->
-                                    StartTabRadioRow(
+                                    WtaSelectableRow(
+                                        title = site.name.ifBlank { site.url },
                                         selected = startSiteId == site.id,
-                                        label = site.name.ifBlank { site.url },
                                         onClick = { startSiteId = site.id }
                                     )
                                 }
@@ -371,6 +376,30 @@ fun CreateMultiWebAppScreen(
                             Switch(
                                 checked = sitesInheritConfig,
                                 onCheckedChange = { sitesInheritConfig = it }
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    Strings.multiWebIndependentSessions,
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                if (LocalShowDescriptions.current) {
+                                    Text(
+                                        Strings.multiWebIndependentSessionsHint,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                            Switch(
+                                checked = independentSessions,
+                                onCheckedChange = { independentSessions = it }
                             )
                         }
                     }
@@ -974,18 +1003,13 @@ private fun StartTabChoice(
     selected: String,
     onSelect: (String) -> Unit
 ) {
-    Column {
-        StartTabRadioRow(
-            selected = selected == MULTI_WEB_START_LAST,
-            label = Strings.multiWebStartLast,
-            onClick = { onSelect(MULTI_WEB_START_LAST) }
-        )
-        StartTabRadioRow(
-            selected = selected == MULTI_WEB_START_SITE,
-            label = Strings.multiWebStartSite,
-            onClick = { onSelect(MULTI_WEB_START_SITE) }
-        )
-    }
+    WtaSegmentedRow(
+        options = listOf(Strings.multiWebStartLast, Strings.multiWebStartSite),
+        selectedIndex = if (selected == MULTI_WEB_START_LAST) 0 else 1,
+        onSelect = { index ->
+            onSelect(if (index == 0) MULTI_WEB_START_LAST else MULTI_WEB_START_SITE)
+        }
+    )
 }
 
 @Composable
@@ -994,40 +1018,11 @@ private fun MultiWebRadioChoice(
     selected: String,
     onSelect: (String) -> Unit
 ) {
-    Column {
-        options.forEach { (value, label) ->
-            StartTabRadioRow(
-                selected = selected == value,
-                label = label,
-                onClick = { onSelect(value) }
-            )
-        }
-    }
-}
-
-@Composable
-private fun StartTabRadioRow(
-    selected: Boolean,
-    label: String,
-    onClick: () -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .clickable(onClick = onClick)
-            .padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        RadioButton(selected = selected, onClick = onClick)
-        Spacer(modifier = Modifier.width(4.dp))
-        Text(
-            label,
-            style = MaterialTheme.typography.bodyMedium,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-    }
+    WtaSegmentedRow(
+        options = options.map { it.second },
+        selectedIndex = options.indexOfFirst { it.first == selected }.coerceAtLeast(0),
+        onSelect = { index -> onSelect(options[index].first) }
+    )
 }
 
 private data class DisplayModeOption(

@@ -57,10 +57,8 @@ import androidx.compose.material.icons.outlined.HourglassTop
 import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material.icons.outlined.PlayArrow
-import androidx.compose.material.icons.outlined.RadioButtonUnchecked
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -92,12 +90,14 @@ import com.webtoapp.core.agent.session.UserAttachment
 import com.webtoapp.core.i18n.Strings
 import com.webtoapp.ui.agent.AgentViewModel
 import com.webtoapp.ui.agent.ThinkingSegment
+import com.webtoapp.ui.design.WtaAlertDialog
 import com.webtoapp.ui.design.WtaAlpha
 import com.webtoapp.ui.design.WtaCard
 import com.webtoapp.ui.design.WtaCardTone
 import com.webtoapp.ui.design.WtaColors
 import com.webtoapp.ui.design.WtaIconButton
 import com.webtoapp.ui.design.WtaInfoChip
+import com.webtoapp.ui.design.WtaLoadingIndicator
 import com.webtoapp.ui.design.WtaSize
 import com.webtoapp.ui.design.WtaSpacing
 import com.webtoapp.ui.theme.AppColors
@@ -381,9 +381,8 @@ fun ThinkingBlock(
                 modifier = Modifier.weight(1f)
             )
             if (isLive) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(10.dp),
-                    strokeWidth = 1.2.dp,
+                WtaLoadingIndicator(
+                    size = 10.dp,
                     color = MaterialTheme.colorScheme.primary
                 )
                 Spacer(Modifier.width(WtaSpacing.Tiny + 2.dp))
@@ -800,9 +799,8 @@ fun ToolCallCard(tc: RecordedToolCall, live: Boolean) {
                         Spacer(Modifier.width(WtaSpacing.Tiny + 2.dp))
                     }
                     if (running) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(12.dp),
-                            strokeWidth = 1.5.dp,
+                        WtaLoadingIndicator(
+                            size = 12.dp,
                             color = MaterialTheme.colorScheme.primary
                         )
                         Spacer(Modifier.width(WtaSpacing.Tiny + 2.dp))
@@ -902,7 +900,7 @@ private fun formatElapsed(ms: Long): String = when {
 @Composable
 private fun ToolFullResultDialog(title: String, content: String, onDismiss: () -> Unit) {
     val clipboard = LocalClipboardManager.current
-    androidx.compose.material3.AlertDialog(
+    WtaAlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
             androidx.compose.material3.TextButton(onClick = onDismiss) {
@@ -917,8 +915,8 @@ private fun ToolFullResultDialog(title: String, content: String, onDismiss: () -
                 Text(Strings.agentMessageActionCopy)
             }
         },
-        title = { Text(title, style = MaterialTheme.typography.titleSmall) },
-        text = {
+        title = title,
+        content = {
             Box(modifier = Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState())) {
                 SelectionContainer {
                     Text(
@@ -1213,9 +1211,9 @@ private fun ToolMonoBlock(text: String, spinner: Boolean = false, truncated: Boo
     ) {
         Row(modifier = Modifier.padding(horizontal = WtaSpacing.Small + 2.dp, vertical = WtaSpacing.Small)) {
             if (spinner) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(10.dp).padding(top = 4.dp),
-                    strokeWidth = 1.2.dp,
+                WtaLoadingIndicator(
+                    modifier = Modifier.padding(top = 4.dp),
+                    size = 10.dp,
                     color = AppColors.CodeGutter
                 )
                 Spacer(Modifier.width(WtaSpacing.Small))
@@ -1518,7 +1516,7 @@ fun TodoChecklist(todos: List<com.webtoapp.core.agent.todo.TodoManager.Item>) {
                                 Icons.Outlined.CheckCircle to WtaColors.semantic.success
                             com.webtoapp.core.agent.todo.TodoManager.Item.Status.InProgress ->
                                 Icons.Outlined.PlayArrow to MaterialTheme.colorScheme.primary
-                            else -> Icons.Outlined.RadioButtonUnchecked to MaterialTheme.colorScheme.onSurfaceVariant
+                            else -> Icons.Outlined.CheckCircle to MaterialTheme.colorScheme.onSurfaceVariant
                         }
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(

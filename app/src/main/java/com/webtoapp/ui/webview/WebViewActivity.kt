@@ -88,6 +88,7 @@ import com.webtoapp.data.model.isBrowserToolbarVisible
 import com.webtoapp.data.model.resolveToolbarButtons
 import android.content.pm.ActivityInfo
 import com.webtoapp.ui.animation.HostPreviewMotion
+import com.webtoapp.ui.design.WtaLoadingIndicator
 import com.webtoapp.ui.theme.WebToAppTheme
 import com.webtoapp.util.DownloadHelper
 import kotlinx.coroutines.Dispatchers
@@ -104,7 +105,6 @@ import com.webtoapp.ui.shared.effectiveBottomContentPadding
 import com.webtoapp.ui.shared.pageEdgeBands
 import com.webtoapp.ui.shared.needsPanelImePadding
 import com.webtoapp.ui.shared.parseBandColor
-import com.webtoapp.ui.shared.pageZoomSurface
 import com.webtoapp.ui.shell.ConsoleLevel
 import com.webtoapp.ui.shell.ConsoleLogEntry
 import com.webtoapp.ui.shell.ConsolePanel
@@ -3997,7 +3997,7 @@ fun WebViewScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator()
+                    WtaLoadingIndicator()
                 }
             }
 
@@ -4102,7 +4102,8 @@ fun WebViewScreen(
                             sitesUseOwnConfig = multiWebConfig.sitesUseOwnConfig,
                             projectId = multiWebConfig.projectId,
                             startTab = multiWebConfig.startTab,
-                            startSiteId = multiWebConfig.startSiteId
+                            startSiteId = multiWebConfig.startSiteId,
+                            independentSessions = multiWebConfig.independentSessions
                         ),
                         // App-level userscripts: MultiWebShellMode merges them into
                         // every site's effective config (site-level scripts win on
@@ -4534,9 +4535,7 @@ fun WebViewScreen(
                                 swipeLayout.removeAllViews()
                             }
                         },
-                        modifier = Modifier
-                            .weight(weight = 1f, fill = true)
-                            .pageZoomSurface(webApp?.webViewConfig?.pageZoomPercent ?: 100)
+                        modifier = Modifier.weight(weight = 1f, fill = true)
                     )
 
                     AnimatedVisibility(
@@ -4593,7 +4592,7 @@ fun WebViewScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator()
+                    WtaLoadingIndicator()
                 }
             }
 
