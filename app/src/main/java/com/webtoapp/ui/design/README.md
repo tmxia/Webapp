@@ -26,15 +26,25 @@ Never hard-code a `dp`/`sp`/`Color()` value that maps to one of these tokens.
 - Prefer `WtaColors.semantic.*` (`success`, `warning`, `error`, `info`, `neutral`)
   for state accents. Each semantic tone ships with `{onX}` and `{xContainer}`
   variants mirroring Material 3.
-- The single theme is `AppThemes.KimiNoNawa`: a calibrated monochrome palette
-  with separate light and dark schemes. Dynamic color is opt-in per app policy.
+- The neutral skeleton is `AppThemes.KimiNoNawa` (calibrated light/dark
+  surfaces). The **default accent is `AppAccent.DYNAMIC`**, listed first in
+  settings: vibrant Material You dynamic color on Android 12+, with a vibrant
+  periwinkle/mint static fallback (`AppAccentPalettes.PeriwinkleMint*`) on
+  older releases. Its settings swatch renders the live wallpaper-derived
+  primary/tertiary pair instead of hardcoded colors. The static
+  `PERIWINKLE_MINT` accent preserves that pair as a fixed palette, followed by
+  ten vibrant dual-color accents. The legacy monochrome `DEFAULT` accent was
+  removed; persisted values migrate to `DYNAMIC`.
 - `AppColors` only holds colors that must stay constant across themes (editor
   chrome, Catppuccin presets, language/brand identity aliases). It is not a
   general-purpose color source.
 
 ### Typography
 `WtaTypography` in `ui/theme/Typography.kt` wires a custom Material 3 type
-scale. Access it via `MaterialTheme.typography.*` the normal way. Do not set
+scale, including the full Expressive **emphasized** scale (15 baseline +
+15 emphasized styles). Access it via `MaterialTheme.typography.*` the normal
+way; use `*Emphasized` variants (e.g. `titleLargeEmphasized`,
+`labelLargeEmphasized`) for key actions and focal headlines. Do not set
 `fontSize` / `lineHeight` ad-hoc; pick a scale entry.
 
 ### Layout primitives
@@ -76,11 +86,23 @@ scale. Access it via `MaterialTheme.typography.*` the normal way. Do not set
 Variants: `Primary` (filled), `Tonal`, `Outlined`, `Text`, `Destructive`.
 Sizes: `Small` (36dp), `Medium` (44dp), `Large` (52dp).
 
+Buttons use the Material 3 Expressive `ButtonShapes` overload: the container
+shape morphs on press via `ButtonDefaults.shapes()`. Pass `shape` only when a
+fixed corner radius is genuinely required (it disables the press morph).
+
 ### Inputs & selection
 - `WtaTextField(value, onValueChange, label, placeholder, leadingIcon,
   trailingIcon, supportingText, isError)` — outlined input.
 - `WtaSwitch(checked, onCheckedChange)` — the only toggle primitive.
-- `WtaChip(selected, onClick, label, leadingIcon)` — selectable chip.
+- `WtaSegmentedRow(options, selectedIndex, onSelect)` — Material 3 Expressive
+  single-choice segmented button row. The default for static 2–4 option
+  groups with short labels.
+- `WtaSelectableRow(title, selected, onClick, subtitle, accent, leading)` —
+  modern selection-list row with a trailing check for the selected item.
+  The default for dynamic lists and long-label option groups. `RadioButton`
+  rows are legacy and must not be reintroduced.
+- `WtaChip(selected, onClick, label, leadingIcon)` — selectable chip
+  (expressive pill shape).
 - `WtaInfoChip(label, icon)` — read-only badge for metadata.
 
 ### Display helpers
@@ -89,12 +111,37 @@ Sizes: `Small` (36dp), `Medium` (44dp), `Large` (52dp).
 - `WtaBadge(text, icon)` — small pill badge.
 - `WtaDivider()` — full-width themed divider.
 
+### Material Shapes (`WtaShapes.kt`)
+Official Material 3 Expressive shape library (`MaterialShapes.Cookie9Sided`,
+`Sunny`, `Clover4Leaf`, `Gem`, `Fan`, `Pill`, `Arch`, ...). Use these for
+decorative plates and empty-state art instead of plain rounded rectangles.
+- `WtaMaterialShape(polygon, color, rotationDegrees)` — static official shape.
+- `WtaMorphingShape(startPolygon, endPolygon, color)` — infinite morph + slow
+  rotation between two official shapes; falls back to the static start shape
+  when the user disables animations.
+- `WtaShapePlate(polygon, containerColor) { content }` — shape-backed icon
+  plate; center any icon inside.
+Pull colors from `MaterialTheme.colorScheme.*` containers; never hard-code.
+- `WtaLoadingIndicator(size, color, progress)` — Material 3 Expressive loading
+  indicator (shape-morph animation). The only spinner primitive; use it for
+  both indeterminate and determinate (`progress = { value }`) loading.
+  `CircularProgressIndicator` is legacy and must not be reintroduced.
+
 ### Behavior
 - `rememberHapticClick { ... }` — wraps a click handler with a standard haptic
   pulse respecting the user's animation settings.
 - `Modifier.wtaPressScale(interactionSource)` — 3 % press scale used by
   buttons and clickable cards. Apply sparingly; prefer the built-in Material
   state layer.
+- Motion is Material 3 Expressive: every `MaterialTheme` entry point
+  (`WebToAppTheme`, `WebToAppThemeSimple`, `ShellTheme`, gallery player) passes
+  `MotionScheme.expressive()` (standard scheme when the user disables
+  animations). `WtaMotion` spring factories mirror the expressive spatial
+  tokens (default 0.8/380, fast 0.6/800, slow 0.8/200) and still honor the
+  global animation switch and speed scale. Do not hand-roll inline springs in
+  screens; route them through `WtaMotion`.
+- `WtaAlertDialog` uses `AlertDialogDefaults.shape` and the built-in
+  expressive dialog enter/exit motion — no manual scale animation.
 
 ## Migration status
 
@@ -102,15 +149,22 @@ Sizes: `Small` (36dp), `Medium` (44dp), `Large` (52dp).
   `FloatingCard`, `GradientBorderCard`, the themed loading / badge / divider
   helpers — **deleted**.
 - `PremiumSwitch` — deleted; call sites migrated to `WtaSwitch`.
+- `LiquidGlassEffect`, `LiquidTabBar`, `EnhancedOutlinedCard`,
+  `AnimatedAlertDialog` — **deleted** (dead code / superseded by
+  `WtaAlertDialog`).
+- `CircularProgressIndicator`, `RadioButton`, and direct `AlertDialog` calls
+  are fully migrated: use `WtaLoadingIndicator`, `WtaSegmentedRow` /
+  `WtaSelectableRow`, and `WtaAlertDialog` instead.
 - `PremiumButton`, `PremiumOutlinedButton`, `PremiumTextField`,
-  `PremiumFilterChip`, `EnhancedElevatedCard`, `EnhancedOutlinedCard`,
+  `PremiumFilterChip`, `EnhancedElevatedCard`,
   `SettingsSwitch`, `IconSwitchCard`, `IconTitleRow`, `CollapsibleCardHeader`,
   `WarningCard`, `EmptyStatePlaceholder`, `LoadingPlaceholder`,
   `ErrorPlaceholder`, `InfoChip`, `StatItem`, `CardContent(WithSpacing)` —
   retained as permanent **alias** layers over Wta internals. They are not
   deprecated: older screens that composed their own slot content keep using the
   slot-style Material API; everything renders through Wta so the visuals are
-  already unified.
+  already unified. `PremiumButton` / `PremiumOutlinedButton` use the expressive
+  `ButtonShapes` press morph like `WtaButton`.
 
 ## When to fall back to Material 3 directly
 
