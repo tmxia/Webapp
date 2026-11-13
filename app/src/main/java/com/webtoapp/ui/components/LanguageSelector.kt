@@ -63,6 +63,7 @@ private fun LanguageDisplayNameWithBadge(
 
 @Composable
 fun LanguageSelectorButton(
+    buttonSize: androidx.compose.ui.unit.Dp = 44.dp,
     onLanguageChanged: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -74,12 +75,12 @@ fun LanguageSelectorButton(
 
     IconButton(
         onClick = { showDialog = true },
-        modifier = Modifier.size(44.dp)
+        modifier = Modifier.size(buttonSize)
     ) {
         Icon(
             imageVector = Icons.Outlined.Language,
             contentDescription = Strings.languageSettings,
-            modifier = Modifier.size(22.dp),
+            modifier = Modifier.size(buttonSize / 2),
             tint = MaterialTheme.colorScheme.onSurface
         )
     }
