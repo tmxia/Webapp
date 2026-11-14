@@ -76,9 +76,42 @@ way; use `*Emphasized` variants (e.g. `titleLargeEmphasized`,
   onAction)` — contextual notice at the top of a screen.
 - `WtaEmptyState(title, message, icon, actionLabel, onAction)` — when a card's
   interior should display an empty placeholder.
-- `WtaFullEmptyState(title, message, icon, action)` — screen-wide empty state.
+- `WtaFullEmptyState(title, message, icon, art, action)` — screen-wide empty
+  state. Pass `art` (a composable slot, typically a `WtaIdleFloat`-wrapped
+  kawaii illustration) to replace the plain circle+icon hero; screens should
+  use the shared illustration primitives instead of rolling bespoke art.
 - `WtaLoadingState(message)` — centered spinner with optional caption.
 - `WtaErrorState(message, retryLabel, onRetry)` — centered error with retry.
+
+### Kawaii illustrations (`WtaIllustrations.kt`)
+Custom character art for empty states, success moments, and guides. All
+Canvas-drawn, theme-adaptive (container colors from `MaterialTheme.colorScheme`),
+no bitmap assets.
+- `WtaKawaiiCloud(bodyColor, faceColor, blushColor, sleeping)` — soft cloud
+  with dot eyes, smile, and blush; `sleeping = true` closes the eyes and adds
+  dream bubbles.
+- `WtaKawaiiStar(...)` — rounded five-point star with a face.
+- `WtaKawaiiSparkle(color)` — four-point sparkle accent (no face).
+- `WtaKawaiiBox(...)` — open box with a face, for "nothing here yet" moments.
+- `WtaIdleFloat(amplitudeDp, tiltDegrees) { ... }` — gentle idle bob + tilt
+  wrapper; static when the user disables animations. Wrap illustration heroes
+  in it instead of hand-rolling infinite transitions.
+Restraint: one illustration hero per screen (two at most), never inside dense
+config cards. Faces use `drawKawaiiFace`; polygon art uses
+`roundedPolygonPath` / `starPoints` — reuse these helpers for new characters.
+
+### App-type icons (`ui/icons/AppTypeIcons.kt`)
+`WtaAppTypeIcon(type, color, accent)` renders the redrawn expressive icon for
+an `AppType`; `WtaOfflinePackTypeIcon(color, accent)` covers the offline-pack
+create entry (offline packs persist as `HTML`, so they have no `AppType`).
+The set shares one grammar: 48-unit design space, 3-unit rounded strokes,
+two-tone `color`/`accent` rendering, small faces where the type has character.
+Callers place the icon on a shape plate and pass the plate's on-color as
+`color` and a contrasting scheme color as `accent`. Never tint these icons to
+a single silhouette — the two-tone detail is the point. The only remaining
+`ic_type_*` drawable is `ic_type_web.xml`, kept solely as the
+`FloatingWindowManager` minimized-bubble fallback (shell-synced, View-based,
+fixed dark bubble background).
 
 ### Buttons
 - `WtaButton(onClick, text, variant, size, leadingIcon, trailingIcon)` — text +
@@ -134,10 +167,8 @@ Pull colors from `MaterialTheme.colorScheme.*` containers; never hard-code.
 Each screen keeps its own shape vocabulary so decorations stay distinctive:
 Home uses the Cookie/Sunny/Clover/Gem family, About adds Heart, Module
 Market uses Puffy / Flower / ClamShell / Bun / SoftBurst / Clover8Leaf /
-Diamond / PuffyDiamond, the plugin editor uses PixelCircle, the code
-editor dialog uses Slanted, and the create-type gallery uses Boom / Burst /
-SemiCircle / Oval / Square / Arrow. Pick shapes no other screen uses for new
-screens.
+Diamond / PuffyDiamond, the plugin editor uses PixelCircle, and the code
+editor dialog uses Slanted. Pick shapes no other screen uses for new screens.
 - `WtaLoadingIndicator(size, color, progress)` — Material 3 Expressive loading
   indicator (shape-morph animation). The only spinner primitive; use it for
   both indeterminate and determinate (`progress = { value }`) loading.
@@ -156,11 +187,32 @@ screens.
   tokens (default 0.8/380, fast 0.6/800, slow 0.8/200) and still honor the
   global animation switch and speed scale. Do not hand-roll inline springs in
   screens; route them through `WtaMotion`.
+- Layout direction follows the app language: all three theme entry points
+  provide `LocalLayoutDirection` (RTL for Arabic, LTR otherwise), so the whole
+  Compose tree mirrors live on language switch without activity recreation.
+  Screens must not hard-code left/right assumptions; use start/end semantics.
+- `WtaTransitions.kt` is the shared transition vocabulary: `WtaFadeIn/Out`,
+  `WtaExpandIn/ShrinkOut`, `WtaPopIn/Out`, `WtaSlideUpIn/DownOut`, and
+  `wtaTabEnter/ExitTransition(direction)`. Never use bare `fadeIn()` /
+  `fadeOut()` / `expandVertically()` / `shrinkVertically()` — they fall back to
+  default bezier curves instead of the expressive motion scheme.
+- `WtaTabRow` renders a spring-driven sliding pill indicator with animated
+  colors and emphasized selected labels; tab content switches should use
+  `AnimatedContent` with `wtaTabEnter/ExitTransition`.
 - `WtaAlertDialog` uses `AlertDialogDefaults.shape` and the built-in
   expressive dialog enter/exit motion — no manual scale animation.
 
 ## Migration status
 
+- `ThemeAnimations.kt` (legacy AnimationStyle specs, decorative modifiers,
+  particle/ripple/starfield/sakura backgrounds) — **deleted** (zero consumers).
+  The particles and sound settings, `AnimationSettings.particlesEnabled /
+  soundEnabled / speedMultiplier`, `AppTheme.animationStyle / interactionStyle /
+  gradients / effects`, and the orphaned `MoreScreen` were removed with it;
+  the live "remember category filter" preference now lives in
+  `CategoryManageDialog`. Motion scale flows through `WtaMotion.durationScale`.
+- The full-color `ic_type_*` PNG type icons — **retired** in favor of
+  `WtaAppTypeIcon` (they were flattened to silhouettes by `Icon(tint=…)`).
 - `ThemedBackgroundBox`, `GradientButton`, `GlowingButton`, `GlassmorphicCard`,
   `FloatingCard`, `GradientBorderCard`, the themed loading / badge / divider
   helpers — **deleted**.
