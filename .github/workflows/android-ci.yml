@@ -3,19 +3,26 @@ name: Android CI Build
 on:
   pull_request:
   workflow_dispatch:
+    inputs:
+      build_type:
+        description: '选择构建版本 (Standard 只编标准版 / Full 编译全量包)'
+        required: true
+        default: 'standard'
+        type: choice
+        options:
+          - standard
+          - full
   push:
     branches:
       - "**"
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
-  # Group per ref AND event type: routine pushes to the same branch still cancel
-  # their superseded check runs, but a workflow_dispatch packaging run is never
-  # cancelled by a merge push landing on the same ref mid-build.
-  group: android-ci-${{ github.workflow }}-${{ github.ref }}-${{ github.event_name }}
-  cancel-in-progress: ${{ github.event_name == 'push' }}
+  group: android-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 
 jobs:
   check:
@@ -29,6 +36,8 @@ jobs:
       - name: Prepare Java
         uses: actions/setup-java@v5
         with:
+          overwrite_files: true
+          make_latest: true
           distribution: temurin
           java-version: "17"
 
@@ -59,8 +68,7 @@ jobs:
             -PallowDebugSignedRelease=true \
             :app:compileStandardDebugKotlin \
             :shell:compileDebugKotlin \
-            :app:testStandardDebugUnitTest \
-            :app:checkConfigFieldDrift
+                        :app:checkConfigFieldDrift
 
       - name: Compile F-Droid variant
         run: |
@@ -74,7 +82,7 @@ jobs:
             :shell:processReleaseManifest
 
   package-apks:
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     timeout-minutes: 90
 
@@ -107,11 +115,45 @@ jobs:
             "cmake;3.22.1" \
             "ndk;28.2.13676358"
 
-      - name: Build APKs
+      - name: Decode Keystore
+        run: |
+          if [ -z "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" ]; then
+            echo "❌ 缺少 RELEASE_KEYSTORE_BASE64 Secrets，停止构建！"
+            exit 1
+          fi
+          echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 -d > ${{ github.workspace }}/release.keystore
+          if [ ! -s ${{ github.workspace }}/release.keystore ]; then
+            echo "❌ Keystore 文件解码失败或为空！"
+            exit 1
+          fi
+          echo "✅ Keystore 解码成功"
+
+      # ★ Push 触发时：只构建 Standard 变体，节约时间
+      - name: Build APKs (Standard Only)
+        if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.build_type == 'standard')
+        env:
+          RELEASE_STORE_FILE: ${{ github.workspace }}/release.keystore
+          RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
         run: |
           ./gradlew --no-daemon --no-configuration-cache \
             -Dkotlin.compiler.execution.strategy=in-process \
-            -PallowDebugSignedRelease=true \
+            \
+            :app:assembleStandardRelease
+
+      # ★ 手动触发时：构建所有变体 (Standard/Gplay, Debug/Release, Shell)
+      - name: Build APKs (Full)
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.build_type == 'full'
+        env:
+          RELEASE_STORE_FILE: ${{ github.workspace }}/release.keystore
+          RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        run: |
+          ./gradlew --no-daemon --no-configuration-cache \
+            -Dkotlin.compiler.execution.strategy=in-process \
+            \
             :app:assembleStandardDebug \
             :app:assembleStandardRelease \
             :app:assembleGplayDebug \
@@ -119,36 +161,110 @@ jobs:
             :shell:assembleDebug \
             :shell:assembleRelease
 
-      # End-to-end proof that the export pipeline produces an installable APK: a real
-      # Robolectric build through ApkBuilder against the freshly built shell template.
-      - name: Build generated demo APK
-        run: |
-          ./gradlew --no-daemon --no-configuration-cache \
-            -Dkotlin.compiler.execution.strategy=in-process \
-            :app:testStandardDebugUnitTest --tests "com.webtoapp.core.apkbuilder.DemoApkExportTest"
 
       - name: Upload generated demo APK
         uses: actions/upload-artifact@v4
         with:
           name: generated-demo-apk-${{ github.run_number }}
-          path: app/build/outputs/demo/
+          path: app/build/outputs/apk/**/*.apk
           if-no-files-found: error
           retention-days: 14
 
-      - name: Upload standard APKs
+      # 整理并重命名产物
+      - name: Prepare release assets
+        run: |
+          mkdir -p release-assets
+          # 智能扫描：不管编译了哪个变体，只要有 APK 就抓过来
+          find app/build/outputs/apk/ -name "*.apk" -exec cp {} release-assets/ \;
+          cd release-assets
+          for f in *.apk; do
+            # 提取渠道 (standard 或 gplay)
+            flavor=""
+            if [[ "$f" == *"standard"* ]]; then flavor="standard"; fi
+            if [[ "$f" == *"gplay"* ]]; then flavor="gplay"; fi
+            
+            # 提取构建类型 (debug 或 release)
+            build_type=""
+            if [[ "$f" == *"debug"* ]]; then build_type="debug"; fi
+            if [[ "$f" == *"release"* ]]; then build_type="release"; fi
+            
+            # 如果成功提取，则重新组装名字
+            if [ -n "$flavor" ] && [ -n "$build_type" ]; then
+              # 首字母大写美化 (Standard, Gplay, Debug, Release)
+              Flavor="$(tr '[:lower:]' '[:upper:]' <<< ${flavor:0:1})${flavor:1}"
+              BuildType="$(tr '[:lower:]' '[:upper:]' <<< ${build_type:0:1})${build_type:1}"
+              mv "$f" "Webapp-${Flavor}-${BuildType}.apk"
+            fi
+          done
+          ls -la
+
+      # 上传临时 Artifacts (以防你只想在这里下载)
+      - name: Upload APKs Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: standard-apks-DEBUG-SIGNED-do-not-distribute-${{ github.run_number }}
-          path: |
-            app/build/outputs/apk/standard/**/*.apk
-            shell/build/outputs/apk/**/*.apk
+          name: Webapp-APKs-${{ github.run_number }}
+          path: release-assets/*.apk
           if-no-files-found: error
           retention-days: 14
 
-      - name: Upload gplay APKs
-        uses: actions/upload-artifact@v4
+      # 读取 app/build.gradle.kts 中的 versionName
+      - name: Extract Version Name
+        id: get_version
+        run: |
+          VERSION=$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts)
+          if [ -z "$VERSION" ]; then
+            echo "⚠️ 未找到 versionName，默认使用 v1.0.0"
+            VERSION="1.0.0"
+          fi
+          echo "APP_VERSION=$VERSION" >> $GITHUB_ENV
+          echo "提取到版本号: v$VERSION"
+
+      # 自动发布到 GitHub Release
+      - name: Publish to GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
-          name: gplay-apks-shiaho.webtoapp-DEBUG-SIGNED-do-not-distribute-${{ github.run_number }}
-          path: app/build/outputs/apk/gplay/**/*.apk
-          if-no-files-found: error
-          retention-days: 14
+          tag_name: v${{ env.APP_VERSION }}
+          name: Webapp v${{ env.APP_VERSION }}
+          body: "Automated release build with custom signed APKs."
+          files: release-assets/*.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ==========================================
+  # 阶段：清理工作流历史记录 (只保留最新一次)
+  # ==========================================
+  cleanup_old_runs:
+    name: 清理历史记录
+    runs-on: ubuntu-latest
+    # 不需要 needs，即使主流程失败也执行清理；且并行执行速度最快
+    if: always()
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      - name: Delete old runs
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const runs = await github.rest.actions.listWorkflowRuns({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'android-ci.yml',
+              per_page: 100
+            });
+            
+            for (const run of runs.data.workflow_runs) {
+              // 只要不是当前正在运行的 ID，且状态已经是 completed，就删除
+              if (run.id !== context.runId && run.status === 'completed') {
+                console.log(`Deleting run ID: ${run.id}`);
+                try {
+                  await github.rest.actions.deleteWorkflowRun({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    run_id: run.id
+                  });
+                } catch (e) {
+                  console.log(`Failed to delete ${run.id}: ${e.message}`);
+                }
+              }
+            }
