@@ -30,13 +30,22 @@ val localProperties = Properties().apply {
     }
 }
 
-val releaseSigningStoreFile = localProperties.getProperty("signing.storeFile")
-    ?.takeIf { it.isNotBlank() }
-    ?.let { rootProject.file(it) }
+// 核心修复：优先读取 CI 环境变量，回退到 local.properties
+val envStoreFile = System.getenv("RELEASE_STORE_FILE")
+val releaseSigningStoreFile = if (!envStoreFile.isNullOrBlank()) {
+    rootProject.file(envStoreFile)
+} else {
+    localProperties.getProperty("signing.storeFile")?.takeIf { it.isNotBlank() }?.let { rootProject.file(it) }
+}
+
+val releaseSigningStorePassword = System.getenv("RELEASE_STORE_PASSWORD") ?: localProperties.getProperty("signing.storePassword")
+val releaseSigningKeyAlias = System.getenv("RELEASE_KEY_ALIAS") ?: localProperties.getProperty("signing.keyAlias")
+val releaseSigningKeyPassword = System.getenv("RELEASE_KEY_PASSWORD") ?: localProperties.getProperty("signing.keyPassword")
+
 val hasReleaseSigningConfig = releaseSigningStoreFile?.isFile == true &&
-    !localProperties.getProperty("signing.storePassword").isNullOrBlank() &&
-    !localProperties.getProperty("signing.keyAlias").isNullOrBlank() &&
-    !localProperties.getProperty("signing.keyPassword").isNullOrBlank()
+    !releaseSigningStorePassword.isNullOrBlank() &&
+    !releaseSigningKeyAlias.isNullOrBlank() &&
+    !releaseSigningKeyPassword.isNullOrBlank()
 
 // -Pfdroid=true builds the host and the embedded shell template without Firebase
 // or Play Services, and leaves the release APK unsigned for F-Droid to sign.
@@ -63,9 +72,9 @@ android {
         if (hasReleaseSigningConfig) {
             create("release") {
                 storeFile = releaseSigningStoreFile
-                storePassword = localProperties.getProperty("signing.storePassword")
-                keyAlias = localProperties.getProperty("signing.keyAlias")
-                keyPassword = localProperties.getProperty("signing.keyPassword")
+                storePassword = releaseSigningStorePassword
+                keyAlias = releaseSigningKeyAlias
+                keyPassword = releaseSigningKeyPassword
                 enableV1Signing = true
             }
         }
