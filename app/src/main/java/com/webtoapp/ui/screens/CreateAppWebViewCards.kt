@@ -1009,7 +1009,6 @@ fun BrowserAdvancedConfigCard(
                             WtaSectionDivider()
                             WtaToggleRow(
                                 title = Strings.zoomSetting,
-                                subtitle = Strings.zoomSettingHint.ifDescriptionsShown(),
                                 checked = config.zoomEnabled,
                                 onCheckedChange = { onConfigChange(config.copy(zoomEnabled = it)) }
                             )
@@ -1040,7 +1039,6 @@ fun BrowserAdvancedConfigCard(
                             WtaSectionDivider()
                             WtaToggleRow(
                                 title = Strings.fullscreenVideoSetting,
-                                subtitle = Strings.fullscreenVideoSettingHint.ifDescriptionsShown(),
                                 checked = config.fullscreenEnabled,
                                 onCheckedChange = { onConfigChange(config.copy(fullscreenEnabled = it)) }
                             )
@@ -1057,7 +1055,6 @@ fun BrowserAdvancedConfigCard(
                         Column(modifier = Modifier.fillMaxWidth()) {
                             WtaToggleRow(
                                 title = Strings.swipeRefreshSetting,
-                                subtitle = Strings.swipeRefreshSettingHint.ifDescriptionsShown(),
                                 checked = config.swipeRefreshEnabled,
                                 onCheckedChange = { onConfigChange(config.copy(swipeRefreshEnabled = it)) }
                             )
@@ -1212,7 +1209,6 @@ fun BrowserAdvancedConfigCard(
                             WtaSectionDivider()
                             WtaToggleRow(
                                 title = Strings.autoRefreshSettingLabel,
-                                subtitle = Strings.autoRefreshSettingDesc.ifDescriptionsShown(),
                                 checked = config.autoRefreshEnabled,
                                 onCheckedChange = { onConfigChange(config.copy(autoRefreshEnabled = it)) }
                             )
@@ -2177,7 +2173,6 @@ private fun UserAgentControls(
 
         WtaToggleRow(
             title = Strings.desktopModeLabel,
-            subtitle = Strings.desktopModeHint.ifDescriptionsShown(),
             checked = config.desktopMode,
             onCheckedChange = { onConfigChange(config.copy(desktopMode = it)) }
         )
@@ -2337,22 +2332,15 @@ fun FullscreenModeCard(
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(bottom = 4.dp)
                     )
-                    Strings.displayCutoutModeHint.ifDescriptionsShown()?.let { hint ->
-                        Text(
-                            text = hint,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-
                     val cutoutModes = listOf(
-                        DisplayCutoutMode.SHORT_EDGES to Strings.displayCutoutModeShortEdges,
-                        DisplayCutoutMode.DEFAULT to Strings.displayCutoutModeDefault,
-                        DisplayCutoutMode.NEVER to Strings.displayCutoutModeNever
+                        Triple(DisplayCutoutMode.SHORT_EDGES, Strings.displayCutoutModeShortEdges, Strings.displayCutoutModeShortEdgesDesc),
+                        Triple(DisplayCutoutMode.DEFAULT, Strings.displayCutoutModeDefault, Strings.displayCutoutModeDefaultDesc),
+                        Triple(DisplayCutoutMode.NEVER, Strings.displayCutoutModeNever, Strings.displayCutoutModeNeverDesc)
                     )
-                    cutoutModes.forEach { (mode, label) ->
+                    cutoutModes.forEach { (mode, label, desc) ->
                         WtaSelectableRow(
                             title = label,
+                            subtitle = desc.ifDescriptionsShown(),
                             selected = webViewConfig.displayCutoutMode == mode,
                             onClick = {
                                 onWebViewConfigChange(webViewConfig.copy(displayCutoutMode = mode))
@@ -2760,15 +2748,6 @@ fun LandscapeModeCard(
             ) {
                 Column {
                     WtaSectionDivider()
-                    WtaStatusBanner(
-                        message = Strings.orientationModeHint,
-                        tone = WtaStatusTone.Info,
-                        modifier = Modifier.padding(
-                            horizontal = WtaSpacing.RowHorizontal,
-                            vertical = WtaSpacing.ContentGap
-                        )
-                    )
-
                     Text(
                         text = Strings.orientationBasicLabel,
                         style = MaterialTheme.typography.labelMedium,
@@ -3422,18 +3401,15 @@ fun SpecialSettingsCard(
         ActivityResultContracts.OpenDocumentTree()
     ) { uri ->
         uri?.let { treeUri ->
-            val path = safTreeUriToPath(treeUri)
-            if (path != null) {
-                try {
-                    context.contentResolver.takePersistableUriPermission(
-                        treeUri,
-                        android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or
-                            android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                    )
-                } catch (_: Exception) {
-                }
-                onConfigChange(config.copy(customDownloadDirUri = path))
+            try {
+                context.contentResolver.takePersistableUriPermission(
+                    treeUri,
+                    android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                        android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                )
+            } catch (_: Exception) {
             }
+            onConfigChange(config.copy(customDownloadDirUri = treeUri.toString()))
         }
     }
 
@@ -4118,7 +4094,8 @@ fun SpecialSettingsCard(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text(
-                                        text = config.customDownloadDirUri.ifEmpty { Strings.downloadLocationCustomEmpty },
+                                        text = displayDownloadDir(config.customDownloadDirUri)
+                                            .ifEmpty { Strings.downloadLocationCustomEmpty },
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         modifier = Modifier.weight(1f),
@@ -4785,16 +4762,15 @@ private fun CustomMediaPickerRow(
     }
 }
 
-private fun safTreeUriToPath(uri: Uri): String? {
-    if (uri.authority != "com.android.externalstorage.documents") return null
-    val docId = uri.lastPathSegment ?: return null
-    val parts = docId.split(":")
-    if (parts.isEmpty()) return null
-    val type = parts[0]
-    val relativePath = if (parts.size > 1) parts[1] else ""
-    val basePath = when (type) {
-        "primary" -> android.os.Environment.getExternalStorageDirectory().absolutePath
-        else -> "/storage/$type"
+internal fun displayDownloadDir(raw: String): String {
+    if (raw.isBlank()) return ""
+    if (!raw.startsWith("content://")) return raw
+    return try {
+        val docId = android.provider.DocumentsContract.getTreeDocumentId(Uri.parse(raw))
+        val parts = docId.split(":")
+        val label = if (parts.size > 1) parts[1] else parts[0]
+        label.ifBlank { raw }
+    } catch (_: Exception) {
+        raw
     }
-    return if (relativePath.isNotEmpty()) "$basePath/$relativePath" else basePath
 }

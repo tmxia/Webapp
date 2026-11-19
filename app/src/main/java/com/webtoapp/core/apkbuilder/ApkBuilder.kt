@@ -3955,7 +3955,7 @@ builtins.__import__ = _w2a_import
     }
 
     private fun runtimeAssetsRequiredFor(appType: String): List<String> = when (appType) {
-        "PHP_APP", "WORDPRESS" -> listOf("php_router_server.php")
+        "PHP_APP", "WORDPRESS" -> listOf(com.webtoapp.core.php.PhpServerLaunch.ROUTER_ASSET)
         else -> emptyList()
     }
 
@@ -4467,7 +4467,6 @@ private fun com.webtoapp.data.model.WebViewConfig.toWebViewBlock(context: androi
         longPressHapticOnActionOnly = longPressHapticOnActionOnly,
 
         popupBlockerEnabled = popupBlockerEnabled,
-        popupBlockerToggleEnabled = popupBlockerToggleEnabled,
         openExternalLinks = openExternalLinks,
         showFloatingBackButton = showFloatingBackButton,
         backButtonBehavior = backButtonBehavior,

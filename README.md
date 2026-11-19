@@ -140,7 +140,7 @@ Node.js, PHP, Python, Go, WordPress, image, and video stay in the app. Turn them
 From a fresh install to your first signed APK in about a minute:
 
 1. **Install the builder** — get the APK from [GitHub Releases](https://github.com/shiaho777/web-to-app/releases) onto a device running Android 7.0 (API 24) or newer.
-2. **Create an app** — on **My Apps**, tap **Create**. The default grid is Web, Multi-Site, HTML, Offline Pack, Frontend, and Gallery. PHP, WordPress, Node.js, Python, Go, and Media appear after **About → Advanced features** is on.
+2. **Create an app** — on **My Apps**, tap **Create** to open a bottom sheet of app-type tiles: Web, Multi-Site, HTML, Offline Pack, Frontend, and Gallery. PHP, WordPress, Node.js, Python, Go, and Media appear in the sheet once **About → Advanced features** is on.
 3. **Fill in the basics** — app name, target URL (or your project files), and an optional icon, then **Save**. Every other editor card is optional configuration.
 4. **Preview** — tap the app's card to run it in the same runtime code the export will use.
 5. **Build** — tap **⋮ → Build APK**, pick the engine and options, and get a signed APK ready to install or share. Shipping to Google Play? Use **⋮ → Google Play** instead — it builds the APK, converts it to a Play-ready signed AAB with `targetSdk` rewritten, and generates the Play metadata — all on-device.
@@ -189,7 +189,7 @@ WebToApp has a large number of switches. The sections below group them by use ca
 <summary><b>📦 Local server runtimes (fork + exec on-device)</b></summary>
 
 - **Node.js** (18.20.x) runs in a dedicated `:nodejs` OS process via a native `node_launcher` wrapper loading `libnode.so`; supports custom native `.node` extensions.
-- **PHP 8.4** from `pmmp/PHP-Binaries`, downloaded once on first use, with Composer 2.10.x and custom native extensions (`zend_extension`, `.so`).
+- **PHP 8.4** built from `pmmp/PHP-Binaries` without `pmmpthread` so the built-in web server and native uploads work, downloaded once on first use, with Composer 2.10.x and custom native extensions (`zend_extension`, `.so`).
 - **Python 3.14** — Flask, Django, FastAPI via uvicorn, Tornado, the built-in HTTP server; pip dependencies resolved into `.pypackages`, custom native extensions supported; binary names are versioned so future bumps do not hard-code paths.
 - **Go 1.26** — official Linux arm64 toolchain (`.tar.gz` from `dl.google.com`, USTC mirror for CN), on-device `go build` / `go mod` / `go run`, `vendor/` offline builds, static serving, and the native `go_exec_loader` wrapper; DNS and CA trust go through the same local JVM bridge used by PHP.
 - **WordPress 7.x** over local PHP + SQLite (`sqlite-database-integration`), with theme and plugin import.
@@ -392,7 +392,7 @@ Two distribution flavors exist, sharing all code and build rules:
 ./gradlew assembleStandardRelease   # signed release APK
 ./gradlew bundleGplayRelease        # Play-ready signed AAB
 ./gradlew :app:assembleStandardRelease -Pfdroid=true
-# unsigned F-Droid APK (no Firebase, Google Sign-In, or AdMob)
+# unsigned F-Droid APK (no Firebase or Google Sign-In)
 ```
 
 For signed GitHub/Play releases, configure signing through `local.properties` and `app/build.gradle.kts`. The F-Droid flavor leaves the APK unsigned. See [F-Droid](https://shiaho777.github.io/web-to-app/developer/fdroid).

@@ -77,8 +77,12 @@ fun WordPressShellMode(
 
                 if (shouldReextractAssets(marker, extractionToken)) {
                     AppLogger.i("WordPressShell", "Extracting WordPress files to ${wpDir.absolutePath}")
-                    wpDir.deleteRecursively()
-                    extractAssetsRecursive(context, config.siteAssetBase.ifBlank { "wordpress" }, wpDir)
+                    refreshRuntimeAssetsPreservingData(
+                        context,
+                        config.siteAssetBase.ifBlank { "wordpress" },
+                        wpDir,
+                        setOf("wp-content/database", "wp-content/uploads")
+                    )
                     writeExtractionMarker(marker, extractionToken)
                 }
 
@@ -87,14 +91,15 @@ fun WordPressShellMode(
                 val port = phpRuntime.startServer(
                     wpDir.absolutePath,
                     requestPort,
-                    resolveShellPortConflictMode(config.wordpressConfig.portConflictMode)
+                    resolveShellPortConflictMode(config.wordpressConfig.portConflictMode),
+                    customPhpExtensions = config.wordpressConfig.customPhpExtensions
                 )
 
                 if (port > 0) {
                     serverUrl = "http://127.0.0.1:$port"
                     phase = "installing"
                     if (config.wordpressConfig.autoInstall) {
-                        com.webtoapp.core.wordpress.WordPressManager.autoInstallIfNeeded(
+                        val installed = com.webtoapp.core.wordpress.WordPressManager.autoInstallIfNeeded(
                             baseUrl = serverUrl!!,
                             siteTitle = config.wordpressConfig.siteTitle,
                             adminUser = config.wordpressConfig.adminUser,
@@ -102,6 +107,12 @@ fun WordPressShellMode(
                             adminEmail = config.wordpressConfig.adminEmail.ifBlank { "admin@localhost.local" },
                             siteLanguage = config.wordpressConfig.siteLanguage
                         )
+                        if (!installed) {
+                            AppLogger.e("WordPressShell", "WordPress auto-install failed; site will show the install wizard")
+                            phase = "error"
+                            errorMsg = Strings.wpInstallFailed
+                            return@withContext
+                        }
                     }
                     phase = "configuring"
                     com.webtoapp.core.wordpress.WordPressManager.applyRuntimeConfig(
@@ -795,7 +806,8 @@ fun PhpAppShellMode(
                     port = config.phpAppConfig.port,
                     portConflictMode = resolveShellPortConflictMode(config.phpAppConfig.portConflictMode),
                     envVars = config.phpAppConfig.envVars,
-                    phpExtensions = config.phpAppConfig.phpExtensions
+                    phpExtensions = config.phpAppConfig.phpExtensions,
+                    customPhpExtensions = config.phpAppConfig.customPhpExtensions
                 )
 
                 if (port > 0) {

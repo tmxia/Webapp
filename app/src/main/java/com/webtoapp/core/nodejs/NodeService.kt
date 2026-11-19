@@ -24,8 +24,6 @@ class NodeService : Service() {
 
     companion object {
         private const val TAG = "NodeService"
-        private const val MAX_HEALTH_CHECK_RETRIES = 60
-        private const val HEALTH_CHECK_INTERVAL_MS = 500L
     }
 
     /**
@@ -50,6 +48,7 @@ class NodeService : Service() {
     @Volatile private var isRunning = false
     @Volatile private var dnsProxyStarted = false
     @Volatile private var lastExitCode: Int? = null
+    @Volatile private var currentRequestId: String = ""
 
     /**
      * Tail of the Node process's stdout/stderr for the current start attempt. On failure
@@ -110,12 +109,17 @@ class NodeService : Service() {
                 }
                 NodeServiceProtocol.MSG_STOP_SERVER -> {
                     val replyTo = msg.replyTo
+                    val targetRequestId = msg.data?.getString(NodeServiceProtocol.Keys.REQUEST_ID).orEmpty()
                     service.workerHandler.post {
-                        val engineKilled = service.stopServerInternal()
-                        sendBack(replyTo, NodeServiceProtocol.MSG_SERVER_STOPPED, Bundle())
-                        if (engineKilled) {
-                            // Reply already queued; now tear down the poisoned :nodejs process
-                            // so the framework restarts a clean engine on the next start.
+                        val engineKilled = service.stopServerForRequest(targetRequestId)
+                        sendBack(
+                            replyTo,
+                            NodeServiceProtocol.MSG_SERVER_STOPPED,
+                            Bundle().apply {
+                                putBoolean(NodeServiceProtocol.Keys.STOP_APPLIED, engineKilled != null)
+                            }
+                        )
+                        if (engineKilled == true) {
                             Process.killProcess(Process.myPid())
                         }
                     }
@@ -161,6 +165,7 @@ class NodeService : Service() {
 
     private fun handleStartServer(data: Bundle, replyTo: Messenger?) {
         val requestId = data.getString(NodeServiceProtocol.Keys.REQUEST_ID).orEmpty()
+        currentRequestId = requestId
         val projectDir = data.getString(NodeServiceProtocol.Keys.PROJECT_DIR).orEmpty()
         val entryFile = data.getString(NodeServiceProtocol.Keys.ENTRY_FILE) ?: "index.js"
         val portPref = data.getInt(NodeServiceProtocol.Keys.PORT_PREF, 0)
@@ -222,7 +227,8 @@ class NodeService : Service() {
                 replyFailed(
                     replyTo,
                     requestId,
-                    Strings.nodeV8AlreadyInit
+                    Strings.nodeV8AlreadyInit,
+                    v8Exhausted = true
                 )
                 return
             }
@@ -375,7 +381,7 @@ class NodeService : Service() {
                 // would misreport every timeout as "进程已退出".
                 val wasAlive = nodeThread?.isAlive == true
                 val entryFailed = recentOutput.contains("[wta-bootstrap] entry failed")
-                stopServerInternal()
+                val threadStuck = stopServerInternal()
                 val headline = when {
                     !wasAlive ->
                         Strings.nodeProcessExited(lastExitCode?.let { " (exitCode=$it)" } ?: "")
@@ -383,6 +389,9 @@ class NodeService : Service() {
                     else -> Strings.nodeServerStartTimeout
                 }
                 replyFailed(replyTo, requestId, failureMessage(headline))
+                if (threadStuck) {
+                    Process.killProcess(Process.myPid())
+                }
             }
         } catch (e: Exception) {
             AppLogger.e(TAG, "handleStartServer 异常", e)
@@ -400,6 +409,14 @@ class NodeService : Service() {
      * its IPC reply first, then honor this by self-terminating so the framework rebuilds
      * a clean engine).
      */
+    private fun stopServerForRequest(requestId: String): Boolean? {
+        if (requestId.isNotEmpty() && currentRequestId.isNotEmpty() && requestId != currentRequestId) {
+            AppLogger.i(TAG, "忽略定向停止：请求 $requestId 不是当前启动 $currentRequestId")
+            return null
+        }
+        return stopServerInternal()
+    }
+
     private fun stopServerInternal(): Boolean {
         var threadStuck = false
         try {
@@ -423,11 +440,9 @@ class NodeService : Service() {
             nodeThread = null
             currentPort = 0
             isRunning = false
+            currentRequestId = ""
         }
         if (threadStuck) {
-            // Thread.interrupt() cannot break the native V8 event loop (the bootstrap keeps
-            // it alive on purpose): the port is released above but the JS server still holds
-            // the socket bound with nobody tracking it. Escalate to a full engine kill.
             AppLogger.w(TAG, "Node 线程在 interrupt+join 后仍在运行，升级为 KILL_ENGINE 重建 :nodejs 进程")
             ShellLogger.w(TAG, "Node 线程未能停止，正在重建 :nodejs 进程")
         }
@@ -480,12 +495,12 @@ class NodeService : Service() {
     }
 
     private fun waitForServerReady(port: Int): Boolean {
-        repeat(MAX_HEALTH_CHECK_RETRIES) { attempt ->
+        repeat(NodeServiceProtocol.MAX_HEALTH_CHECK_RETRIES) { attempt ->
             var conn: HttpURLConnection? = null
             try {
                 conn = URL("http://127.0.0.1:$port/").openConnection() as HttpURLConnection
-                conn.connectTimeout = 500
-                conn.readTimeout = 500
+                conn.connectTimeout = NodeServiceProtocol.HEALTH_PROBE_TIMEOUT_MS
+                conn.readTimeout = NodeServiceProtocol.HEALTH_PROBE_TIMEOUT_MS
                 conn.requestMethod = "GET"
                 val code = conn.responseCode
                 if (code in 200..499) {
@@ -498,12 +513,16 @@ class NodeService : Service() {
                 try { conn?.disconnect() } catch (_: Exception) {}
             }
             if (nodeThread?.isAlive != true) return false
-            try { Thread.sleep(HEALTH_CHECK_INTERVAL_MS) } catch (_: InterruptedException) { return false }
+            try {
+                Thread.sleep(NodeServiceProtocol.HEALTH_CHECK_INTERVAL_MS)
+            } catch (_: InterruptedException) {
+                return false
+            }
         }
         return false
     }
 
-    private fun replyFailed(replyTo: Messenger?, requestId: String, message: String) {
+    private fun replyFailed(replyTo: Messenger?, requestId: String, message: String, v8Exhausted: Boolean = false) {
         AppLogger.w(TAG, "回送 SERVER_FAILED: $message")
         ShellLogger.w(TAG, "回送 SERVER_FAILED: $message")
         sendBackBlocking(
@@ -512,6 +531,7 @@ class NodeService : Service() {
             Bundle().apply {
                 putString(NodeServiceProtocol.Keys.REQUEST_ID, requestId)
                 putString(NodeServiceProtocol.Keys.ERROR_MESSAGE, message)
+                putBoolean(NodeServiceProtocol.Keys.V8_EXHAUSTED, v8Exhausted)
             }
         )
     }

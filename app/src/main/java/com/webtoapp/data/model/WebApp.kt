@@ -391,7 +391,6 @@ data class WebViewConfig(
     val longPressHapticOnActionOnly: Boolean = false,
 
     val popupBlockerEnabled: Boolean = false,
-    val popupBlockerToggleEnabled: Boolean = false,
 
     val initialScale: Int = 0,
     // Build-time per-app page zoom in percent (100 = default). A document-start
@@ -880,17 +879,8 @@ data class GalleryConfig(
         else items.filter { it.categoryId == categoryId }
     }
 
-    fun getSortedItems(categoryId: String? = null): List<GalleryItem> {
-        val filtered = getItemsByCategory(categoryId)
-        return when (sortOrder) {
-            GallerySortOrder.CUSTOM -> filtered.sortedBy { it.sortIndex }
-            GallerySortOrder.NAME_ASC -> filtered.sortedBy { it.name.lowercase() }
-            GallerySortOrder.NAME_DESC -> filtered.sortedByDescending { it.name.lowercase() }
-            GallerySortOrder.DATE_ASC -> filtered.sortedBy { it.createdAt }
-            GallerySortOrder.DATE_DESC -> filtered.sortedByDescending { it.createdAt }
-            GallerySortOrder.TYPE -> filtered.sortedBy { it.type.ordinal }
-        }
-    }
+    fun getSortedItems(categoryId: String? = null): List<GalleryItem> =
+        sortedGalleryItems(getItemsByCategory(categoryId), sortOrder)
 
     val imageCount: Int get() = items.count { it.type == GalleryItemType.IMAGE }
     val videoCount: Int get() = items.count { it.type == GalleryItemType.VIDEO }
@@ -961,6 +951,16 @@ enum class GallerySortOrder {
     DATE_DESC,
     TYPE
 }
+
+fun sortedGalleryItems(items: List<GalleryItem>, order: GallerySortOrder): List<GalleryItem> =
+    when (order) {
+        GallerySortOrder.CUSTOM -> items.sortedBy { it.sortIndex }
+        GallerySortOrder.NAME_ASC -> items.sortedBy { it.name.lowercase() }
+        GallerySortOrder.NAME_DESC -> items.sortedByDescending { it.name.lowercase() }
+        GallerySortOrder.DATE_ASC -> items.sortedBy { it.createdAt }
+        GallerySortOrder.DATE_DESC -> items.sortedByDescending { it.createdAt }
+        GallerySortOrder.TYPE -> items.sortedBy { it.type.ordinal }
+    }
 
 enum class NodeJsBuildMode {
     STATIC,
@@ -1559,14 +1559,7 @@ data class PerformanceOptimizationConfig(
     val convertToWebP: Boolean = true,
     val minifyCode: Boolean = true,
     val minifySvg: Boolean = true,
-    val removeUnusedResources: Boolean = true,
-    val parallelProcessing: Boolean = true,
-    val enableCache: Boolean = true,
-    val injectPreloadHints: Boolean = true,
-    val injectLazyLoading: Boolean = true,
-    val optimizeScripts: Boolean = true,
-    val injectDnsPrefetch: Boolean = true,
-    val injectPerformanceScript: Boolean = true
+    val removeUnusedResources: Boolean = true
 ) {
     fun toOptimizerConfig(): com.webtoapp.core.linux.PerformanceOptimizer.OptimizeConfig {
         return com.webtoapp.core.linux.PerformanceOptimizer.OptimizeConfig(
@@ -1575,14 +1568,7 @@ data class PerformanceOptimizationConfig(
             convertToWebP = convertToWebP,
             minifyCode = minifyCode,
             minifySvg = minifySvg,
-            removeUnusedResources = removeUnusedResources,
-            parallelProcessing = parallelProcessing,
-            enableCache = enableCache,
-            injectPreloadHints = injectPreloadHints,
-            injectLazyLoading = injectLazyLoading,
-            optimizeScripts = optimizeScripts,
-            injectDnsPrefetch = injectDnsPrefetch,
-            injectPerformanceScript = injectPerformanceScript
+            removeUnusedResources = removeUnusedResources
         )
     }
 }
@@ -1921,6 +1907,32 @@ data class NativeBridgeCapabilities(
  */
 fun NativeBridgeCapabilities.withNotificationPolyfill(polyfillEnabled: Boolean): NativeBridgeCapabilities =
     if (polyfillEnabled) copy(notification = true) else this
+
+fun notificationPolyfillOnlyCapabilities(): NativeBridgeCapabilities = NativeBridgeCapabilities(
+    clipboard = false,
+    vibration = false,
+    geolocation = false,
+    brightness = false,
+    notification = true,
+    notificationScheduled = false,
+    notificationPersistent = false,
+    download = false,
+    privateNetwork = false,
+    screenWake = false,
+    openExternal = false,
+    deviceInfo = false,
+    securityInfo = false,
+    networkInfo = false,
+    toast = false,
+    logging = false,
+    findInPage = false,
+    orientation = false,
+    fullscreen = false,
+    print = false,
+    googleSignIn = false,
+    googleSignInClientId = "",
+    directory = false,
+)
 
 enum class GeolocationAccuracy {
 
