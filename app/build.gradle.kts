@@ -83,7 +83,7 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.webtoapp"
+        applicationId = "com.webapp"
         // Play automatic protection rejects a bundle below 24. Both flavors share this floor.
         minSdk = 24
 
