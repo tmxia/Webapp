@@ -1482,6 +1482,16 @@ object Strings {
     val agentContextEmpty: String get() = StringsB.agentContextEmpty
     val agentContextPickerDone: String get() = StringsB.agentContextPickerDone
     val agentContextAllCategories: String get() = StringsB.agentContextAllCategories
+    val agentSkillsLabel: String get() = StringsB.agentSkillsLabel
+    val agentSkillImport: String get() = StringsB.agentSkillImport
+    val agentSkillsEmpty: String get() = StringsB.agentSkillsEmpty
+    val agentSkillImportFailed: String get() = StringsB.agentSkillImportFailed
+    val agentSkillBudgetExceeded: String get() = StringsB.agentSkillBudgetExceeded
+    val agentToolsTitle: String get() = StringsB.agentToolsTitle
+    val agentToolReadOnly: String get() = StringsB.agentToolReadOnly
+    val agentToolPermissionChecked: String get() = StringsB.agentToolPermissionChecked
+    val agentContextReferencesHint: String get() = StringsB.agentContextReferencesHint
+    val agentSkillRemoveConfirm: String get() = StringsB.agentSkillRemoveConfirm
     val agentSaveAsApp: String get() = StringsB.agentSaveAsApp
     val agentSaveAsAppTitle: String get() = StringsB.agentSaveAsAppTitle
     val agentSaveAsAppDescription: String get() = StringsB.agentSaveAsAppDescription
@@ -1529,6 +1539,7 @@ object Strings {
     val agentAppChangesOpen: String get() = StringsB.agentAppChangesOpen
     val agentAppChangesFields: String get() = StringsB.agentAppChangesFields
     val agentPlanModeBadge: String get() = StringsB.agentPlanModeBadge
+    val agentPlanReview: String get() = StringsB.agentPlanReview
     val agentPlanModeNoPath: String get() = StringsB.agentPlanModeNoPath
     val agentPlanModeExitTooltip: String get() = StringsB.agentPlanModeExitTooltip
     val agentOpenDrawer: String get() = StringsB.agentOpenDrawer
@@ -1538,6 +1549,10 @@ object Strings {
     val agentHomeRecentSeeAll: String get() = StringsB.agentHomeRecentSeeAll
     val agentHomeUntitledSession: String get() = StringsB.agentHomeUntitledSession
     val agentHomeStartersTitle: String get() = StringsB.agentHomeStartersTitle
+    val agentStarterTodoLabel: String get() = StringsB.agentStarterTodoLabel
+    val agentStarterPortfolioLabel: String get() = StringsB.agentStarterPortfolioLabel
+    val agentStarterHtmlLabel: String get() = StringsB.agentStarterHtmlLabel
+    val agentStarterLandingLabel: String get() = StringsB.agentStarterLandingLabel
     val agentStarterPrompt1: String get() = StringsB.agentStarterPrompt1
     val agentStarterPrompt2: String get() = StringsB.agentStarterPrompt2
     val agentStarterPrompt3: String get() = StringsB.agentStarterPrompt3
@@ -1582,6 +1597,15 @@ object Strings {
     val agentNewSessionAlreadyEmpty: String get() = StringsB.agentNewSessionAlreadyEmpty
     val agentPreviewOpen: String get() = StringsB.agentPreviewOpen
     val agentPreviewClose: String get() = StringsB.agentPreviewClose
+    val agentToolCallCount: String get() = StringsB.agentToolCallCount
+    val agentToolReadFile: String get() = StringsB.agentToolReadFile
+    val agentToolWriteFile: String get() = StringsB.agentToolWriteFile
+    val agentToolEditFile: String get() = StringsB.agentToolEditFile
+    val agentToolDeleteFile: String get() = StringsB.agentToolDeleteFile
+    val agentToolFindFiles: String get() = StringsB.agentToolFindFiles
+    val agentToolSearchContent: String get() = StringsB.agentToolSearchContent
+    val agentToolListFiles: String get() = StringsB.agentToolListFiles
+    val agentToolSubmitPlan: String get() = StringsB.agentToolSubmitPlan
     val agentToolArgsLabel: String get() = StringsB.agentToolArgsLabel
     val agentToolResultLabel: String get() = StringsB.agentToolResultLabel
 
