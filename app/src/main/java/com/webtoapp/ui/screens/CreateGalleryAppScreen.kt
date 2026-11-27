@@ -3,11 +3,15 @@ package com.webtoapp.ui.screens
 import android.net.Uri
 import com.webtoapp.ui.design.WtaSwitch
 import com.webtoapp.ui.components.PremiumButton
+import androidx.activity.compose.BackHandler
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -44,14 +48,14 @@ import com.webtoapp.ui.icons.WtaAppTypeIcon
 import com.webtoapp.ui.components.*
 import com.webtoapp.ui.screens.create.WtaCreateFlowScaffold
 import com.webtoapp.ui.screens.create.WtaCreateFlowSection
+import com.webtoapp.ui.shared.GalleryVideoTitle
 import com.webtoapp.util.MediaStorage
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import java.io.File
 import com.webtoapp.ui.design.WtaAlertDialog
 import com.webtoapp.ui.design.WtaBackground
 import com.webtoapp.ui.design.WtaExpandIn
-import com.webtoapp.ui.design.WtaLoadingIndicator
 import com.webtoapp.ui.design.WtaShrinkOut
 import com.webtoapp.ui.components.EnhancedElevatedCard
 
@@ -73,136 +77,172 @@ fun CreateGalleryAppScreenV2(
         name: String,
         galleryConfig: GalleryConfig,
         iconUri: Uri?,
-        themeType: String
-    ) -> Unit
+        themeType: String,
+        onFinished: (Boolean) -> Unit
+    ) -> Boolean
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val gridState = rememberLazyGridState()
 
-    var existingApp by remember { mutableStateOf<WebApp?>(null) }
+    val draft: GalleryEditorDraft = viewModel()
+    val existingApp = draft.existingApp
     LaunchedEffect(existingAppId) {
-        if (existingAppId != null) {
-            existingApp = org.koin.java.KoinJavaComponent.get<com.webtoapp.data.repository.WebAppRepository>(com.webtoapp.data.repository.WebAppRepository::class.java)
-                .getWebAppById(existingAppId)
-                .first()
+        if (existingAppId != null && draft.existingApp == null) {
+            val app = org.koin.java.KoinJavaComponent.get<com.webtoapp.data.repository.WebAppRepository>(
+                com.webtoapp.data.repository.WebAppRepository::class.java
+            ).getWebApp(existingAppId)
+            if (app != null) draft.load(app)
         }
     }
 
-    var appName by remember { mutableStateOf("") }
-    var appIcon by remember { mutableStateOf<Uri?>(null) }
-    var appIconPath by remember { mutableStateOf<String?>(null) }
-
-    var galleryItems by remember { mutableStateOf<List<GalleryItem>>(emptyList()) }
-    var isLoadingMedia by remember { mutableStateOf(false) }
+    var appName by draft.name
+    var appIcon by draft.icon
+    var appIconPath by draft.iconPath
+    var galleryItems by draft.items
+    var folders by draft.folders
+    var activeFolderId by draft.activeFolderId
+    var useDeviceFolder by draft.useDeviceFolder
+    var importProgress by remember { mutableStateOf<Pair<Int, Int>?>(null) }
+    var importJob by remember { mutableStateOf<Job?>(null) }
+    var importFailures by remember { mutableStateOf<List<String>>(emptyList()) }
+    val draftItems = draft.importedItems
+    var showMoveDialog by remember { mutableStateOf(false) }
+    var showFolderNameDialog by remember { mutableStateOf(false) }
+    var editingFolder by remember { mutableStateOf<GalleryCategory?>(null) }
+    var deletingFolder by remember { mutableStateOf<GalleryCategory?>(null) }
+    var moveToNewFolder by remember { mutableStateOf(false) }
+    val activeFolder = folders.firstOrNull { it.id == activeFolderId }
+    val visibleItems = remember(galleryItems, activeFolderId) {
+        if (activeFolderId == null) galleryItems else galleryItems.filter { it.categoryId == activeFolderId }
+    }
+    val isLoadingMedia = importProgress != null
 
     var selectedItems by remember { mutableStateOf<Set<String>>(emptySet()) }
     val isSelectionMode = selectedItems.isNotEmpty()
 
-    var loop by remember { mutableStateOf(true) }
-    var autoPlay by remember { mutableStateOf(false) }
-    var imageInterval by remember { mutableIntStateOf(3) }
-    var enableAudio by remember { mutableStateOf(true) }
-    var videoAutoNext by remember { mutableStateOf(true) }
+    var loop by draft.loop
+    var autoPlay by draft.autoPlay
+    var imageInterval by draft.imageInterval
+    var enableAudio by draft.enableAudio
+    var videoAutoNext by draft.videoAutoNext
 
     var showAppInfoSection by remember { mutableStateOf(true) }
     var showSettingsSheet by remember { mutableStateOf(false) }
     var previewItem by remember { mutableStateOf<GalleryItem?>(null) }
 
-    LaunchedEffect(existingApp) {
-        existingApp?.let { app ->
-            appName = app.name
-            app.iconPath?.let { appIconPath = it }
-            app.galleryConfig?.let { config ->
-                galleryItems = config.items
-                loop = config.loop
-                autoPlay = config.autoPlay
-                imageInterval = config.imageInterval
-                enableAudio = config.enableAudio
-                videoAutoNext = config.videoAutoNext
-            }
-        }
+    DisposableEffect(Unit) {
+        onDispose { importJob?.cancel() }
     }
 
     val mediaPickerLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenMultipleDocuments()
     ) { uris ->
-        if (uris.isNotEmpty()) {
-            isLoadingMedia = true
-            scope.launch {
-                val pairs = uris.mapNotNull { uri ->
-                    val type = MediaStorage.getMediaType(context, uri)
-                    type?.let { uri to it }
-                }
-                if (pairs.isNotEmpty()) {
-                    val newItems = MediaStorage.saveGalleryMediaBatch(context, pairs)
-                    galleryItems = galleryItems + newItems.mapIndexed { index, item ->
-                        item.copy(sortIndex = galleryItems.size + index)
+        if (uris.isNotEmpty() && importProgress == null) {
+            val targetFolder = activeFolderId
+            val firstSortIndex = (galleryItems.maxOfOrNull { it.sortIndex } ?: -1) + 1
+            importProgress = 0 to uris.size
+            importJob = scope.launch {
+                val added = mutableListOf<GalleryItem>()
+                val failed = mutableListOf<String>()
+                try {
+                    uris.forEachIndexed { index, uri ->
+                        val result = MediaStorage.importGalleryMedia(context, uri)
+                        val item = result.item
+                        if (item == null) {
+                            failed += result.name
+                        } else {
+                            val filed = item.copy(categoryId = targetFolder, sortIndex = firstSortIndex + index)
+                            added += filed
+                            draft.trackImportedItem(filed)
+                        }
+                        importProgress = (index + 1) to uris.size
                     }
+                } finally {
+                    galleryItems = galleryItems + added
+                    importFailures = failed
+                    importProgress = null
                 }
             }
-            isLoadingMedia = false
         }
     }
     val iconPickerLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.GetContent()
     ) { uri -> uri?.let { appIcon = it } }
 
-    val canCreate = galleryItems.isNotEmpty()
+    val canCreate = !draft.isSaving && !isLoadingMedia && (existingAppId == null || existingApp != null) &&
+        (useDeviceFolder || galleryItems.isNotEmpty())
+    val moveSelected: (String?) -> Unit = { destination ->
+        galleryItems = galleryItems.map { item ->
+            if (item.id in selectedItems) item.copy(categoryId = destination) else item
+        }
+        selectedItems = emptySet()
+        showMoveDialog = false
+    }
+    val handleBack: () -> Unit = {
+        when {
+            isLoadingMedia -> importJob?.cancel()
+            isSelectionMode -> selectedItems = emptySet()
+            else -> onBack()
+        }
+    }
+    BackHandler(enabled = isLoadingMedia || isSelectionMode, onBack = handleBack)
 
     WtaCreateFlowScaffold(
         title = if (isSelectionMode) "${selectedItems.size} ${Strings.galleryItemCount}" else if (existingAppId != null) Strings.editApp else Strings.galleryCreateTitle,
-        onBack = {
-            if (isSelectionMode) {
-                selectedItems = emptySet()
-            } else {
-                onBack()
-            }
-        },
+        onBack = handleBack,
         actions = {
             if (isSelectionMode) {
                 IconButton(onClick = {
-                    selectedItems = if (selectedItems.size == galleryItems.size) emptySet() else galleryItems.map { it.id }.toSet()
+                    selectedItems = if (selectedItems.size == visibleItems.size) emptySet() else visibleItems.map { it.id }.toSet()
                 }) { Icon(Icons.Default.CheckBox, null) }
+                IconButton(onClick = { showMoveDialog = true }) {
+                    Icon(Icons.Default.Folder, Strings.galleryMoveToFolder)
+                }
                 IconButton(onClick = {
                     selectedItems.forEach { id ->
-                        galleryItems.find { it.id == id }?.let { MediaStorage.deleteGalleryMedia(it) }
+                        draftItems.remove(id)?.let(MediaStorage::deleteGalleryMedia)
                     }
                     galleryItems = galleryItems.filterNot { it.id in selectedItems }
                     selectedItems = emptySet()
                 }) { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) }
             } else {
-                IconButton(onClick = { showSettingsSheet = true }) { Icon(Icons.Outlined.Settings, null) }
+                if (!useDeviceFolder && activeFolder != null && !isLoadingMedia) {
+                    IconButton(onClick = { editingFolder = activeFolder; showFolderNameDialog = true }) {
+                        Icon(Icons.Default.Edit, Strings.edit)
+                    }
+                    IconButton(onClick = { deletingFolder = activeFolder }) {
+                        Icon(Icons.Default.Delete, Strings.delete)
+                    }
+                }
+                IconButton(onClick = { showSettingsSheet = true }, enabled = !isLoadingMedia) {
+                    Icon(Icons.Outlined.Settings, null)
+                }
                 TextButton(
                     onClick = {
                         val finalIconUri = appIconPath?.let { Uri.parse("file://$it") } ?: appIcon
-                        val config = GalleryConfig(
+                        val config = (existingApp?.galleryConfig ?: GalleryConfig()).copy(
                             items = galleryItems,
-                            categories = emptyList(),
-                            playMode = GalleryPlayMode.SEQUENTIAL,
+                            categories = folders,
+                            useDeviceFolder = useDeviceFolder,
                             imageInterval = imageInterval,
                             loop = loop,
                             autoPlay = autoPlay,
-                            shuffleOnLoop = false,
-                            defaultView = GalleryViewMode.GRID,
-                            gridColumns = 3,
-                            sortOrder = GallerySortOrder.CUSTOM,
-                            backgroundColor = "#000000",
-                            showThumbnailBar = true,
-                            showMediaInfo = true,
-                            orientation = SplashOrientation.PORTRAIT,
                             enableAudio = enableAudio,
-                            videoAutoNext = videoAutoNext,
-                            rememberPosition = false
+                            videoAutoNext = videoAutoNext
                         )
-                        onCreated(appName.ifBlank { Strings.galleryApp }, config, finalIconUri, "AURORA")
+                        draft.isSaving = true
+                        val accepted = onCreated(
+                            appName.ifBlank { Strings.galleryApp }, config, finalIconUri, "AURORA", draft::finishSave
+                        )
+                        if (!accepted) draft.finishSave(false)
                     },
                     enabled = canCreate
                 ) { Text(if (existingAppId != null) Strings.btnSave else Strings.btnCreate) }
             }
         },
         floatingActionButton = {
-            if (!isSelectionMode) {
+            if (!isSelectionMode && !useDeviceFolder && !isLoadingMedia) {
                 ExtendedFloatingActionButton(
                     onClick = { mediaPickerLauncher.launch(arrayOf("image/*", "video/*")) },
                     icon = { Icon(Icons.Default.Add, null) },
@@ -259,7 +299,7 @@ fun CreateGalleryAppScreenV2(
             }
             }
 
-            if (galleryItems.isNotEmpty()) {
+            if (!useDeviceFolder && galleryItems.isNotEmpty()) {
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -274,11 +314,36 @@ fun CreateGalleryAppScreenV2(
             }
             }
 
+            GallerySourceSetting(
+                useDeviceFolder = useDeviceFolder,
+                enabled = !isLoadingMedia && !isSelectionMode,
+                onSourceChange = { useDeviceFolder = it }
+            )
+            AnimatedVisibility(visible = !useDeviceFolder, enter = WtaExpandIn, exit = WtaShrinkOut) {
+                GalleryFolderStrip(
+                    folders = folders,
+                    selectedId = activeFolderId,
+                    enabled = !isSelectionMode && !isLoadingMedia,
+                    onSelect = { activeFolderId = it },
+                    onNewFolder = { editingFolder = null; showFolderNameDialog = true }
+                )
+            }
+
+            if (!useDeviceFolder) {
             WtaCreateFlowSection(title = Strings.preview, modifier = Modifier.weight(1f)) {
             Box(modifier = Modifier.weight(weight = 1f, fill = true)) {
-                if (isLoadingMedia) {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { WtaLoadingIndicator() }
-                } else if (galleryItems.isEmpty()) {
+                val progress = importProgress
+                if (progress != null) {
+                    Column(
+                        Modifier.align(Alignment.Center).padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text("${progress.first} / ${progress.second}")
+                        LinearProgressIndicator(progress = { progress.first.toFloat() / progress.second })
+                        TextButton(onClick = { importJob?.cancel() }) { Text(Strings.cancel) }
+                    }
+                } else if (visibleItems.isEmpty()) {
                     EmptyGalleryState(onAddMedia = { mediaPickerLauncher.launch(arrayOf("image/*", "video/*")) })
                 } else {
                     LazyVerticalGrid(
@@ -289,7 +354,7 @@ fun CreateGalleryAppScreenV2(
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        items(galleryItems, key = { it.id }) { item ->
+                        items(visibleItems, key = { it.id }) { item ->
                             GalleryMediaItem(
                                 item = item,
                                 isSelected = item.id in selectedItems,
@@ -310,7 +375,71 @@ fun CreateGalleryAppScreenV2(
                 }
             }
             }
+            }
         }
+    }
+
+    if (showMoveDialog) {
+        GalleryMoveDialog(
+            folders = folders,
+            onDismiss = { showMoveDialog = false },
+            onMove = moveSelected,
+            onNewFolder = {
+                showMoveDialog = false
+                moveToNewFolder = true
+                editingFolder = null
+                showFolderNameDialog = true
+            }
+        )
+    }
+    if (showFolderNameDialog) {
+        GalleryFolderNameDialog(
+            folder = editingFolder,
+            folders = folders,
+            onDismiss = { moveToNewFolder = false; showFolderNameDialog = false },
+            onSave = { name ->
+                val previous = editingFolder
+                if (previous != null) {
+                    folders = folders.map { if (it.id == previous.id) it.copy(name = name) else it }
+                } else {
+                    val folder = GalleryCategory(name = name, sortIndex = (folders.maxOfOrNull { it.sortIndex } ?: -1) + 1)
+                    folders = folders + folder
+                    if (moveToNewFolder) moveSelected(folder.id)
+                    activeFolderId = folder.id
+                }
+                moveToNewFolder = false
+                showFolderNameDialog = false
+            }
+        )
+    }
+    deletingFolder?.let { folder ->
+        WtaAlertDialog(
+            title = folder.name,
+            onDismissRequest = { deletingFolder = null },
+            dismissButton = { TextButton(onClick = { deletingFolder = null }) { Text(Strings.cancel) } },
+            confirmButton = {
+                TextButton(onClick = {
+                    folders = folders.filterNot { it.id == folder.id }
+                    galleryItems = galleryItems.map { if (it.categoryId == folder.id) it.copy(categoryId = null) else it }
+                    activeFolderId = null
+                    deletingFolder = null
+                }) { Text(Strings.delete) }
+            }
+        )
+    }
+    if (importFailures.isNotEmpty()) {
+        WtaAlertDialog(
+            title = Strings.failed,
+            onDismissRequest = { importFailures = emptyList() },
+            confirmButton = { TextButton(onClick = { importFailures = emptyList() }) { Text(Strings.confirm) } },
+            content = {
+                LazyColumn(modifier = Modifier.heightIn(max = 280.dp).fillMaxWidth()) {
+                    items(importFailures) { name ->
+                        Text(name, modifier = Modifier.padding(vertical = 4.dp))
+                    }
+                }
+            }
+        )
     }
 
     if (showSettingsSheet) {
@@ -334,7 +463,7 @@ fun CreateGalleryAppScreenV2(
             item = item,
             onDismiss = { previewItem = null },
             onDelete = {
-                MediaStorage.deleteGalleryMedia(item)
+                draftItems.remove(item.id)?.let(MediaStorage::deleteGalleryMedia)
                 galleryItems = galleryItems.filter { it.id != item.id }
                 previewItem = null
             }
@@ -387,11 +516,14 @@ private fun GalleryMediaItem(
     ) {
         AsyncImage(
             model = ImageRequest.Builder(context).data(File(item.thumbnailPath ?: item.path)).crossfade(true).build(),
-            contentDescription = item.name,
+            contentDescription = item.name.takeUnless { item.type == GalleryItemType.VIDEO },
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop
         )
         if (item.type == GalleryItemType.VIDEO) {
+            Box(Modifier.align(Alignment.TopStart).padding(end = if (isSelectionMode) 36.dp else 0.dp)) {
+                GalleryVideoTitle(item.name)
+            }
             Box(
                 modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(32.dp).background(
                     Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.7f)))
@@ -482,4 +614,65 @@ private fun MediaPreviewDialog(item: GalleryItem, onDismiss: () -> Unit, onDelet
         confirmButton = { TextButton(onClick = onDismiss) { Text(Strings.btnOk) } },
         dismissButton = { TextButton(onClick = onDelete, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Icon(Icons.Default.Delete, null, modifier = Modifier.size(18.dp)); Spacer(Modifier.width(4.dp)); Text(Strings.delete) } }
     )
+}
+
+
+internal class GalleryEditorDraft : ViewModel() {
+    var existingApp by mutableStateOf<WebApp?>(null)
+        private set
+    val name = mutableStateOf("")
+    val icon = mutableStateOf<Uri?>(null)
+    val iconPath = mutableStateOf<String?>(null)
+    val items = mutableStateOf<List<GalleryItem>>(emptyList())
+    val folders = mutableStateOf<List<GalleryCategory>>(emptyList())
+    val activeFolderId = mutableStateOf<String?>(null)
+    val useDeviceFolder = mutableStateOf(false)
+    val loop = mutableStateOf(true)
+    val autoPlay = mutableStateOf(false)
+    val imageInterval = mutableIntStateOf(3)
+    val enableAudio = mutableStateOf(true)
+    val videoAutoNext = mutableStateOf(true)
+    val importedItems = mutableMapOf<String, GalleryItem>()
+    var isSaving by mutableStateOf(false)
+    private var closed = false
+
+    fun load(app: WebApp) {
+        name.value = app.name
+        iconPath.value = app.iconPath
+        app.galleryConfig?.let { config ->
+            items.value = config.items
+            folders.value = config.categories.sortedBy { it.sortIndex }
+            useDeviceFolder.value = config.useDeviceFolder
+            loop.value = config.loop
+            autoPlay.value = config.autoPlay
+            imageInterval.intValue = config.imageInterval
+            enableAudio.value = config.enableAudio
+            videoAutoNext.value = config.videoAutoNext
+        }
+        existingApp = app
+    }
+
+    fun trackImportedItem(item: GalleryItem) {
+        if (closed) {
+            MediaStorage.deleteGalleryMedia(item)
+        } else {
+            importedItems[item.id] = item
+        }
+    }
+
+    fun finishSave(saved: Boolean) {
+        isSaving = false
+        if (saved) importedItems.clear()
+        if (closed) discardImportedItems()
+    }
+
+    override fun onCleared() {
+        closed = true
+        if (!isSaving) discardImportedItems()
+    }
+
+    private fun discardImportedItems() {
+        importedItems.values.forEach(MediaStorage::deleteGalleryMedia)
+        importedItems.clear()
+    }
 }

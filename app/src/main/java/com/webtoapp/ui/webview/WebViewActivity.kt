@@ -94,6 +94,7 @@ import com.webtoapp.ui.design.WtaFadeOut
 import com.webtoapp.ui.design.WtaLoadingIndicator
 import com.webtoapp.ui.theme.WebToAppTheme
 import com.webtoapp.util.DownloadHelper
+import com.webtoapp.core.host.fitInTransparentSquare
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -148,14 +149,10 @@ internal fun recentsTaskDescription(
 }
 
 private fun scaleRecentsIcon(source: Bitmap): Bitmap {
-    val longest = maxOf(source.width, source.height)
-    if (longest <= RECENTS_ICON_MAX_PX || longest <= 0) return source
-    val scale = RECENTS_ICON_MAX_PX.toFloat() / longest
-    val width = (source.width * scale).toInt().coerceAtLeast(1)
-    val height = (source.height * scale).toInt().coerceAtLeast(1)
-    val scaled = Bitmap.createScaledBitmap(source, width, height, true)
-    if (scaled !== source) source.recycle()
-    return scaled
+    val size = minOf(maxOf(source.width, source.height), RECENTS_ICON_MAX_PX)
+    val square = source.fitInTransparentSquare(size)
+    if (square !== source) source.recycle()
+    return square
 }
 
 open class WebViewActivity : AppCompatActivity() {
@@ -1053,7 +1050,8 @@ open class WebViewActivity : AppCompatActivity() {
                             lifecycleScope,
                             effectiveDownloadConfig?.downloadLocationMode ?: com.webtoapp.data.model.DownloadLocationMode.SYSTEM_DOWNLOAD,
                             effectiveDownloadConfig?.customDownloadDirUri ?: "",
-                            effectiveDownloadConfig?.mediaAlbumName ?: ""
+                            effectiveDownloadConfig?.mediaAlbumName ?: "",
+                            currentPageUrl = { wv.url }
                         )
                         wv.addJavascriptInterface(downloadBridge, com.webtoapp.core.webview.DownloadBridge.JS_INTERFACE_NAME)
                     }
@@ -3083,7 +3081,8 @@ fun WebViewScreen(
                 userAgent: String,
                 contentDisposition: String,
                 mimeType: String,
-                contentLength: Long
+                contentLength: Long,
+                referrer: String?
             ) {
 
                 val effectiveApp = webApp ?: previewApp
@@ -3093,8 +3092,7 @@ fun WebViewScreen(
                     userAgent = userAgent,
                     contentDisposition = contentDisposition,
                     mimeType = mimeType,
-                    contentLength = contentLength,
-                    scope = scope,
+                    referrer = referrer,
                     downloadLocationMode = effectiveApp?.webViewConfig?.downloadLocationMode
                         ?: com.webtoapp.data.model.DownloadLocationMode.SYSTEM_DOWNLOAD,
                     customDownloadDirUri = effectiveApp?.webViewConfig?.customDownloadDirUri ?: "",
@@ -3827,6 +3825,7 @@ fun WebViewScreen(
                     ) {
                     com.webtoapp.ui.shell.MultiWebShellMode(
                         config = shellConfig,
+                        previewAppId = mwApp.id,
                         webViewConfig = mwApp.webViewConfig,
                         webViewCallbacks = webViewCallbacks,
                         webViewManager = webViewManager,

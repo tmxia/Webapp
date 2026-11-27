@@ -24,6 +24,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -31,10 +32,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.webtoapp.core.i18n.Strings
@@ -42,6 +45,15 @@ import com.webtoapp.data.model.*
 import com.webtoapp.ui.design.WtaFadeIn
 import com.webtoapp.ui.design.WtaFadeOut
 import com.webtoapp.ui.shared.AspectRatioSurface
+import com.webtoapp.ui.shared.GalleryPlaybackSpeedMenu
+import com.webtoapp.ui.shared.GalleryVideoTitle
+import com.webtoapp.ui.shared.GalleryVideoResume
+import com.webtoapp.ui.shared.GalleryWatchHistory
+import com.webtoapp.ui.shared.SaveGalleryPlaybackOnStop
+import com.webtoapp.ui.shared.galleryMatchesSearch
+import com.webtoapp.ui.shell.GalleryContinueWatching
+import com.webtoapp.ui.shell.GallerySearchField
+import com.webtoapp.ui.shared.applyGalleryPlaybackSpeed
 import com.webtoapp.ui.shared.ZoomableState
 import com.webtoapp.ui.shared.zoomable
 import kotlinx.coroutines.delay
@@ -50,14 +62,14 @@ import java.io.File
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun GalleryPlayerScreen(
+internal fun GalleryPlayerScreen(
     config: GalleryConfig,
     startIndex: Int,
     onBack: () -> Unit,
-    // Persistence key for rememberPosition (e.g. per-app id). Null disables saving.
     positionKey: String? = null,
-    // Overview (grid/list/timeline) is the entry unless resuming into the pager.
-    startInOverview: Boolean = true
+    startInOverview: Boolean = true,
+    history: GalleryWatchHistory,
+    startVideoId: String? = null
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -74,18 +86,16 @@ fun GalleryPlayerScreen(
             else -> config.getSortedItems()
         }
     }
-    // Mutable playback order: shuffle-on-loop reshuffles in place on every wrap.
     var items by remember(config) { mutableStateOf(initialOrder) }
 
     val pagerState = rememberPagerState(
-        initialPage = startIndex,
+        initialPage = initialOrder.indexOfFirst { it.id == startVideoId }.takeIf { it >= 0 } ?: startIndex,
         pageCount = { items.size }
     )
 
     val currentIndex by remember { derivedStateOf { pagerState.settledPage } }
     val currentItem = items.getOrNull(currentIndex)
 
-    // rememberPosition: persist the settled page so reopening continues here.
     LaunchedEffect(currentIndex) {
         val key = positionKey
         if (key != null && currentIndex in items.indices) {
@@ -94,8 +104,6 @@ fun GalleryPlayerScreen(
     }
 
     var showGrid by remember { mutableStateOf(startInOverview) }
-    // Pager back returns to the overview only when the session started there;
-    // a resume-to-pager session exits directly.
     val canReturnToGrid = startInOverview
     androidx.activity.compose.BackHandler(enabled = !showGrid && canReturnToGrid) {
         showGrid = true
@@ -109,13 +117,17 @@ fun GalleryPlayerScreen(
         }
     }
 
+    var continueRequested by remember { mutableStateOf(false) }
+
     if (showGrid) {
         GalleryOverview(
             config = config,
             items = items,
             bgColor = bgColor,
+            history = history,
             onBack = onBack,
-            onItemClick = { index ->
+            onItemClick = { index, resume ->
+                continueRequested = resume
                 scope.launch {
                     showGrid = false
                     pagerState.scrollToPage(index.coerceIn(0, items.size - 1))
@@ -126,7 +138,11 @@ fun GalleryPlayerScreen(
     }
 
     var showControls by remember { mutableStateOf(true) }
-    var isPlaying by remember { mutableStateOf(config.autoPlay) }
+    var isPlaying by remember { mutableStateOf(continueRequested || startVideoId != null || config.autoPlay) }
+    var playbackSpeed by rememberSaveable { mutableFloatStateOf(1f) }
+    var speedMenuOpen by remember { mutableStateOf(false) }
+    var thumbnailBarHeight by remember { mutableIntStateOf(0) }
+    val controlsBottomPadding = with(LocalDensity.current) { thumbnailBarHeight.toDp() }
 
     LaunchedEffect(currentIndex, isPlaying) {
 
@@ -145,8 +161,8 @@ fun GalleryPlayerScreen(
         }
     }
 
-    LaunchedEffect(showControls) {
-        if (showControls) {
+    LaunchedEffect(showControls, isPlaying, speedMenuOpen, currentIndex) {
+        if (showControls && isPlaying && !speedMenuOpen) {
             delay(3000)
             showControls = false
         }
@@ -179,21 +195,33 @@ fun GalleryPlayerScreen(
                     GalleryItemType.VIDEO -> {
                         GalleryVideoPlayer(
                             item = item,
+                            resume = remember(history, item.id) {
+                                GalleryVideoResume(history, item.id, item.name.ifBlank { File(item.path).name }, emptyList())
+                            },
                             isCurrentPage = page == currentIndex,
                             isPlaying = isPlaying && page == currentIndex,
                             enableAudio = config.enableAudio,
                             showControls = showControls,
+                            playbackSpeed = playbackSpeed,
+                            onSpeedChange = { playbackSpeed = it },
+                            onSpeedMenuOpenChange = { speedMenuOpen = it },
+                            controlsBottomPadding = controlsBottomPadding,
                             onPlayStateChange = { playing -> isPlaying = playing },
+                            repeatVideo = config.playMode == GalleryPlayMode.SINGLE_LOOP ||
+                                (config.videoAutoNext && config.loop && items.size == 1),
                             onVideoEnded = {
-                                if (config.videoAutoNext) {
+                                val advance = if (config.videoAutoNext) {
+                                    com.webtoapp.ui.shared.galleryAutoAdvanceTarget(
+                                        currentIndex, items.size, config.loop, config.shuffleOnLoop
+                                    )
+                                } else null
+                                if (advance == null) {
+                                    isPlaying = false
+                                    showControls = true
+                                } else {
                                     scope.launch {
-                                        val advance = com.webtoapp.ui.shared.galleryAutoAdvanceTarget(
-                                            currentIndex, items.size, config.loop, config.shuffleOnLoop
-                                        )
-                                        if (advance != null) {
-                                            if (advance.reshuffle) items = items.shuffled()
-                                            pagerState.animateScrollToPage(advance.targetIndex)
-                                        }
+                                        if (advance.reshuffle) items = items.shuffled()
+                                        pagerState.animateScrollToPage(advance.targetIndex)
                                     }
                                 }
                             },
@@ -224,7 +252,7 @@ fun GalleryPlayerScreen(
                 visible = showControls,
                 enter = WtaFadeIn + slideInVertically(initialOffsetY = { it }),
                 exit = WtaFadeOut + slideOutVertically(targetOffsetY = { it }),
-                modifier = Modifier.align(Alignment.BottomCenter)
+                modifier = Modifier.align(Alignment.BottomCenter).onSizeChanged { thumbnailBarHeight = it.height }
             ) {
                 ThumbnailBar(
                     items = items,
@@ -467,8 +495,6 @@ fun GalleryImageViewer(
         contentAlignment = Alignment.Center
     ) {
         val density = LocalDensity.current
-        // Same pinch/pan/double-tap behavior as the exported shell viewer (#801): fresh
-        // zoom state per item, content size from the loaded painter.
         val zoom = remember(item.path) { ZoomableState() }
         var intrinsicSizePx by remember(item.path) { mutableStateOf<Size?>(null) }
         val viewportPx = with(density) { Size(maxWidth.toPx(), maxHeight.toPx()) }
@@ -489,7 +515,6 @@ fun GalleryImageViewer(
                 val painterSize = (state as? coil.compose.AsyncImagePainter.State.Success)
                     ?.painter?.intrinsicSize
                 if (painterSize != null && painterSize.width > 0f && painterSize.height > 0f) {
-                    // intrinsicSize is already in pixels — no density conversion.
                     intrinsicSizePx = painterSize
                 }
             },
@@ -507,8 +532,9 @@ fun GalleryImageViewer(
 }
 
 @Composable
-fun GalleryVideoPlayer(
+private fun GalleryVideoPlayer(
     item: GalleryItem,
+    resume: GalleryVideoResume,
     isCurrentPage: Boolean,
     isPlaying: Boolean,
     enableAudio: Boolean,
@@ -516,17 +542,22 @@ fun GalleryVideoPlayer(
     onPlayStateChange: (Boolean) -> Unit,
     onVideoEnded: () -> Unit,
     onToggleControls: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    playbackSpeed: Float = 1f,
+    onSpeedChange: (Float) -> Unit = {},
+    onSpeedMenuOpenChange: (Boolean) -> Unit = {},
+    controlsBottomPadding: Dp = 0.dp,
+    repeatVideo: Boolean = false
 ) {
-    val context = LocalContext.current
 
+    val onVideoCompleted by rememberUpdatedState(onVideoEnded)
+    val isActivePage by rememberUpdatedState(isCurrentPage)
     var player by remember { mutableStateOf<android.media.MediaPlayer?>(null) }
     var surfaceHolder by remember { mutableStateOf<android.view.SurfaceHolder?>(null) }
     var isPrepared by remember { mutableStateOf(false) }
     var currentPosition by remember { mutableLongStateOf(0L) }
     var duration by remember { mutableLongStateOf(0L) }
     var isFastForwarding by remember { mutableStateOf(false) }
-    var playbackSpeed by remember { mutableFloatStateOf(1f) }
     var videoWidth by remember { mutableIntStateOf(0) }
     var videoHeight by remember { mutableIntStateOf(0) }
 
@@ -535,19 +566,22 @@ fun GalleryVideoPlayer(
             try {
                 setDataSource(item.path)
                 setOnPreparedListener { mp ->
-                    isPrepared = true
                     duration = mp.duration.toLong()
                     videoWidth = mp.videoWidth
                     videoHeight = mp.videoHeight
                     surfaceHolder?.let { mp.setDisplay(it) }
-                    if (isPlaying) mp.start()
+                    resume.restore(mp) {
+                        currentPosition = mp.currentPosition.toLong()
+                        isPrepared = true
+                    }
                 }
                 setOnVideoSizeChangedListener { _, width, height ->
                     videoWidth = width
                     videoHeight = height
                 }
                 setOnCompletionListener {
-                    onVideoEnded()
+                    resume.complete()
+                    if (isActivePage) onVideoCompleted()
                 }
                 setOnErrorListener { _, _, _ -> true }
                 prepareAsync()
@@ -558,8 +592,8 @@ fun GalleryVideoPlayer(
         player = mediaPlayer
 
         onDispose {
+            if (isPrepared) resume.save(mediaPlayer)
             try {
-                mediaPlayer.stop()
                 mediaPlayer.release()
             } catch (e: Exception) {
 
@@ -571,16 +605,23 @@ fun GalleryVideoPlayer(
         }
     }
 
-    LaunchedEffect(isPlaying, isPrepared, isCurrentPage) {
+    SaveGalleryPlaybackOnStop(resume, player, isPrepared)
+    LaunchedEffect(isPlaying, isPrepared, isCurrentPage, playbackSpeed, isFastForwarding) {
         player?.let { mp ->
             if (isPrepared) {
+                resume.setActive(mp, isCurrentPage, isPlaying)
                 if (isPlaying && isCurrentPage) {
                     if (!mp.isPlaying) mp.start()
+                    mp.applyGalleryPlaybackSpeed(if (isFastForwarding) 2f else playbackSpeed)
                 } else {
                     if (mp.isPlaying) mp.pause()
                 }
             }
         }
+    }
+
+    LaunchedEffect(isPrepared, repeatVideo) {
+        if (isPrepared) player?.isLooping = repeatVideo
     }
 
     LaunchedEffect(enableAudio, isPrepared) {
@@ -599,32 +640,12 @@ fun GalleryVideoPlayer(
             player?.let { mp ->
                 try {
                     currentPosition = mp.currentPosition.toLong()
+                    resume.tick(mp)
                 } catch (e: Exception) {
 
                 }
             }
             delay(100)
-        }
-    }
-
-    LaunchedEffect(isFastForwarding) {
-        if (isFastForwarding) {
-            player?.let { mp ->
-                try {
-
-                    mp.playbackParams = mp.playbackParams.setSpeed(2f)
-                } catch (e: Exception) {
-
-                }
-            }
-        } else {
-            player?.let { mp ->
-                try {
-                    mp.playbackParams = mp.playbackParams.setSpeed(playbackSpeed)
-                } catch (e: Exception) {
-
-                }
-            }
         }
     }
 
@@ -682,6 +703,8 @@ fun GalleryVideoPlayer(
             enter = WtaFadeIn,
             exit = WtaFadeOut,
             modifier = Modifier.align(Alignment.BottomCenter)
+                .padding(bottom = controlsBottomPadding)
+                .consumeWindowInsets(PaddingValues(bottom = controlsBottomPadding))
         ) {
             VideoControlBar(
                 currentPosition = currentPosition,
@@ -693,16 +716,8 @@ fun GalleryVideoPlayer(
                     player?.seekTo(position.toInt())
                     currentPosition = position
                 },
-                onSpeedChange = { speed ->
-                    playbackSpeed = speed
-                    player?.let { mp ->
-                        try {
-                            mp.playbackParams = mp.playbackParams.setSpeed(speed)
-                        } catch (e: Exception) {
-
-                        }
-                    }
-                }
+                onSpeedChange = onSpeedChange,
+                onSpeedMenuOpenChange = onSpeedMenuOpenChange
             )
         }
 
@@ -741,9 +756,9 @@ private fun VideoControlBar(
     playbackSpeed: Float,
     onPlayPause: () -> Unit,
     onSeek: (Long) -> Unit,
-    onSpeedChange: (Float) -> Unit
+    onSpeedChange: (Float) -> Unit,
+    onSpeedMenuOpenChange: (Boolean) -> Unit
 ) {
-    var showSpeedMenu by remember { mutableStateOf(false) }
 
     Surface(
         modifier = Modifier.fillMaxWidth(),
@@ -792,28 +807,7 @@ private fun VideoControlBar(
                 verticalAlignment = Alignment.CenterVertically
             ) {
 
-                Box {
-                    TextButton(onClick = { showSpeedMenu = true }) {
-                        Text(
-                            text = "${playbackSpeed}x",
-                            color = Color.White
-                        )
-                    }
-                    DropdownMenu(
-                        expanded = showSpeedMenu,
-                        onDismissRequest = { showSpeedMenu = false }
-                    ) {
-                        listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f, 2f).forEach { speed ->
-                            DropdownMenuItem(
-                                text = { Text("${speed}x") },
-                                onClick = {
-                                    onSpeedChange(speed)
-                                    showSpeedMenu = false
-                                }
-                            )
-                        }
-                    }
-                }
+                GalleryPlaybackSpeedMenu(playbackSpeed, onSpeedChange, onSpeedMenuOpenChange)
 
                 IconButton(onClick = { onSeek((currentPosition - 10000).coerceAtLeast(0)) }) {
                     Icon(
@@ -860,7 +854,6 @@ private fun formatTime(ms: Long): String {
     }
 }
 
-/** SharedPreferences file for gallery resume positions, keyed per gallery. */
 internal const val GALLERY_POSITION_PREFS = "gallery_positions"
 
 internal fun galleryPositionKey(galleryId: Long): String = "pos_$galleryId"
@@ -870,9 +863,16 @@ private fun GalleryOverview(
     config: GalleryConfig,
     items: List<GalleryItem>,
     bgColor: Color,
+    history: GalleryWatchHistory,
     onBack: () -> Unit,
-    onItemClick: (Int) -> Unit
+    onItemClick: (Int, Boolean) -> Unit
 ) {
+    var query by rememberSaveable { mutableStateOf("") }
+    val filtered = remember(items, query) {
+        items.filter { galleryMatchesSearch(it.name.ifBlank { File(it.path).name }, query) }
+    }
+    val openFiltered: (Int) -> Unit = { index -> onItemClick(items.indexOf(filtered[index]), false) }
+    val watched by history.latestEntry.collectAsState()
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -905,13 +905,37 @@ private fun GalleryOverview(
             }
         }
 
+        if (items.isEmpty()) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(Strings.galleryEmpty, color = Color.White)
+            }
+            return@Column
+        }
+        Surface {
+            GallerySearchField(query, { query = it })
+        }
+        if (query.isBlank()) {
+            watched?.takeIf { entry -> items.any { it.id == entry.videoId } }?.let { entry ->
+                Surface {
+                    GalleryContinueWatching(entry) {
+                        onItemClick(items.indexOfFirst { it.id == entry.videoId }, true)
+                    }
+                }
+            }
+        }
+        if (filtered.isEmpty()) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text(Strings.noSearchResults, color = Color.White)
+            }
+            return@Column
+        }
         when (config.defaultView) {
-            GalleryViewMode.LIST -> GalleryListView(items = items, onItemClick = onItemClick)
-            GalleryViewMode.TIMELINE -> GalleryTimelineView(items = items, onItemClick = onItemClick)
+            GalleryViewMode.LIST -> GalleryListView(items = filtered, onItemClick = openFiltered)
+            GalleryViewMode.TIMELINE -> GalleryTimelineView(items = filtered, onItemClick = openFiltered)
             else -> GalleryGridView(
-                items = items,
+                items = filtered,
                 columns = config.gridColumns.coerceIn(1, 6),
-                onItemClick = onItemClick
+                onItemClick = openFiltered
             )
         }
     }
@@ -944,7 +968,7 @@ private fun GalleryGridView(
                         .data(File(imagePath))
                         .crossfade(true)
                         .build(),
-                    contentDescription = item.name,
+                    contentDescription = item.name.takeUnless { item.type == GalleryItemType.VIDEO },
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
                 )
@@ -957,6 +981,7 @@ private fun GalleryGridView(
                             .align(Alignment.Center),
                         tint = Color.White.copy(alpha = 0.8f)
                     )
+                    GalleryVideoTitle(item.name)
                 }
             }
         }

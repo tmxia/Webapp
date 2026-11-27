@@ -56,6 +56,7 @@ import com.webtoapp.core.apkbuilder.ApkBuilder
 import com.webtoapp.core.apkbuilder.ExportRuntimeEnsure
 import com.webtoapp.core.apkbuilder.BuildResult
 import com.webtoapp.core.i18n.Strings
+import com.webtoapp.ui.components.AppIconImage
 import com.webtoapp.core.logging.AppLogger
 import com.webtoapp.data.dao.WebAppSummary
 import com.webtoapp.data.model.AppCategory
@@ -716,7 +717,7 @@ fun HomeScreen(
                                         } catch (e: Exception) {
                                             shareApkFailureReport = buildActionFailureReport(
                                                 title = Strings.apkShareFailed,
-                                                stage = "share_apk_intent",
+                                                action = BuildFailureAction.SHARE_APK_INTENT,
                                                 webApp = fullApp,
                                                 summary = Strings.shareApkFailed.replace("%s", e.message ?: "Unknown error"),
                                                 logPath = result.logPath,
@@ -731,11 +732,11 @@ fun HomeScreen(
                                     is BuildResult.Error -> {
                                         shareApkFailureReport = buildActionFailureReport(
                                             title = Strings.apkShareFailed,
-                                            stage = result.diagnostic?.stage?.label ?: "build_apk_for_share",
+                                            action = BuildFailureAction.BUILD_APK_FOR_SHARE,
                                             webApp = fullApp,
                                             summary = Strings.shareApkFailed.replace("%s", result.message),
                                             logPath = result.logPath,
-                                            extraLines = buildDiagnosticLines(result)
+                                            diagnostic = result.diagnostic
                                         )
                                     }
                                 }
@@ -1295,23 +1296,11 @@ fun AppCard(
         ) {
             Box {
                 if (app.iconPath != null) {
-                    Box(
-                        modifier = Modifier
-                            .size(52.dp)
-                            .clip(RoundedCornerShape(WtaRadius.Card))
-                            .background(colors.secondaryContainer),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        AsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current)
-                                .data(app.iconPath)
-                                .crossfade(false)
-                                .build(),
-                            contentDescription = app.name,
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-                    }
+                    AppIconImage(
+                        model = app.iconPath,
+                        contentDescription = app.name,
+                        modifier = Modifier.size(52.dp)
+                    )
                 } else {
                     WtaIconPlate(
                         containerColor = colors.secondaryContainer,
@@ -1611,23 +1600,11 @@ fun AppGridTile(
         ) {
             Box {
                 if (app.iconPath != null) {
-                    Box(
-                        modifier = Modifier
-                            .size(56.dp)
-                            .clip(RoundedCornerShape(WtaRadius.Card))
-                            .background(colors.secondaryContainer),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        AsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current)
-                                .data(app.iconPath)
-                                .crossfade(false)
-                                .build(),
-                            contentDescription = app.name,
-                            modifier = Modifier.fillMaxSize(),
-                            contentScale = ContentScale.Crop
-                        )
-                    }
+                    AppIconImage(
+                        model = app.iconPath,
+                        contentDescription = app.name,
+                        modifier = Modifier.size(56.dp)
+                    )
                 } else {
                     WtaIconPlate(
                         containerColor = colors.secondaryContainer,

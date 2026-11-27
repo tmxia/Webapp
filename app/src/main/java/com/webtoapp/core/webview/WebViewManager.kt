@@ -1137,6 +1137,7 @@ class WebViewManager(
     }
 
     private val managedWebViews = java.util.WeakHashMap<WebView, Boolean>()
+    private val speechBridges = mutableMapOf<WebView, WebSpeechSynthesisBridge>()
 
     private val userscriptInjectionState =
         java.util.WeakHashMap<WebView, MutableSet<String>>()
@@ -1483,6 +1484,13 @@ class WebViewManager(
         }
 
         managedWebViews[webView] = true
+        if (config.javaScriptEnabled && config.enableNativeBridge) {
+            if (webView !in speechBridges) {
+                WebSpeechSynthesisBridge.install(webView)?.let { speechBridges[webView] = it }
+            }
+        } else {
+            speechBridges.remove(webView)?.release(webView)
+        }
 
         val cookieManager = CookieManager.getInstance()
         cookieManager.setAcceptCookie(true)
@@ -1723,7 +1731,8 @@ class WebViewManager(
             if (config.downloadEnabled) {
                 setDownloadListener { url, userAgent, contentDisposition, mimeType, contentLength ->
                     noteDownloadInterceptedUrl(url)
-                    callbacks.onDownloadStart(url, userAgent, contentDisposition, mimeType, contentLength)
+                    val referrer = WebDownloadReferrer.fromPage(url, this.url)
+                    callbacks.onDownloadStart(url, userAgent, contentDisposition, mimeType, contentLength, referrer)
                 }
 
                 if (config.enableBlobDownloadInterception) {
@@ -2043,6 +2052,9 @@ class WebViewManager(
             ): WebResourceResponse? {
                 request?.let {
                     val url = it.url?.toString() ?: ""
+                    if (view != null) {
+                        WebViewStreamRoutes.intercept(view, it)?.let { response -> return response }
+                    }
                     diagRequestCount++
 
                     if (config.enableNotificationPolyfill) {
@@ -2210,12 +2222,17 @@ class WebViewManager(
                     }
                 }
 
-                if (request.isForMainFrame && isOAuthServiceRequest(url)) {
+                val documentDownload = request.isForMainFrame && config.downloadEnabled &&
+                    DocumentDownloadPolicy.isUnrenderableDocumentUrl(url)
+                val githubReleaseDownload = documentDownload && request.method == "GET" &&
+                    DocumentDownloadPolicy.isGitHubReleaseAssetUrl(url)
+
+                if (!githubReleaseDownload && request.isForMainFrame && isOAuthServiceRequest(url)) {
                     AppLogger.d("WebViewManager", "Keeping OAuth navigation in-app: $url")
                     return false
                 }
 
-                if (config.openExternalLinks && isExternalUrl(url, view?.url)) {
+                if (!githubReleaseDownload && config.openExternalLinks && isExternalUrl(url, view?.url)) {
                     if (isLocalAppUrl(view?.url) && !isUserGesture) {
                         return false
                     }
@@ -2223,10 +2240,7 @@ class WebViewManager(
                     return true
                 }
 
-                if (request.isForMainFrame &&
-                    config.downloadEnabled &&
-                    DocumentDownloadPolicy.isUnrenderableDocumentUrl(url)
-                ) {
+                if (documentDownload) {
                     AppLogger.d("WebViewManager", "Intercepting unrenderable document as download: $url")
                     noteDownloadInterceptedUrl(url)
                     callbacks.onDownloadStart(
@@ -2234,7 +2248,12 @@ class WebViewManager(
                         view?.settings?.userAgentString ?: "",
                         "",
                         DocumentDownloadPolicy.mimeTypeFor(url),
-                        -1L
+                        -1L,
+                        WebDownloadReferrer.fromPage(
+                            url,
+                            request.requestHeaders?.entries?.firstOrNull { it.key.equals("Referer", ignoreCase = true) }?.value
+                                ?: view?.url
+                        )
                     )
                     return true
                 }
@@ -2248,10 +2267,12 @@ class WebViewManager(
                     rememberMainFrameReferer(currentMainFrameUrl)
                 }
                 currentMainFrameUrl = url
+                if (view != null) WebViewStreamRoutes.onPageStarted(view, url.orEmpty())
                 if (TlsMitmBridge.isRunning()) {
                     TlsMitmBridge.allowHost(runCatching { android.net.Uri.parse(url ?: "").host }.getOrNull())
                 }
                 view?.let {
+                    speechBridges[it]?.onPageStarted(it)
                     userscriptInjectionState.remove(it)
                     pagePhaseExecutionState.remove(it)
                 }
@@ -2433,6 +2454,7 @@ class WebViewManager(
 
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
+                view?.let { speechBridges[it]?.injectFallback(it) }
                 currentMainFrameUrl = url ?: currentMainFrameUrl
                 val elapsed = System.currentTimeMillis() - diagPageStartTime
                 AppLogger.d("WebViewManager", "Page finished: +${elapsed}ms blocked=$diagBlockedCount errors=$diagErrorCount")
@@ -3133,6 +3155,7 @@ class WebViewManager(
     }
 
     fun discardWebView(webView: WebView) {
+        speechBridges.remove(webView)?.release(webView)
         userscriptInjectionState.remove(webView)
         pagePhaseExecutionState.remove(webView)
         safeAreaScriptHandlers.remove(webView)?.let { handler -> runCatching { handler.remove() } }
@@ -4057,7 +4080,9 @@ class WebViewManager(
     }
 
     fun destroyWebView(webView: WebView) {
+        WebViewStreamRoutes.destroy(webView)
         try {
+            speechBridges.remove(webView)?.release(webView)
             managedWebViews.remove(webView)
             primeUserActivationDone.remove(webView)
             failoverCursor.remove(webView)
@@ -6363,11 +6388,12 @@ class WebViewManager(
                 }
 
                 function hasNativeHttpRequest() {
-                    return window.NativeBridge && (typeof window.NativeBridge.httpRequestAsync === 'function' ||
+                    return window.NativeBridge && (typeof window.NativeBridge.httpRequestStreamAsync === 'function' ||
+                        typeof window.NativeBridge.httpRequestAsync === 'function' ||
                         typeof window.NativeBridge.httpRequest === 'function');
                 }
 
-                function nativeHttpRequest(payload, signal) {
+                function nativeHttpRequest(payload, signal, stream) {
                     if (!hasNativeHttpRequest()) {
                         return Promise.reject(new TypeError(
                             'Native private network bridge is unavailable. ' +
@@ -6382,24 +6408,37 @@ class WebViewManager(
                             headers: payload.headers || {},
                             bodyBase64: bodyBase64
                         });
-                        if (typeof window.NativeBridge.httpRequestAsync === 'function') {
+                        var asyncRequest = stream && typeof window.NativeBridge.httpRequestStreamAsync === 'function'
+                            ? window.NativeBridge.httpRequestStreamAsync : window.NativeBridge.httpRequestAsync;
+                        if (typeof asyncRequest === 'function') {
                             return new Promise(function(resolve, reject) {
-                                var id = 'h' + (++nativeHttpSeq) + '_' + Date.now();
+                                var id = 'h' + (++nativeHttpSeq) + '_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+                                var handoffTimer;
                                 function cleanup() {
+                                    clearTimeout(handoffTimer);
                                     delete window.__wtaNativeHttpPending[id];
                                     if (signal) signal.removeEventListener('abort', onAbort);
                                 }
-                                function onAbort() {
+                                function cancel(reason) {
                                     cleanup();
-                                    reject(abortReason(signal));
+                                    if (typeof window.NativeBridge.cancelHttpRequest === 'function') {
+                                        window.NativeBridge.cancelHttpRequest(id);
+                                    }
+                                    reject(reason);
                                 }
+                                function onAbort() {
+                                    cancel(abortReason(signal));
+                                }
+                                handoffTimer = setTimeout(function() {
+                                    cancel(new DOMException('Native HTTP response timed out', 'TimeoutError'));
+                                }, 120000);
                                 window.__wtaNativeHttpPending[id] = function(raw) {
                                     cleanup();
                                     resolve(raw);
                                 };
                                 if (signal) signal.addEventListener('abort', onAbort, { once: true });
                                 try {
-                                    window.NativeBridge.httpRequestAsync(requestJson, id);
+                                    asyncRequest.call(window.NativeBridge, requestJson, id);
                                 } catch (e) {
                                     cleanup();
                                     reject(e);
@@ -6410,6 +6449,24 @@ class WebViewManager(
                         if (raw && typeof raw.then === 'function') return raw.then(parseBridgeResult);
                         return parseBridgeResult(raw);
                     });
+                }
+
+                async function bridgeBody(result, signal) {
+                    if (!result.streamUrl) return result.bodyBase64 ? base64ToBytes(result.bodyBase64) : null;
+                    try {
+                        var transfer = await nativeFetch(result.streamUrl, { cache: 'no-store', signal: signal });
+                        if (!transfer.ok) throw new TypeError('Native HTTP response is unavailable');
+                        return transfer.body;
+                    } catch (error) {
+                        releaseBridgeBody(result);
+                        throw error;
+                    }
+                }
+
+                function releaseBridgeBody(result) {
+                    if (result.streamUrl && window.NativeBridge && typeof window.NativeBridge.releaseStreamUrl === 'function') {
+                        window.NativeBridge.releaseStreamUrl(result.streamUrl);
+                    }
                 }
 
                 async function fetchViaBridge(request, isWrite) {
@@ -6423,10 +6480,17 @@ class WebViewManager(
                         method: request.method,
                         headers: headers,
                         body: request.body === null ? null : await request.arrayBuffer()
-                    }, signal);
+                    }, signal, true);
                     var status = Number(result.status || 0);
                     var body = request.method === 'HEAD' || status === 204 || status === 205 || status === 304
-                        ? null : base64ToBytes(result.bodyBase64 || '');
+                        ? null : await bridgeBody(result, signal);
+                    if (result.streamUrl && signal) {
+                        if (signal.aborted) {
+                            releaseBridgeBody(result);
+                            throw abortReason(signal);
+                        }
+                        signal.addEventListener('abort', function() { releaseBridgeBody(result); }, { once: true });
+                    }
                     return new Response(body, {
                         status: status,
                         statusText: String(result.statusText || ''),
@@ -6456,176 +6520,7 @@ class WebViewManager(
                     };
                 }
 
-                if (NativeXHR) {
-                    function BridgedXHR() {
-                        this._xhr = new NativeXHR();
-                        this._listeners = {};
-                        this._headers = {};
-                        this._method = 'GET';
-                        this._url = '';
-                        this._async = true;
-                        this.readyState = 0;
-                        this.response = null;
-                        this.responseText = '';
-                        this.responseType = '';
-                        this.responseURL = '';
-                        this.status = 0;
-                        this.statusText = '';
-                        this.timeout = 0;
-                        this.withCredentials = false;
-                        this.onreadystatechange = null;
-                        this.onload = null;
-                        this.onerror = null;
-                        this.onloadend = null;
-
-                        var self = this;
-                        ['readystatechange', 'load', 'error', 'loadend', 'timeout', 'abort', 'progress'].forEach(function(name) {
-                            self._xhr.addEventListener(name, function(event) {
-                                self._syncFromNative();
-                                self._dispatch(name, event);
-                            });
-                        });
-                    }
-
-                    BridgedXHR.UNSENT = 0;
-                    BridgedXHR.OPENED = 1;
-                    BridgedXHR.HEADERS_RECEIVED = 2;
-                    BridgedXHR.LOADING = 3;
-                    BridgedXHR.DONE = 4;
-
-                    BridgedXHR.prototype._syncFromNative = function() {
-                        var source = this._xhr;
-                        var type = source.responseType || '';
-                        this.readyState = source.readyState;
-                        this.response = source.response;
-                        this.responseText = (type === '' || type === 'text')
-                            ? (source.responseText || '')
-                            : '';
-                        this.responseURL = source.responseURL || this._url;
-                        this.status = source.status || 0;
-                        this.statusText = source.statusText || '';
-                    };
-
-                    BridgedXHR.prototype._dispatch = function(type, sourceEvent) {
-                        var event = sourceEvent || { type: type, target: this, currentTarget: this };
-                        var list = this._listeners[type] || [];
-                        for (var i = 0; i < list.length; i++) {
-                            try { list[i].call(this, event); } catch (e) { setTimeout(function() { throw e; }); }
-                        }
-                        var handler = this['on' + type];
-                        if (typeof handler === 'function') handler.call(this, event);
-                    };
-
-                    BridgedXHR.prototype.open = function(method, url, async, user, password) {
-                        this._method = String(method || 'GET').toUpperCase();
-                        this._url = new URL(String(url), window.location.href).href;
-                        this._async = async !== false;
-                        this.readyState = 1;
-                        var isCorsBypass = (typeof window.__wta_private_network_scope__ === 'string')
-                            && window.__wta_private_network_scope__ === 'CORS_BYPASS';
-                        var bridgeable = shouldBridge(this._url) && (isCorsBypass ||
-                            (this._method === 'GET' || this._method === 'HEAD'));
-                        if (!bridgeable) {
-                            this._native = true;
-                            return this._xhr.open(method, url, async, user, password);
-                        }
-                        this._native = false;
-                        this._dispatch('readystatechange');
-                    };
-
-                    BridgedXHR.prototype.setRequestHeader = function(name, value) {
-                        if (this._native) return this._xhr.setRequestHeader(name, value);
-                        this._headers[String(name)] = String(value);
-                    };
-
-                    BridgedXHR.prototype.getResponseHeader = function(name) {
-                        if (this._native) return this._xhr.getResponseHeader(name);
-                        if (!this._responseHeaders) return null;
-                        return this._responseHeaders[String(name).toLowerCase()] || null;
-                    };
-
-                    BridgedXHR.prototype.getAllResponseHeaders = function() {
-                        if (this._native) return this._xhr.getAllResponseHeaders();
-                        var headers = this._responseHeaders || {};
-                        return Object.keys(headers).map(function(name) { return name + ': ' + headers[name]; }).join('\r\n');
-                    };
-
-                    BridgedXHR.prototype.send = function(body) {
-                        if (this._native) return this._xhr.send(body);
-                        if (this._async === false) throw new Error('Synchronous private network XHR is not supported');
-                        var self = this;
-                        nativeHttpRequest({ url: this._url, method: this._method, headers: this._headers, body: body })
-                            .then(function(result) {
-                                var headers = {};
-                                Object.keys(result.headers || {}).forEach(function(name) {
-                                    headers[name.toLowerCase()] = String(result.headers[name]);
-                                });
-                                self._responseHeaders = headers;
-                                self.status = Number(result.status || 0);
-                                self.statusText = String(result.statusText || '');
-                                self.responseURL = String(result.url || self._url);
-                                var bytes = base64ToBytes(result.bodyBase64 || '');
-                                if (self.responseType === 'arraybuffer') {
-                                    self.response = bytes.buffer;
-                                    self.responseText = '';
-                                } else if (self.responseType === 'blob') {
-                                    self.response = new Blob([bytes], { type: headers['content-type'] || '' });
-                                    self.responseText = '';
-                                } else if (self.responseType === 'json') {
-                                    self.responseText = new TextDecoder().decode(bytes);
-                                    try { self.response = JSON.parse(self.responseText); } catch (e) { self.response = null; }
-                                } else {
-                                    self.responseText = new TextDecoder().decode(bytes);
-                                    self.response = self.responseText;
-                                }
-                                self.readyState = 4;
-                                self._dispatch('readystatechange');
-                                self._dispatch('load');
-                                self._dispatch('loadend');
-                            }).catch(function(error) {
-                                self.status = 0;
-                                self.statusText = '';
-                                self.readyState = 4;
-                                self._dispatch('readystatechange');
-                                self._dispatch('error', { type: 'error', error: error, target: self, currentTarget: self });
-                                self._dispatch('loadend');
-                            });
-                    };
-
-                    BridgedXHR.prototype.abort = function() {
-                        if (this._native) return this._xhr.abort();
-                        this.readyState = 0;
-                        this._dispatch('abort');
-                        this._dispatch('loadend');
-                    };
-
-                    BridgedXHR.prototype.addEventListener = function(type, listener) {
-                        if (!this._listeners[type]) this._listeners[type] = [];
-                        this._listeners[type].push(listener);
-                    };
-
-                    BridgedXHR.prototype.removeEventListener = function(type, listener) {
-                        var list = this._listeners[type] || [];
-                        this._listeners[type] = list.filter(function(item) { return item !== listener; });
-                    };
-
-                    BridgedXHR.prototype.overrideMimeType = function(mimeType) {
-                        if (this._native) return this._xhr.overrideMimeType(mimeType);
-                    };
-
-                    Object.defineProperty(BridgedXHR.prototype, 'responseType', {
-                        configurable: true,
-                        get: function() { return this._responseType || ''; },
-                        set: function(value) {
-                            this._responseType = value;
-                            if (this._xhr) {
-                                try { this._xhr.responseType = value; } catch (e) { }
-                            }
-                        }
-                    });
-
-                    window.XMLHttpRequest = BridgedXHR;
-                }
+                ${PrivateNetworkXhrScript.SOURCE}
             })();
         """.trimIndent()
     }

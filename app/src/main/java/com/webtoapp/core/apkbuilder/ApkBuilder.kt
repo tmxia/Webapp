@@ -1,6 +1,10 @@
 package com.webtoapp.core.apkbuilder
 
 import android.content.Context
+import androidx.room.withTransaction
+import com.webtoapp.data.database.AppDatabase
+import com.webtoapp.data.model.ApkExportConfig
+import com.webtoapp.data.model.PublishedPerAppSigning
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
@@ -29,7 +33,6 @@ import com.webtoapp.data.model.WebApp
 import com.webtoapp.data.model.withNotificationPolyfill
 import com.webtoapp.data.model.withRuntimePermissionsSyncedFromFeatures
 import com.webtoapp.data.model.getActivationCodeStrings
-import com.webtoapp.data.model.sortedGalleryItems
 import com.webtoapp.ui.components.announcement.toUiTemplate
 import com.webtoapp.ui.shell.buildPackagedHtmlShellEntryUrl
 import com.webtoapp.ui.theme.ThemeManager
@@ -132,12 +135,13 @@ class ApkBuilder(private val context: Context) {
 
         private const val DEFAULT_VERSION_NAME = "1.0.0"
 
-        fun resolvePackageName(webApp: WebApp): String {
-            val custom = webApp.apkExportConfig?.customPackageName?.takeIf {
-                it.isNotBlank() && it.matches(PACKAGE_NAME_REGEX)
-            }
-            return custom ?: generatePackageName(webApp.name)
-        }
+        internal fun customPackageName(webApp: WebApp): String? =
+            webApp.apkExportConfig?.customPackageName?.takeIf(PACKAGE_NAME_REGEX::matches)
+
+        fun resolvePackageName(webApp: WebApp): String =
+            customPackageName(webApp)
+                ?: webApp.packageName?.takeIf(PACKAGE_NAME_REGEX::matches)
+                ?: generatePackageName(webApp.name)
 
         fun generatePackageName(appName: String): String {
             val raw = appName.hashCode().let {
@@ -238,7 +242,6 @@ class ApkBuilder(private val context: Context) {
     private val templateProvider = CompositeTemplateProvider.default(context)
     private val signer = JarSigner(context)
     private val axmlRebuilder = AxmlRebuilder()
-    private val arscRebuilder = ArscRebuilder()
     private val featureStackGrafter = FeatureStackGrafter(axmlRebuilder, ArscPackageGrafter())
     private val logDirectory = BuildLogger(context)
     private val encryptedApkBuilder = EncryptedApkBuilder(context)
@@ -313,26 +316,63 @@ class ApkBuilder(private val context: Context) {
             return BuildResult.Error(Strings.advancedFeaturesOff)
         }
         return withContext(Dispatchers.IO) {
-        ApkBuildService.acquire(context, webApp.name)
-        try {
-            lockFor(resolvePackageName(webApp)).withLock {
-                val versioned = withInstallAwareVersion(context, webApp)
-                if (versioned !== webApp) {
-                    AppLogger.i(
-                        "ApkBuilder",
-                        "Bumped version for ${resolvePackageName(webApp)}: " +
-                            "${webApp.apkExportConfig?.customVersionCode ?: 1} -> " +
-                            "${versioned.apkExportConfig?.customVersionCode}"
-                    )
+            ApkBuildService.acquire(context, webApp.name)
+            try {
+                if (webApp.id > 0) {
+                    lockFor("_project_${webApp.id}").withLock {
+                        buildWithResolvedIdentity(resolvePublishedIdentity(webApp), forceFullRebuild, onProgress)
+                    }
+                } else {
+                    buildWithResolvedIdentity(webApp, forceFullRebuild, onProgress)
                 }
-                buildApkInternal(versioned, forceFullRebuild) { percent, text ->
-                    ApkBuildService.updateProgress(context, percent, text)
-                    onProgress(percent, text)
-                }
+            } finally {
+                ApkBuildService.release(context)
             }
-        } finally {
-            ApkBuildService.release(context)
         }
+    }
+
+    private suspend fun buildWithResolvedIdentity(
+        webApp: WebApp,
+        forceFullRebuild: Boolean,
+        onProgress: (Int, String) -> Unit
+    ): BuildResult = lockFor(resolvePackageName(webApp)).withLock {
+        val versioned = withInstallAwareVersion(context, webApp)
+        buildApkInternal(versioned, forceFullRebuild) { percent, text ->
+            ApkBuildService.updateProgress(context, percent, text)
+            onProgress(percent, text)
+        }
+    }
+
+    private suspend fun resolvePublishedIdentity(webApp: WebApp): WebApp {
+        val current = AppDatabase.getInstance(context).webAppDao().getWebAppById(webApp.id) ?: return webApp
+        val config = webApp.apkExportConfig ?: ApkExportConfig()
+        return webApp.copy(
+            packageName = current.packageName ?: webApp.packageName,
+            apkExportConfig = config.copy(
+                publishedPerAppSigning = current.apkExportConfig?.publishedPerAppSigning
+                    ?: config.publishedPerAppSigning
+            )
+        )
+    }
+
+    private suspend fun recordPublishedIdentity(webApp: WebApp, packageName: String, fingerprint: String?) {
+        if (webApp.id <= 0) return
+        val database = AppDatabase.getInstance(context)
+        database.withTransaction {
+            val dao = database.webAppDao()
+            val current = dao.getWebAppById(webApp.id) ?: return@withTransaction
+            if (customPackageName(current) != customPackageName(webApp)) return@withTransaction
+            val pinned = current.packageName ?: packageName.takeIf { customPackageName(webApp) == null }
+            val currentConfig = current.apkExportConfig
+            val updated = if (fingerprint != null) {
+                (currentConfig ?: ApkExportConfig()).copy(
+                    perAppSigningEnabled = true,
+                    publishedPerAppSigning = PublishedPerAppSigning(packageName, fingerprint)
+                )
+            } else currentConfig
+            if (pinned != current.packageName || updated != currentConfig) {
+                dao.update(current.copy(packageName = pinned, apkExportConfig = updated))
+            }
         }
     }
 
@@ -361,7 +401,15 @@ class ApkBuilder(private val context: Context) {
 
             val perAppIdentity = if (webApp.apkExportConfig?.perAppSigningEnabled == true) {
                 try {
-                    PerAppSigningIdentity.identityFor(context, resolvePackageName(webApp))
+                    val packageName = resolvePackageName(webApp)
+                    val published = webApp.apkExportConfig.publishedPerAppSigning
+                        ?.takeIf { it.packageName == packageName }
+                    PerAppSigningIdentity.identityFor(
+                        context,
+                        packageName,
+                        requireExisting = published != null,
+                        expectedFingerprint = published?.certificateSha256
+                    )
                 } catch (e: Exception) {
                     return@withContext failBuild(
                         logger = logger,
@@ -633,7 +681,11 @@ class ApkBuilder(private val context: Context) {
                 val bgmPlaylistPaths = if (webApp.bgmEnabled) webApp.bgmConfig?.playlist?.map { it.path } ?: emptyList() else emptyList()
                 val bgmLrcDataList = if (webApp.bgmEnabled) webApp.bgmConfig?.playlist?.map { it.lrcData } ?: emptyList() else emptyList()
                 val bgmCoverPaths = if (webApp.bgmEnabled) webApp.bgmConfig?.playlist?.map { it.coverPath } ?: emptyList() else emptyList()
-                val galleryItems = if (webApp.appType == com.webtoapp.data.model.AppType.GALLERY) webApp.galleryConfig?.items ?: emptyList() else emptyList()
+                val galleryItems = if (config.appType == "GALLERY" && !config.gallery.useDeviceFolder) {
+                    webApp.galleryConfig?.getSortedItems().orEmpty()
+                } else {
+                    emptyList()
+                }
                 val htmlProjectId = webApp.htmlConfig?.projectId?.takeIf { it.isNotBlank() }
                 val htmlProjectDir = if (webApp.appType == com.webtoapp.data.model.AppType.HTML) {
                     htmlProjectId?.let { File(context.filesDir, "html_projects/$it") }
@@ -772,6 +824,7 @@ class ApkBuilder(private val context: Context) {
                     mediaContentPath = mediaContentPath,
                     htmlFiles = htmlFiles,
                     galleryItems = galleryItems,
+                    galleryUsesDeviceFolder = config.gallery.useDeviceFolder,
                     multiWebSites = webApp.multiWebConfig?.sites.orEmpty(),
                     wordPressProjectDir = wordPressProjectDir,
                     nodejsProjectDir = nodejsProjectDir,
@@ -909,6 +962,7 @@ class ApkBuilder(private val context: Context) {
                             config = config,
                             iconPath = webApp.iconPath,
                             iconBackgroundColor = webApp.apkExportConfig?.iconBackgroundColor,
+                            preserveIconShape = webApp.apkExportConfig?.preserveIconShape == true,
                             splashMediaPath = webApp.getSplashMediaPath(),
                             mediaContentPath = mediaContentPath,
                             bgmPlaylistPaths = bgmPlaylistPaths,
@@ -954,6 +1008,7 @@ class ApkBuilder(private val context: Context) {
                             config = config,
                             iconPath = webApp.iconPath,
                             iconBackgroundColor = webApp.apkExportConfig?.iconBackgroundColor,
+                            preserveIconShape = webApp.apkExportConfig?.preserveIconShape == true,
                             splashMediaPath = webApp.getSplashMediaPath(),
                             mediaContentPath = mediaContentPath,
                             bgmPlaylistPaths = bgmPlaylistPaths,
@@ -1002,6 +1057,7 @@ class ApkBuilder(private val context: Context) {
                         config = config,
                         iconPath = webApp.iconPath,
                         iconBackgroundColor = webApp.apkExportConfig?.iconBackgroundColor,
+                        preserveIconShape = webApp.apkExportConfig?.preserveIconShape == true,
                         splashMediaPath = webApp.getSplashMediaPath(),
                         mediaContentPath = mediaContentPath,
                         bgmPlaylistPaths = bgmPlaylistPaths,
@@ -1219,6 +1275,7 @@ class ApkBuilder(private val context: Context) {
                 analysisDeferred.await()
             }
 
+            recordPublishedIdentity(webApp, packageName, perAppIdentity?.certSha256Hex())
             onProgress(100, "Build complete")
 
             logger.logKeyValue("finalApkPath", signedApk.absolutePath)
@@ -1264,7 +1321,8 @@ class ApkBuilder(private val context: Context) {
                 incremental = usedIncremental,
                 buildMode = resolvedMode,
                 buildReason = resolvedReason,
-                metadataPath = metadataFile?.absolutePath
+                metadataPath = metadataFile?.absolutePath,
+                packageName = packageName
             )
 
         } catch (e: Exception) {
@@ -1348,6 +1406,7 @@ class ApkBuilder(private val context: Context) {
         config: ApkConfig,
         iconPath: String?,
         iconBackgroundColor: String? = null,
+        preserveIconShape: Boolean = false,
         splashMediaPath: String?,
         mediaContentPath: String? = null,
         bgmPlaylistPaths: List<String> = emptyList(),
@@ -1381,8 +1440,9 @@ class ApkBuilder(private val context: Context) {
             "modifyApk started, mode=${mode.name}, encryption=${encryptionConfig.enabled}, " +
                 "abiFilter=${abiFilters.ifEmpty { "all" }}, source=${sourceApk.name}"
         )
-        val iconBitmap = iconPath?.let { template.loadBitmap(it) }
-            ?: generateDefaultIcon(config.appName, config.themeType, logger)
+        val customIcon = iconPath?.let(template::loadBitmap)
+        val useOriginalIcon = preserveIconShape && customIcon != null
+        val iconBitmap = customIcon ?: generateDefaultIcon(config.appName, config.themeType, logger)
         var hasConfigFile = false
         var strippedNativeLibSize = 0L
         val replacedIconPaths = mutableSetOf<String>()
@@ -1545,10 +1605,12 @@ class ApkBuilder(private val context: Context) {
 
                         entry.name == "resources.arsc" -> {
                             val originalData = zipIn.getInputStream(entry).readBytes()
+                            val arscRebuilder = ArscRebuilder()
                             var modifiedData = arscRebuilder.rebuildWithNewAppNameAndIcons(
                                 originalData,
                                 config.appName,
-                                replaceIcons = true
+                                replaceIcons = true,
+                                preserveIconShape = useOriginalIcon
                             )
 
                             discoveredOldIconPaths = arscRebuilder.getLastDiscoveredIconPaths()
@@ -1574,7 +1636,7 @@ class ApkBuilder(private val context: Context) {
                                 ArscRebuilder.LauncherIconKind.FOREGROUND ->
                                     template.createAdaptiveForegroundIcon(iconBitmap, ADAPTIVE_ICON_PX)
                                 ArscRebuilder.LauncherIconKind.ROUND ->
-                                    template.createRoundIcon(iconBitmap, iconPixelSizeForDensity(spec.densityDpi))
+                                    createRoundLauncherIcon(iconBitmap, iconPixelSizeForDensity(spec.densityDpi), useOriginalIcon)
                                 ArscRebuilder.LauncherIconKind.LAUNCHER ->
                                     template.scaleBitmapToPng(iconBitmap, iconPixelSizeForDensity(spec.densityDpi))
                                 null -> template.createAdaptiveForegroundIcon(iconBitmap, ADAPTIVE_ICON_PX)
@@ -1705,13 +1767,13 @@ class ApkBuilder(private val context: Context) {
 
                 if (mode == ModifyApkMode.FULL) {
                     if (iconBitmap != null && replacedIconPaths.isEmpty()) {
-                        addIconsToApk(zipOut, iconBitmap)
+                        addIconsToApk(zipOut, iconBitmap, useOriginalIcon)
                         logger.log("Added PNG mipmap icons (no existing PNG icons found in template)")
                     } else if (iconBitmap != null) {
                         logger.log("Replaced ${replacedIconPaths.size} existing PNG icon entries")
                     }
 
-                    if (iconBitmap != null) {
+                    if (iconBitmap != null && !useOriginalIcon) {
                         addAdaptiveIconPngs(zipOut, iconBitmap, entryNames)
 
                         val bgColor = ApkTemplate.parseIconBackgroundColor(iconBackgroundColor)
@@ -1786,7 +1848,8 @@ class ApkBuilder(private val context: Context) {
                 }
                 val multiWebSiteSourceDirs = resolveMultiWebSiteSourceDirs(config)
 
-                val embedder = AppContentEmbedderFactory.create(config.appType)
+                val embedder = if (config.appType == "GALLERY" && config.gallery.useDeviceFolder) null
+                else AppContentEmbedderFactory.create(config.appType)
                 if (embedder != null) {
                     if (config.appType == "GO_APP" && projectDir != null) {
                         onProgress(90, "Verifying Go binary...")
@@ -3670,7 +3733,7 @@ builtins.__import__ = _w2a_import
             }
             ?: "A"
 
-    private fun addIconsToApk(zipOut: ZipOutputStream, bitmap: Bitmap) {
+    private fun addIconsToApk(zipOut: ZipOutputStream, bitmap: Bitmap, preserveIconShape: Boolean) {
 
         ApkTemplate.ICON_PATHS.forEach { (path, size) ->
             val iconBytes = template.scaleBitmapToPng(bitmap, size)
@@ -3678,10 +3741,13 @@ builtins.__import__ = _w2a_import
         }
 
         ApkTemplate.ROUND_ICON_PATHS.forEach { (path, size) ->
-            val iconBytes = template.createRoundIcon(bitmap, size)
+            val iconBytes = createRoundLauncherIcon(bitmap, size, preserveIconShape)
             writeEntryDeflated(zipOut, path, iconBytes)
         }
     }
+
+    private fun createRoundLauncherIcon(bitmap: Bitmap, size: Int, preserveIconShape: Boolean): ByteArray =
+        if (preserveIconShape) template.scaleBitmapToPng(bitmap, size) else template.createRoundIcon(bitmap, size)
 
     private fun addAdaptiveIconPngs(
         zipOut: ZipOutputStream,
@@ -4554,7 +4620,7 @@ private fun WebApp.buildHtmlBlock(): HtmlBlock = htmlConfig.toHtmlBlock()
 
 private fun WebApp.buildGalleryBlock(): GalleryBlock {
     val config = galleryConfig
-    val items = config?.let { sortedGalleryItems(it.items, it.sortOrder) }?.mapIndexed { index, item ->
+    val items = config?.takeUnless { it.useDeviceFolder }?.getSortedItems()?.mapIndexed { index, item ->
         val ext = if (item.type == com.webtoapp.data.model.GalleryItemType.VIDEO) "mp4" else "png"
         GalleryShellItemConfig(
             id = item.id,
@@ -4564,7 +4630,8 @@ private fun WebApp.buildGalleryBlock(): GalleryBlock {
             duration = item.duration,
             thumbnailPath = if (item.thumbnailPath != null) "gallery/thumb_$index.jpg" else null,
             sortIndex = item.sortIndex,
-            createdAt = item.createdAt
+            createdAt = item.createdAt,
+            categoryId = item.categoryId
         )
     } ?: emptyList()
     return GalleryBlock(
@@ -4583,7 +4650,9 @@ private fun WebApp.buildGalleryBlock(): GalleryBlock {
         defaultView = galleryConfig?.defaultView?.name ?: "GRID",
         gridColumns = galleryConfig?.gridColumns ?: 3,
         sortOrder = galleryConfig?.sortOrder?.name ?: "CUSTOM",
-        rememberPosition = galleryConfig?.rememberPosition ?: true
+        rememberPosition = galleryConfig?.rememberPosition ?: true,
+        useDeviceFolder = config?.useDeviceFolder == true,
+        categories = config?.categories.orEmpty()
     )
 }
 
@@ -4899,7 +4968,7 @@ internal fun resolveMultiWebSiteMediaInputs(webApp: WebApp): MultiWebSiteMediaIn
         } ?: continue
         when (source.appType) {
             com.webtoapp.data.model.AppType.GALLERY -> {
-                source.galleryConfig?.items?.takeIf { it.isNotEmpty() }?.let {
+                source.galleryConfig?.takeUnless { it.useDeviceFolder }?.getSortedItems()?.takeIf { it.isNotEmpty() }?.let {
                     gallery[site.id] = it
                 }
             }
@@ -5031,8 +5100,8 @@ internal fun rewriteMultiWebGallerySitePaths(
 internal fun previewGallerySiteItems(
     sourceWebApp: WebApp
 ): List<com.webtoapp.core.shell.GalleryShellItem> {
-    val config = sourceWebApp.galleryConfig ?: return emptyList()
-    return sortedGalleryItems(config.items, config.sortOrder).map { item ->
+    val config = sourceWebApp.galleryConfig?.takeUnless { it.useDeviceFolder } ?: return emptyList()
+    return config.getSortedItems().map { item ->
         com.webtoapp.core.shell.GalleryShellItem(
             id = item.id,
             assetPath = item.path,
@@ -5041,7 +5110,8 @@ internal fun previewGallerySiteItems(
             duration = item.duration,
             thumbnailPath = item.thumbnailPath,
             sortIndex = item.sortIndex,
-            createdAt = item.createdAt
+            createdAt = item.createdAt,
+            categoryId = item.categoryId
         )
     }
 }
@@ -5304,7 +5374,8 @@ sealed class BuildResult {
         val incremental: Boolean = false,
         val buildMode: String = "FULL",
         val buildReason: String = "",
-        val metadataPath: String? = null
+        val metadataPath: String? = null,
+        val packageName: String? = null
     ) : BuildResult()
     data class Error(
         val message: String,

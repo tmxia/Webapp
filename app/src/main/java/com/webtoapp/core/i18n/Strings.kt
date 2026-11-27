@@ -321,6 +321,9 @@ object Strings {
     val labelUrl: String get() = StringsA.labelUrl
     val labelIcon: String get() = StringsA.labelIcon
     val iconBackground: String get() = StringsA.iconBackground
+    val appIconStyle: String get() = StringsA.appIconStyle
+    val adaptiveAppIcon: String get() = StringsA.adaptiveAppIcon
+    val preserveAppIcon: String get() = StringsA.preserveAppIcon
     val iconBackgroundDesc: String get() = StringsA.iconBackgroundDesc
     val labelBasicInfo: String get() = StringsA.labelBasicInfo
     val labelAdvancedConfig: String get() = StringsA.labelAdvancedConfig
@@ -1630,6 +1633,7 @@ object Strings {
     val agentPlanEmpty: String get() = StringsB.agentPlanEmpty
     val agentPlanAwaitingReview: String get() = StringsB.agentPlanAwaitingReview
     val agentPlanApprove: String get() = StringsB.agentPlanApprove
+    val agentPlanApprovedMessage: String get() = StringsB.agentPlanApprovedMessage
     val agentPlanRequestRevisions: String get() = StringsB.agentPlanRequestRevisions
     val agentCompacting: String get() = StringsB.agentCompacting
     val agentCompactedManual: String get() = StringsB.agentCompactedManual
@@ -2437,6 +2441,16 @@ object Strings {
     val hostsSourceRuleCount: String get() = StringsD.hostsSourceRuleCount
     val hostsActiveRulesCount: String get() = StringsD.hostsActiveRulesCount
     val hostsSourcesEnabledSummary: String get() = StringsD.hostsSourcesEnabledSummary
+    val galleryEmbeddedMedia: String get() = StringsD.galleryEmbeddedMedia
+    val galleryDeviceFolder: String get() = StringsD.galleryDeviceFolder
+    val galleryDeviceFolderHint: String get() = StringsD.galleryDeviceFolderHint
+    val galleryChooseFolder: String get() = StringsD.galleryChooseFolder
+    val galleryNewFolder: String get() = StringsD.galleryNewFolder
+    val galleryFolderName: String get() = StringsD.galleryFolderName
+    val galleryMoveToFolder: String get() = StringsD.galleryMoveToFolder
+    val galleryUnfiled: String get() = StringsD.galleryUnfiled
+    val galleryFolderUnavailable: String get() = StringsD.galleryFolderUnavailable
+    val galleryFolderEmpty: String get() = StringsD.galleryFolderEmpty
     val galleryApp: String get() = StringsD.galleryApp
     val galleryCreateTitle: String get() = StringsD.galleryCreateTitle
 
@@ -3060,6 +3074,11 @@ object Strings {
     val notifDownloadChannelDesc: String get() = StringsE.notifDownloadChannelDesc
     val notifDownloadComplete: String get() = StringsE.notifDownloadComplete
     val notifDownloadFailed: String get() = StringsE.notifDownloadFailed
+    val notifDownloadEmptyResponse: String get() = StringsE.notifDownloadEmptyResponse
+    val notifDownloadQueued: String get() = StringsE.notifDownloadQueued
+    val notifDownloadRetrying: String get() = StringsE.notifDownloadRetrying
+    val notifDownloadWaitingNetwork: String get() = StringsE.notifDownloadWaitingNetwork
+    val notifDownloadWaitingWifi: String get() = StringsE.notifDownloadWaitingWifi
     val notifDownloading: String get() = StringsE.notifDownloading
     val notifDownloadingFile: String get() = StringsE.notifDownloadingFile
     val notifDownloadingMultipleFiles: String get() = StringsE.notifDownloadingMultipleFiles
@@ -3371,6 +3390,8 @@ object Strings {
     val advancedConfig: String get() = StringsE.advancedConfig
     val animationPositionInfo: String get() = StringsE.animationPositionInfo
     val apkBuildFailed: String get() = StringsE.apkBuildFailed
+    val publicBuildReport: String get() = StringsE.publicBuildReport
+    val copyPublicBuildReport: String get() = StringsE.copyPublicBuildReport
     val apkShareFailed: String get() = StringsE.apkShareFailed
     val attachContext: String get() = StringsE.attachContext
     val btnCopy: String get() = StringsE.btnCopy
@@ -4181,6 +4202,23 @@ object Strings {
     fun buildServiceRunning(appName: String): String = StringsE.buildServiceRunning(appName)
     val openWithTitle: String get() = StringsE.openWithTitle
     val openWithHint: String get() = StringsE.openWithHint
+    val galleryContinueWatching: String get() = StringsE.galleryContinueWatching
+    val galleryResumeUnavailable: String get() = StringsE.galleryResumeUnavailable
+    val offlinePackPreviewTitle: String get() = StringsE.offlinePackPreviewTitle
+    val offlinePackMissingResources: String get() = StringsE.offlinePackMissingResources
+    val offlinePackNoMissingResources: String get() = StringsE.offlinePackNoMissingResources
+    val signingBackupTitle: String get() = StringsE.signingBackupTitle
+    val signingBackupUnlock: String get() = StringsE.signingBackupUnlock
+    val signingBackupPassword: String get() = StringsE.signingBackupPassword
+    val signingBackupConfirmPassword: String get() = StringsE.signingBackupConfirmPassword
+    val signingBackupPasswordHint: String get() = StringsE.signingBackupPasswordHint
+    val signingBackupExport: String get() = StringsE.signingBackupExport
+    val signingBackupWithoutKeys: String get() = StringsE.signingBackupWithoutKeys
+    val signingBackupNoKeys: String get() = StringsE.signingBackupNoKeys
+    val signingBackupMissingKey: String get() = StringsE.signingBackupMissingKey
+    val signingBackupConflict: String get() = StringsE.signingBackupConflict
+    val signingBackupUnreadable: String get() = StringsE.signingBackupUnreadable
+    val signingBackupInvalid: String get() = StringsE.signingBackupInvalid
     val perAppSigningTitle: String get() = StringsE.perAppSigningTitle
     val perAppSigningHint: String get() = StringsE.perAppSigningHint
 
