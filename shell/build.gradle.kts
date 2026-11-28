@@ -28,6 +28,13 @@ if (isFdroidBuild) {
 }
 
 android {
+    if (isFdroidBuild) {
+        dependenciesInfo {
+            includeInApk = false
+            includeInBundle = false
+        }
+    }
+
     namespace = "com.webtoapp"
     compileSdk = 36
 
@@ -36,8 +43,8 @@ android {
         minSdk = 23
 
         targetSdk = 35
-        versionCode = 89
-        versionName = "2.9.5"
+        versionCode = 90
+        versionName = "2.9.6"
 
         buildConfigField("boolean", "SHELL_RUNTIME_ONLY", "true")
         buildConfigField("boolean", "FDROID", isFdroidBuild.toString())

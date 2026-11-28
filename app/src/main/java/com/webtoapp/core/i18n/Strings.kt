@@ -3231,9 +3231,6 @@ object Strings {
     val permissionDeniedTitle: String get() = StringsE.permissionDeniedTitle
     val permissionDeniedMessage: String get() = StringsE.permissionDeniedMessage
     val emptyStateHint: String get() = StringsE.emptyStateHint
-    val emptyStateSampleApp: String get() = StringsE.emptyStateSampleApp
-    val sampleAppName: String get() = StringsE.sampleAppName
-    val sampleAppCreated: String get() = StringsE.sampleAppCreated
     val onboardingSkip: String get() = StringsE.onboardingSkip
     val onboardingNext: String get() = StringsE.onboardingNext
     val onboardingStart: String get() = StringsE.onboardingStart
@@ -4290,19 +4287,17 @@ object Strings {
 }
 
 @Composable
-fun InitializeLanguage() {
+fun InitializeLanguage(): Boolean? {
     val context = LocalContext.current
     val languageManager = remember { LanguageManager.getInstance(context) }
-    val language by languageManager.currentLanguageFlow.collectAsState(initial = AppLanguage.CHINESE)
+    var hasSelectedLanguage by remember { mutableStateOf<Boolean?>(null) }
 
-    LaunchedEffect(language) {
-        Strings.attachContext(context, language)
-        Strings.setLanguage(language)
-
-        try {
-        } catch (e: Exception) {
-
+    LaunchedEffect(languageManager, context) {
+        languageManager.selectedLanguageFlow.collect { language ->
+            language?.let { HostLanguage.apply(context, it) }
+            hasSelectedLanguage = language != null
         }
     }
 
+    return hasSelectedLanguage
 }

@@ -34,7 +34,6 @@ import androidx.navigation.navArgument
 import android.widget.Toast
 import com.webtoapp.core.host.AdvancedAppTypes
 import com.webtoapp.core.host.HostRuntimePrefs
-import com.webtoapp.core.i18n.InitializeLanguage
 import com.webtoapp.core.i18n.Strings
 import com.webtoapp.data.model.AppType
 import com.webtoapp.data.model.HtmlLoadMode
@@ -191,7 +190,6 @@ private fun editorSave(navController: NavController, entry: NavBackStackEntry): 
 
 @Composable
 fun AppNavigation() {
-    InitializeLanguage()
 
     val navController = rememberNavController()
     val viewModel: MainViewModel = koinViewModel()
@@ -219,7 +217,6 @@ fun AppNavigation() {
                         viewModel.createNewApp()
                         navController.navigate(Routes.CREATE_APP)
                     },
-                    onCreateSampleApp = { viewModel.createSampleApp() },
                     onCreateMediaApp = { navController.navigate(Routes.CREATE_MEDIA_APP) },
                     onCreateGalleryApp = { navController.navigate(Routes.CREATE_GALLERY_APP) },
                     onCreateHtmlApp = { navController.navigate(Routes.CREATE_HTML_APP) },

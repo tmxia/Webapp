@@ -60,18 +60,42 @@ class FirstFiveMinutesGateTest {
     }
 
     @Test
-    fun `empty state offers create and sample actions`() {
+    fun `startup dialogs wait for the confirmed language and completed tour`() {
+        val main = source("ui/MainActivity.kt")
+        val beforeContent = main.substringBefore("setContent {")
+        assertWithMessage("Language selection must be initialized outside the builder theme")
+            .that(main.substringAfter("setContent {").substringBefore("WebToAppTheme {"))
+            .contains("val hasSelectedLanguage = InitializeLanguage()")
+        assertWithMessage("A startup dialog must not interrupt language selection or the tour")
+            .that(main)
+            .contains("val startupReady = hasSelectedLanguage == true && onboardingCompleted == true")
+        listOf("requestNecessaryPermissions()", "checkShortcutPermission()").forEach { check ->
+            assertWithMessage("$check must run inside the startup gate")
+                .that(main.substringAfter("LaunchedEffect(startupReady)").substringBefore("CompositionLocalProvider("))
+                .contains(check)
+            assertWithMessage("$check must not run before composition")
+                .that(beforeContent)
+                .doesNotContain(check)
+        }
+    }
+
+    @Test
+    fun `the floating button is the only create action on empty home`() {
         val home = source("ui/screens/HomeScreen.kt")
-        assertWithMessage("EmptyState must accept a create callback")
-            .that(home)
-            .contains("onCreateApp: () -> Unit = {}")
-        assertWithMessage("EmptyState must offer the sample app action")
-            .that(home)
-            .contains("Strings.emptyStateSampleApp")
-        val navigation = source("ui/navigation/AppNavigation.kt")
-        assertWithMessage("Navigation must wire sample creation")
-            .that(navigation)
-            .contains("onCreateSampleApp = { viewModel.createSampleApp() }")
+        val createButton = home.substringAfter("floatingActionButton = {").substringBefore("\n        },")
+        assertWithMessage("The floating Create App button must open the app-type picker")
+            .that(createButton)
+            .contains("showFabMenu = true")
+        assertWithMessage("The floating button must be labeled Create App")
+            .that(createButton)
+            .contains("Strings.createApp")
+        assertWithMessage("The floating button must expose its accessible name")
+            .that(createButton)
+            .contains("contentDescription = createAppLabel")
+        val emptyState = home.substringAfter("fun HomeEmptyState(").substringBefore("\n}\n")
+        assertWithMessage("The empty state body must not render an action button")
+            .that(emptyState)
+            .doesNotContain("Button(")
     }
 
     @Test
